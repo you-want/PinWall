@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PinWall API 测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result {
+            background: #f9f9f9;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .success {
+            color: #4CAF50;
+        }
+        .error {
+            color: #f44336;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>📌 PinWall API 前后端通信测试</h1>
+
+    <div class="test-section">
+        <h2>1. API 健康检查</h2>
+        <button onclick="testHealth()">测试</button>
+        <div id="healthResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. 用户注册</h2>
+        <input type="email" id="regEmail" placeholder="邮箱" value="test@example.com">
+        <input type="password" id="regPassword" placeholder="密码" value="123456">
+        <br>
+        <button onclick="testRegister()">注册</button>
+        <div id="registerResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. 用户登录</h2>
+        <input type="email" id="loginEmail" placeholder="邮箱" value="test@example.com">
+        <input type="password" id="loginPassword" placeholder="密码" value="123456">
+        <br>
+        <button onclick="testLogin()">登录</button>
+        <div id="loginResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. 创建便签 (需要登录)</h2>
+        <input type="text" id="noteContent" placeholder="便签内容" value="测试便签内容">
+        <br>
+        <button onclick="testCreateNote()">创建便签</button>
+        <div id="createNoteResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>5. 获取便签列表 (需要登录)</h2>
+        <button onclick="testGetNotes()">获取便签</button>
+        <div id="getNotesResult" class="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        let authToken = localStorage.getItem('pinwall_token');
+
+        function log(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = isError ? 'error' : 'success';
+            element.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        async function testHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/`);
+                const data = await response.json();
+                log('healthResult', `✅ API运行正常: ${JSON.stringify(data)}`);
+            } catch (error) {
+                log('healthResult', `❌ 无法连接API: ${error.message}`, true);
+            }
+        }
+
+        async function testRegister() {
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+
+            try {
+                log('registerResult', `正在注册: ${email}...`);
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    log('registerResult', `✅ 注册成功!`);
+                    log('registerResult', `用户ID: ${data.id}`);
+                    log('registerResult', `邮箱: ${data.email}`);
+                    document.getElementById('loginEmail').value = email;
+                    document.getElementById('loginPassword').value = password;
+                } else {
+                    log('registerResult', `❌ 注册失败: ${data.detail || response.status}`, true);
+                }
+            } catch (error) {
+                log('registerResult', `❌ 注册异常: ${error.message}`, true);
+            }
+        }
+
+        async function testLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                log('loginResult', `正在登录: ${email}...`);
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    authToken = data.access_token;
+                    localStorage.setItem('pinwall_token', authToken);
+                    log('loginResult', `✅ 登录成功!`);
+                    log('loginResult', `Token: ${authToken.substring(0, 30)}...`);
+                    log('loginResult', `Token已保存，有效期7天`);
+                } else {
+                    log('loginResult', `❌ 登录失败: ${data.detail || response.status}`, true);
+                }
+            } catch (error) {
+                log('loginResult', `❌ 登录异常: ${error.message}`, true);
+            }
+        }
+
+        async function testCreateNote() {
+            const content = document.getElementById('noteContent').value;
+
+            if (!authToken) {
+                log('createNoteResult', `❌ 请先登录!`, true);
+                return;
+            }
+
+            try {
+                log('createNoteResult', `正在创建便签...`);
+                const response = await fetch(`${API_BASE}/notes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        content,
+                        color: '#FFF9C4',
+                        position_x: 100,
+                        position_y: 100,
+                        angle: 0
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    log('createNoteResult', `✅ 便签创建成功!`);
+                    log('createNoteResult', `便签ID: ${data.id}`);
+                    log('createNoteResult', `内容: ${data.content}`);
+                } else {
+                    log('createNoteResult', `❌ 创建失败: ${data.detail || response.status}`, true);
+                }
+            } catch (error) {
+                log('createNoteResult', `❌ 创建异常: ${error.message}`, true);
+            }
+        }
+
+        async function testGetNotes() {
+            if (!authToken) {
+                log('getNotesResult', `❌ 请先登录!`, true);
+                return;
+            }
+
+            try {
+                log('getNotesResult', `正在获取便签列表...`);
+                const response = await fetch(`${API_BASE}/notes`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    log('getNotesResult', `✅ 获取成功! 共 ${data.length} 个便签`);
+                    data.forEach((note, i) => {
+                        log('getNotesResult', `${i+1}. ${note.content} (${note.color})`);
+                    });
+                } else {
+                    log('getNotesResult', `❌ 获取失败: ${data.detail || response.status}`, true);
+                }
+            } catch (error) {
+                log('getNotesResult', `❌ 获取异常: ${error.message}`, true);
+            }
+        }
+
+        // 页面加载时自动测试
+        window.onload = () => {
+            testHealth();
+        };
+    </script>
+</body>
+</html>
