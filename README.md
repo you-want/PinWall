@@ -135,6 +135,8 @@ PinWall/
 
 ## 🌐 部署
 
+完整部署流程（Render 后端 + Vercel 前端）见 [DEPLOY.md](./DEPLOY.md)。
+
 ### 前端部署
 ```bash
 cd frontend
