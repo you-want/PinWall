@@ -13,7 +13,13 @@ load_dotenv()
 app = Flask(__name__)
 
 # 配置
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///./pinwall.db')
+database_url = os.getenv('DATABASE_URL', 'sqlite:///./pinwall.db')
+if database_url.startswith('postgres://'):
+    database_url = 'postgresql://' + database_url[len('postgres://'):]
+if database_url.startswith('postgresql://') and '+' not in database_url.split('://', 1)[0]:
+    database_url = 'postgresql+psycopg://' + database_url[len('postgresql://'):]
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY'] = os.getenv('SECRET_KEY', 'secret-key')
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES', 10080)))
