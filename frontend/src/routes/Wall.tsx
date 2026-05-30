@@ -1,21 +1,48 @@
 import { useState, useCallback, useEffect } from 'react';
 import { StickyNote } from '@/components/StickyNote';
 import { NoteEditor } from '@/components/NoteEditor';
+import { SearchBar } from '@/components/SearchBar';
 import { useNotesStore } from '@/stores/notesStore';
 import { useAuthStore } from '@/stores/authStore';
 import type { Note } from '@/types';
 
 export default function Wall() {
-  const { notes, layoutMode, fetchNotes, alignNotes, randomizePositions } = useNotesStore();
+  const { notes, layoutMode, fetchNotes, alignNotes, randomizePositions, getFilteredNotes } = useNotesStore();
   const { user, logout } = useAuthStore();
   const [showEditor, setShowEditor] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+
+  const filteredNotes = getFilteredNotes();
 
   useEffect(() => {
     if (user) {
       fetchNotes();
     }
   }, [user, fetchNotes]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowSearch(true);
+      }
+      if (e.key === '/' && !e.metaKey && !e.ctrlKey) {
+        const target = e.target as HTMLElement;
+        if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          setShowSearch(true);
+        }
+      }
+      if (e.key === 'Escape') {
+        setContextMenu(null);
+        setShowSearch(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.sticky-card')) return;
@@ -76,17 +103,6 @@ export default function Wall() {
     setContextMenu(null);
   }, [notes, downloadFile]);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setContextMenu(null);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
   return (
     <div
       className="wall-container"
@@ -94,25 +110,34 @@ export default function Wall() {
       onContextMenu={handleContextMenu}
       onClick={handleCloseContextMenu}
     >
-      {notes.length === 0 ? (
+      {filteredNotes.length === 0 ? (
         <div className="empty-state">
           <div className="text-6xl mb-4">📝</div>
           <h2 className="text-xl font-semibold text-gray-700 mb-2">暂无便签</h2>
           <p className="text-gray-500">双击空白处创建新便签</p>
+          <p className="text-gray-400 text-sm mt-2">按 / 或 Cmd/Ctrl+K 搜索</p>
         </div>
       ) : layoutMode === 'random' ? (
         <div className="notes-grid random">
-          {notes.map((note: Note) => (
+          {filteredNotes.map((note: Note) => (
             <StickyNote key={note.id} note={note} />
           ))}
         </div>
       ) : (
         <div className="masonry-container">
-          {notes.map((note: Note) => (
+          {filteredNotes.map((note: Note) => (
             <div key={note.id} className="masonry-item">
               <StickyNote note={note} />
             </div>
           ))}
+        </div>
+      )}
+
+      {showSearch && (
+        <div className="search-modal-overlay" onClick={() => setShowSearch(false)}>
+          <div className="search-modal" onClick={(e) => e.stopPropagation()}>
+            <SearchBar />
+          </div>
         </div>
       )}
 

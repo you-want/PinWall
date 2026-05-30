@@ -31,6 +31,40 @@ body {
   position: relative;
 }
 
+.wall-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  padding: 16px 20px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0));
+  backdrop-filter: blur(8px);
+}
+
+.search-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 15vh;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.search-modal {
+  width: 100%;
+  max-width: 560px;
+  padding: 0 20px;
+}
+
+.search-modal .relative {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
 .notes-grid {
   width: 100%;
   display: flex;
