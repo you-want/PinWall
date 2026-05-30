@@ -24,6 +24,8 @@ export default defineConfig({
     },
   },
   define: {
-    'process.env': process.env,
+    'process.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL),
+    'process.env.VITE_SUPABASE_URL': JSON.stringify(process.env.VITE_SUPABASE_URL),
+    'process.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY),
   },
 })

@@ -1,3 +1,5 @@
+import { logger } from './logger';
+
 export interface ReminderConfig {
   enabled: boolean;
   hour: number;
@@ -30,7 +32,7 @@ export function saveReminderConfig(config: ReminderConfig): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
   } catch {
-    console.error('Failed to save reminder config');
+    logger.error('Failed to save reminder config');
   }
 }
 

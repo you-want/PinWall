@@ -23,17 +23,17 @@ source venv/bin/activate
 
 # 安装依赖
 echo "Installing dependencies..."
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 
 # 初始化数据库
 echo "Initializing database..."
-python init_db.py
+python3 init_db.py
 
 echo ""
 echo "=== Setup Complete ==="
 echo ""
 echo "To start the server:"
 echo "  source venv/bin/activate"
-echo "  uvicorn main:app --reload"
+echo "  python3 main.py"
 echo ""
 echo "API Documentation: http://localhost:8000/docs"

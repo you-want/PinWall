@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Note } from '@/types';
 import { getNotes, createNote, updateNote, deleteNote, toggleNoteShare } from '@/services/api';
+import { logger } from '@/utils/logger';
 
 export type LayoutMode = 'grid' | 'random';
 
@@ -154,7 +155,7 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
         notes: state.notes.map(n => n.id === noteId ? updatedNote : n),
       }));
     } catch (error) {
-      console.error('Failed to toggle share:', error);
+      logger.error('Failed to toggle share:', error);
     }
   },
 }));
