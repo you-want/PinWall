@@ -1,8 +1,8 @@
 import type { User, Note } from '@/types';
 import { getRandomColor } from '@/utils/colors';
 
-let mockUsers: Record<string, User & { password: string }> = {};
-let mockNotes: Record<string, Note[]> = {};
+const mockUsers: Record<string, User & { password: string }> = {};
+const mockNotes: Record<string, Note[]> = {};
 let userIdCounter = 1;
 let noteIdCounter = 1;
 

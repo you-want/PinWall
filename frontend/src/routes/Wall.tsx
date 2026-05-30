@@ -13,7 +13,7 @@ export default function Wall() {
 
   useEffect(() => {
     if (user) {
-      fetchNotes(user.id);
+      fetchNotes();
     }
   }, [user, fetchNotes]);
 
@@ -37,6 +37,18 @@ export default function Wall() {
     setContextMenu(null);
   }, [logout]);
 
+  const downloadFile = useCallback((content: string, filename: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, []);
+
   const exportNotesAsMarkdown = useCallback(() => {
     const markdown = notes.map((note, index) => {
       const status = note.is_checked ? '✅' : '⬜';
@@ -48,7 +60,7 @@ export default function Wall() {
 
     downloadFile(markdown, 'notes.md', 'text/markdown');
     setContextMenu(null);
-  }, [notes]);
+  }, [notes, downloadFile]);
 
   const exportNotesAsJSON = useCallback(() => {
     const data = notes.map(note => ({
@@ -62,19 +74,7 @@ export default function Wall() {
 
     downloadFile(JSON.stringify(data, null, 2), 'notes.json', 'application/json');
     setContextMenu(null);
-  }, [notes]);
-
-  const downloadFile = (content: string, filename: string, mimeType: string) => {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
+  }, [notes, downloadFile]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -103,14 +103,14 @@ export default function Wall() {
       ) : layoutMode === 'random' ? (
         <div className="notes-grid random">
           {notes.map((note: Note) => (
-            <StickyNote key={note.id} note={note} userId={user?.id || ''} />
+            <StickyNote key={note.id} note={note} />
           ))}
         </div>
       ) : (
         <div className="masonry-container">
           {notes.map((note: Note) => (
             <div key={note.id} className="masonry-item">
-              <StickyNote note={note} userId={user?.id || ''} />
+              <StickyNote note={note} />
             </div>
           ))}
         </div>
@@ -118,7 +118,6 @@ export default function Wall() {
 
       {showEditor && (
         <NoteEditor
-          userId={user?.id || ''}
           onClose={() => setShowEditor(false)}
         />
       )}

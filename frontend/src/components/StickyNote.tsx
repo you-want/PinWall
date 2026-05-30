@@ -5,7 +5,6 @@ import { ConfirmModal } from './ConfirmModal';
 
 interface StickyNoteProps {
   note: Note;
-  userId: string;
 }
 
 const beijingDateTimeFormatter = new Intl.DateTimeFormat('zh-CN', {
@@ -31,8 +30,8 @@ function parseApiDate(input: string): Date {
   return new Date(raw);
 }
 
-export function StickyNote({ note, userId }: StickyNoteProps) {
-  const { updateNote, deleteNote, layoutMode } = useNotesStore();
+export function StickyNote({ note }: StickyNoteProps) {
+  const { updateNoteState, deleteNoteState, layoutMode } = useNotesStore();
   const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -45,7 +44,7 @@ export function StickyNote({ note, userId }: StickyNoteProps) {
   const handleDelete = async () => {
     setShowConfirm(false);
     setIsLoading(true);
-    await deleteNote(userId, note.id);
+    await deleteNoteState(note.id);
     setIsLoading(false);
   };
 
@@ -63,12 +62,6 @@ export function StickyNote({ note, userId }: StickyNoteProps) {
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (layoutMode !== 'random' || isFullscreen) return;
-
-    const target = e.target as HTMLElement;
-    if (target.closest('.control')) return;
-
-    const header = target.closest('.sticky-card-header');
-    if (!header) return;
 
     e.preventDefault();
     e.stopPropagation();
@@ -115,7 +108,7 @@ export function StickyNote({ note, userId }: StickyNoteProps) {
       if (pendingUpdateRef.current) {
         const finalX = localPositionRef.current.x;
         const finalY = localPositionRef.current.y;
-        updateNote(userId, note.id, { position_x: finalX, position_y: finalY });
+        updateNoteState(note.id, { position_x: finalX, position_y: finalY });
       }
 
       document.removeEventListener('pointermove', handlePointerMove);
@@ -124,7 +117,7 @@ export function StickyNote({ note, userId }: StickyNoteProps) {
 
     document.addEventListener('pointermove', handlePointerMove);
     document.addEventListener('pointerup', handlePointerUp);
-  }, [layoutMode, isFullscreen, note.position_x, note.position_y, note.id, updateNote, userId]);
+  }, [layoutMode, isFullscreen, note.position_x, note.position_y, note.id, updateNoteState]);
 
   const isAbsolute = layoutMode === 'random';
 
@@ -149,16 +142,11 @@ export function StickyNote({ note, userId }: StickyNoteProps) {
             transition: isDragging ? 'none' : 'left 0.1s ease, top 0.1s ease',
           }),
         }}
-        onPointerDown={handlePointerDown}
       >
         <div className={`sticky-card-header ${isDragging ? 'dragging' : ''}`}>
           <div className="window-controls">
             <button
               onClick={handleClose}
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-              }}
               className="control close"
               type="button"
               aria-label="删除"
@@ -166,10 +154,6 @@ export function StickyNote({ note, userId }: StickyNoteProps) {
             />
             <button
               onClick={handleRestore}
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-              }}
               disabled={!isFullscreen}
               className={`control minimize ${isFullscreen ? 'active' : 'disabled'}`}
               type="button"
@@ -178,10 +162,6 @@ export function StickyNote({ note, userId }: StickyNoteProps) {
             />
             <button
               onClick={handleFullscreen}
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-              }}
               disabled={isFullscreen}
               className={`control green ${isFullscreen ? 'disabled' : ''}`}
               type="button"
@@ -189,7 +169,10 @@ export function StickyNote({ note, userId }: StickyNoteProps) {
               title={isFullscreen ? '退出全屏' : '全屏'}
             />
           </div>
-          <div className="card-title">
+          <div
+            className="card-title"
+            onPointerDown={handlePointerDown}
+          >
             {beijingDateTimeFormatter.format(parseApiDate(note.created_at))}
           </div>
         </div>

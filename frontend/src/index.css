@@ -61,7 +61,6 @@ body {
 
 .sticky-card.absolute {
   position: absolute;
-  cursor: grab;
   z-index: 10;
   width: 220px;
   max-width: 220px;
@@ -73,7 +72,6 @@ body {
 }
 
 .sticky-card.absolute.dragging {
-  cursor: grabbing;
   z-index: 100;
 }
 
@@ -113,11 +111,22 @@ body {
   justify-content: space-between;
   padding: 10px 12px;
   background: rgba(255, 255, 255, 0.7);
-  cursor: grab;
   user-select: none;
 }
 
-.sticky-card-header.dragging {
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.55);
+  padding-left: 10px;
+  flex: 1;
+}
+
+.sticky-card.absolute .card-title {
+  cursor: grab;
+}
+
+.sticky-card.absolute.dragging .card-title {
   cursor: grabbing;
 }
 
@@ -147,6 +156,20 @@ body {
   transform: scale(1.15);
 }
 
+.window-controls .control::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.sticky-card-header:hover .window-controls .control::after {
+  opacity: 0.8;
+}
+
 .window-controls .control.close {
   background: #ff5f57;
   border-color: #e0443e;
@@ -161,16 +184,10 @@ body {
   width: auto;
   height: auto;
   background: none;
-  font-size: 9px;
+  font-size: 10px;
   line-height: 1;
   font-weight: 700;
-  color: rgba(0, 0, 0, 0.55);
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.sticky-card-header:hover .window-controls .control.close::after {
-  opacity: 1;
+  color: rgba(0, 0, 0, 0.7);
 }
 
 .window-controls .control.minimize {
@@ -183,16 +200,9 @@ body {
 }
 
 .window-controls .control.minimize::after {
-  content: '';
   width: 6px;
   height: 2px;
-  background: rgba(0, 0, 0, 0.5);
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.sticky-card-header:hover .window-controls .control.minimize::after {
-  opacity: 1;
+  background: rgba(0, 0, 0, 0.6);
 }
 
 .window-controls .control.green {
@@ -205,37 +215,17 @@ body {
 }
 
 .window-controls .control.green::after {
-  content: '';
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  border: 2px solid rgba(0, 0, 0, 0.5);
-  background: rgba(0, 0, 0, 0.5);
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.window-controls .control.green::before {
-  content: '';
-  position: absolute;
   width: 6px;
   height: 6px;
-  border: 2px solid rgba(0, 0, 0, 0.5);
-  background: transparent;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.sticky-card-header:hover .window-controls .control.green::after {
-  opacity: 1;
-}
-
-.sticky-card-header:hover .window-controls .control.green::before {
-  opacity: 1;
-}
-
-.window-controls .control.green:not(.disabled):hover::after {
-  background: rgba(0, 0, 0, 0.7);
+  background: linear-gradient(
+    45deg,
+    rgba(0, 0, 0, 0.6) 0%,
+    rgba(0, 0, 0, 0.6) 45%,
+    transparent 45%,
+    transparent 55%,
+    rgba(0, 0, 0, 0.6) 55%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
 }
 
 .window-controls .control.disabled {
@@ -249,14 +239,6 @@ body {
 
 .window-controls .control.disabled::after {
   opacity: 0 !important;
-}
-
-.card-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(0, 0, 0, 0.55);
-  padding-left: 10px;
-  flex: 1;
 }
 
 .sticky-card-body {
@@ -363,7 +345,7 @@ body {
 
 .masonry-container {
   column-count: 1;
-  column-gap: 20px;
+  column-gap: 24px;
   column-fill: balance;
   width: 100%;
 }
@@ -394,7 +376,17 @@ body {
 
 .masonry-item {
   break-inside: avoid;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+}
+
+.masonry-item:hover {
+  transform: translateY(-2px);
+}
+
+.masonry-item .sticky-card {
+  width: 100%;
+  max-width: none;
+  min-width: none;
 }
 
 @media (max-width: 768px) {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import type { Note } from '@/types';
 import { useNotesStore } from '@/stores/notesStore';
 import { STICKY_COLORS, getRandomColor } from '@/utils/colors';
@@ -6,24 +6,17 @@ import { X, Save, Loader2, Palette } from 'lucide-react';
 
 interface NoteEditorProps {
   note?: Note | null;
-  userId: string;
   onClose: () => void;
 }
 
-export function NoteEditor({ note, userId, onClose }: NoteEditorProps) {
-  const [content, setContent] = useState('');
-  const [selectedColor, setSelectedColor] = useState(note?.color || STICKY_COLORS[0]);
+export function NoteEditor({ note, onClose }: NoteEditorProps) {
+  const initialContent = useMemo(() => note?.content || '', [note]);
+  const initialColor = useMemo(() => note?.color || getRandomColor(), [note]);
+  
+  const [content, setContent] = useState(initialContent);
+  const [selectedColor, setSelectedColor] = useState(initialColor);
   const [isLoading, setIsLoading] = useState(false);
-  const { addNote, updateNote } = useNotesStore();
-
-  useEffect(() => {
-    if (note) {
-      setContent(note.content);
-      setSelectedColor(note.color);
-    } else {
-      setSelectedColor(getRandomColor());
-    }
-  }, [note]);
+  const { addNote, updateNoteState } = useNotesStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,12 +24,12 @@ export function NoteEditor({ note, userId, onClose }: NoteEditorProps) {
 
     setIsLoading(true);
     if (note) {
-      await updateNote(userId, note.id, { 
+      await updateNoteState(note.id, { 
         content: content.trim(),
         color: selectedColor,
       });
     } else {
-      await addNote(userId, content.trim(), selectedColor);
+      await addNote(content.trim(), selectedColor);
     }
     setIsLoading(false);
     onClose();

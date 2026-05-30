@@ -36,7 +36,7 @@ class ErrorCode:
     FORBIDDEN = 403
     NOT_FOUND = 404
     INTERNAL_ERROR = 500
-    
+
     # 业务错误码
     EMAIL_ALREADY_REGISTERED = 1001
     INCORRECT_EMAIL_OR_PASSWORD = 1002
@@ -57,6 +57,23 @@ def error_response(code, message, data=None):
         "message": message,
         "data": data or {}
     }), 400 if code < 500 else 500
+
+# JWT 错误处理
+@jwt.expired_token_loader
+def expired_token_callback(jwt_header, jwt_payload):
+    return error_response(ErrorCode.UNAUTHORIZED, "Token已过期，请重新登录")
+
+@jwt.invalid_token_loader
+def invalid_token_callback(error):
+    return error_response(ErrorCode.UNAUTHORIZED, "Token无效，请重新登录")
+
+@jwt.unauthorized_loader
+def missing_token_callback(error):
+    return error_response(ErrorCode.UNAUTHORIZED, "缺少Token")
+
+@jwt.revoked_token_loader
+def revoked_token_callback(jwt_header, jwt_payload):
+    return error_response(ErrorCode.UNAUTHORIZED, "Token已失效，请重新登录")
 
 # 模型
 class User(db.Model):
@@ -104,7 +121,7 @@ def register():
     # 限制密码长度
     if len(password) > 72:
         password = password[:72]
-    
+
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
     new_user = User(email=email, hashed_password=hashed_password.decode('utf-8'))
     db.session.add(new_user)
@@ -166,10 +183,10 @@ def create_note():
     user_id = get_jwt_identity()
     data = request.get_json()
     content = data.get('content')
-    
+
     if not content:
         return error_response(ErrorCode.VALIDATION_ERROR, "便签内容不能为空")
-    
+
     color = data.get('color', '#FFF9C4')
     position_x = data.get('position_x', 0.0)
     position_y = data.get('position_y', 0.0)
@@ -195,7 +212,7 @@ def create_note():
 def get_note(note_id):
     user_id = get_jwt_identity()
     note = Note.query.filter_by(id=note_id, user_id=user_id).first()
-    
+
     if not note:
         return error_response(ErrorCode.NOTE_NOT_FOUND, "便签不存在")
 
@@ -208,7 +225,7 @@ def get_note(note_id):
 def update_note(note_id):
     user_id = get_jwt_identity()
     note = Note.query.filter_by(id=note_id, user_id=user_id).first()
-    
+
     if not note:
         return error_response(ErrorCode.NOTE_NOT_FOUND, "便签不存在")
 
@@ -237,7 +254,7 @@ def update_note(note_id):
 def delete_note(note_id):
     user_id = get_jwt_identity()
     note = Note.query.filter_by(id=note_id, user_id=user_id).first()
-    
+
     if not note:
         return error_response(ErrorCode.NOTE_NOT_FOUND, "便签不存在")
 
@@ -250,7 +267,7 @@ def delete_note(note_id):
 def toggle_share(note_id):
     user_id = get_jwt_identity()
     note = Note.query.filter_by(id=note_id, user_id=user_id).first()
-    
+
     if not note:
         return error_response(ErrorCode.NOTE_NOT_FOUND, "便签不存在")
 
@@ -267,7 +284,7 @@ def toggle_share(note_id):
 @app.route('/notes/share/<share_token>', methods=['GET'])
 def get_public_note(share_token):
     note = Note.query.filter_by(share_token=share_token, is_public=True).first()
-    
+
     if not note:
         return error_response(ErrorCode.NOTE_NOT_FOUND, "便签不存在或未公开")
 

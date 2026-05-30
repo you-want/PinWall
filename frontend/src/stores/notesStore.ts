@@ -9,16 +9,16 @@ interface NotesStore {
   isLoading: boolean;
   searchQuery: string;
   layoutMode: LayoutMode;
-  fetchNotes: (userId: string) => Promise<void>;
-  addNote: (userId: string, content: string, color?: string) => Promise<void>;
-  updateNote: (userId: string, noteId: string, updates: Partial<Pick<Note, 'content' | 'is_checked' | 'color' | 'position_x' | 'position_y' | 'angle' | 'share_token' | 'is_public'>>) => Promise<void>;
-  deleteNote: (userId: string, noteId: string) => Promise<void>;
+  fetchNotes: () => Promise<void>;
+  addNote: (content: string, color?: string) => Promise<void>;
+  updateNoteState: (noteId: string, updates: Partial<Pick<Note, 'content' | 'is_checked' | 'color' | 'position_x' | 'position_y' | 'angle' | 'share_token' | 'is_public'>>) => Promise<void>;
+  deleteNoteState: (noteId: string) => Promise<void>;
   setSearchQuery: (query: string) => void;
   getFilteredNotes: () => Note[];
   setLayoutMode: (mode: LayoutMode) => void;
   randomizePositions: () => void;
   alignNotes: () => void;
-  toggleShare: (userId: string, noteId: string) => Promise<void>;
+  toggleShare: (noteId: string) => Promise<void>;
 }
 
 function getRandomPosition(): { x: number; y: number; angle: number } {
@@ -42,10 +42,10 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
   searchQuery: '',
   layoutMode: 'grid',
 
-  fetchNotes: async (userId) => {
+  fetchNotes: async () => {
     set({ isLoading: true });
     try {
-      const notes = await getNotes(userId);
+      const notes = await getNotes();
       const notesWithPositions = notes.map(note => {
         if (note.position_x === undefined || note.position_y === undefined) {
           const pos = getRandomPosition();
@@ -59,18 +59,18 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
     }
   },
 
-  addNote: async (userId, content, color) => {
+  addNote: async (content, color) => {
     try {
-      const note = await createNote(userId, content, color);
+      const note = await createNote(content, color);
       set((state) => ({ notes: [note, ...state.notes] }));
     } catch (error) {
       console.error('Failed to add note:', error);
     }
   },
 
-  updateNote: async (userId, noteId, updates) => {
+  updateNoteState: async (noteId, updates) => {
     try {
-      await updateNote(userId, noteId, updates);
+      await updateNote(noteId, updates);
       set((state) => ({
         notes: state.notes.map(n => n.id === noteId ? { ...n, ...updates, updated_at: new Date().toISOString() } : n),
       }));
@@ -79,9 +79,9 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
     }
   },
 
-  deleteNote: async (userId, noteId) => {
+  deleteNoteState: async (noteId) => {
     try {
-      await deleteNote(userId, noteId);
+      await deleteNote(noteId);
       set((state) => ({ notes: state.notes.filter(n => n.id !== noteId) }));
     } catch (error) {
       console.error('Failed to delete note:', error);
@@ -147,9 +147,9 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
     }));
   },
 
-  toggleShare: async (userId, noteId) => {
+  toggleShare: async (noteId) => {
     try {
-      const updatedNote = await toggleNoteShare(userId, noteId);
+      const updatedNote = await toggleNoteShare(noteId);
       set((state) => ({
         notes: state.notes.map(n => n.id === noteId ? updatedNote : n),
       }));

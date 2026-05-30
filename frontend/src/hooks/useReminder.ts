@@ -9,6 +9,7 @@ import { useNotesStore } from '@/stores/notesStore';
 
 export function useReminder() {
   const timerRef = useRef<number | null>(null);
+  const scheduleRef = useRef<() => void>(() => {});
   const { notes } = useNotesStore();
 
   const scheduleReminder = useCallback(() => {
@@ -32,9 +33,13 @@ export function useReminder() {
         '📝 打卡提醒',
         `你还有 ${uncheckedNotes.length} 个便签待打卡，快去完成吧！`
       );
-      scheduleReminder();
+      scheduleRef.current();
     }, delay);
   }, [notes]);
+
+  useEffect(() => {
+    scheduleRef.current = scheduleReminder;
+  }, [scheduleReminder]);
 
   useEffect(() => {
     scheduleReminder();

@@ -5,10 +5,27 @@ import { getRandomColor } from '@/utils/colors';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const TOKEN_KEY = 'pinwall_token';
 
-interface ApiResponse<T = any> {
+interface ApiResponse<T> {
   code: number;
   message: string;
   data: T;
+}
+
+interface UserData {
+  user: User;
+}
+
+interface LoginData {
+  user: User;
+  access_token: string;
+}
+
+interface NotesData {
+  notes: Note[];
+}
+
+interface NoteData {
+  note: Note;
 }
 
 class ApiError extends Error {
@@ -39,16 +56,16 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 });
 
 api.interceptors.response.use(
-  (response: AxiosResponse<ApiResponse>) => {
+  (response: AxiosResponse<ApiResponse<unknown>>) => {
     const { code, message, data } = response.data;
     
     if (code !== 0) {
       throw new ApiError(code, message);
     }
     
-    return { ...response, data: data } as any;
+    return { ...response, data } as AxiosResponse<unknown>;
   },
-  (error: AxiosError<ApiResponse>) => {
+  (error: AxiosError<ApiResponse<unknown>>) => {
     if (error.response?.status === 401) {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem('pinwall_user');
@@ -64,27 +81,23 @@ api.interceptors.response.use(
   }
 );
 
-export async function register(email: string, password: string): Promise<{ user: User }> {
-  const response = await api.post('/auth/register', { email, password });
-  return response.data as any;
+export async function register(email: string, password: string): Promise<UserData> {
+  const response = await api.post<ApiResponse<UserData>>('/auth/register', { email, password });
+  return response.data.data;
 }
 
 export async function login(email: string, password: string): Promise<{ user: User; token: string }> {
-  const response = await api.post('/auth/login', {
-    email,
-    password,
-  });
-  const data = response.data as any;
+  const response = await api.post<ApiResponse<LoginData>>('/auth/login', { email, password });
+  const data = response.data.data;
   return {
     user: data.user,
     token: data.access_token,
   };
 }
 
-export async function getNotes(_userId: string): Promise<Note[]> {
-  const response = await api.get('/notes');
-  const data = response.data as any;
-  return data.notes;
+export async function getNotes(): Promise<Note[]> {
+  const response = await api.get<ApiResponse<NotesData>>('/notes');
+  return response.data.data.notes;
 }
 
 function getRandomPosition(): { x: number; y: number; angle: number } {
@@ -102,53 +115,44 @@ function getRandomPosition(): { x: number; y: number; angle: number } {
   return { x: left, y: top, angle };
 }
 
-export async function createNote(_userId: string, content: string, color?: string): Promise<Note> {
+export async function createNote(content: string, color?: string): Promise<Note> {
   const position = getRandomPosition();
-  const response = await api.post('/notes', {
+  const response = await api.post<ApiResponse<NoteData>>('/notes', {
     content,
     color: color || getRandomColor(),
     position_x: position.x,
     position_y: position.y,
     angle: position.angle,
   });
-  const data = response.data as any;
-  return data.note;
+  return response.data.data.note;
 }
 
-export async function updateNote(_userId: string, noteId: string, updates: Partial<Pick<Note, 'content' | 'is_checked' | 'color' | 'position_x' | 'position_y' | 'angle' | 'share_token' | 'is_public'>>): Promise<Note> {
-  const response = await api.put(`/notes/${noteId}`, updates);
-  const data = response.data as any;
-  return data.note;
+export async function updateNote(noteId: string, updates: Partial<Pick<Note, 'content' | 'is_checked' | 'color' | 'position_x' | 'position_y' | 'angle' | 'share_token' | 'is_public'>>): Promise<Note> {
+  const response = await api.put<ApiResponse<NoteData>>(`/notes/${noteId}`, updates);
+  return response.data.data.note;
 }
 
-export async function deleteNote(_userId: string, noteId: string): Promise<void> {
+export async function deleteNote(noteId: string): Promise<void> {
   await api.delete(`/notes/${noteId}`);
 }
 
 export async function getNoteByShareToken(shareToken: string): Promise<Note | null> {
   try {
-    const response = await api.get(`/notes/share/${shareToken}`);
-    const data = response.data as any;
-    return data.note;
+    const response = await api.get<ApiResponse<NoteData>>(`/notes/share/${shareToken}`);
+    return response.data.data.note;
   } catch {
     return null;
   }
 }
 
-export async function getPublicNotes(_userId: string): Promise<Note[]> {
-  const response = await api.get('/notes');
-  const data = response.data as any;
-  return data.notes.filter((note: Note) => note.is_public);
+export async function getPublicNotes(): Promise<Note[]> {
+  const response = await api.get<ApiResponse<NotesData>>('/notes');
+  return response.data.data.notes.filter((note: Note) => note.is_public);
 }
 
-export async function toggleNoteShare(_userId: string, noteId: string): Promise<Note> {
-  const response = await api.post(`/notes/${noteId}/share`);
-  const data = response.data as any;
-  return data.note;
-}
-
-export function getUserFromToken(_token: string): User | null {
-  return null;
+export async function toggleNoteShare(noteId: string): Promise<Note> {
+  const response = await api.post<ApiResponse<NoteData>>(`/notes/${noteId}/share`);
+  return response.data.data.note;
 }
 
 export { ApiError };

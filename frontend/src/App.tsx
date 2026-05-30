@@ -8,12 +8,12 @@ import { AuthLayout } from '@/components/Layout/AuthLayout';
 import { useAuthStore } from '@/stores/authStore';
 
 function App() {
-  const { checkAuth, user } = useAuthStore();
+  const { user } = useAuthStore();
   const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
     const init = async () => {
-      await checkAuth();
+      await useAuthStore.getState().checkAuth();
       setIsInitializing(false);
     };
     init();
