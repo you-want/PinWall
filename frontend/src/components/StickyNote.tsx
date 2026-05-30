@@ -5,6 +5,8 @@ import { ConfirmModal } from './ConfirmModal';
 
 interface StickyNoteProps {
   note: Note;
+  setNoteToEdit: (note: Note | null) => void;
+  setShowEditor: (show: boolean) => void;
 }
 
 const beijingDateTimeFormatter = new Intl.DateTimeFormat('zh-CN', {
@@ -30,7 +32,7 @@ function parseApiDate(input: string): Date {
   return new Date(raw);
 }
 
-export function StickyNote({ note }: StickyNoteProps) {
+export function StickyNote({ note, setNoteToEdit, setShowEditor }: StickyNoteProps) {
   const { updateNoteState, deleteNoteState, layoutMode } = useNotesStore();
   const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -58,6 +60,11 @@ export function StickyNote({ note }: StickyNoteProps) {
 
   const handleFullscreen = () => {
     setIsFullscreen(true);
+  };
+
+  const handleEdit = () => {
+    setNoteToEdit(note);
+    setShowEditor(true);
   };
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
@@ -176,7 +183,7 @@ export function StickyNote({ note }: StickyNoteProps) {
             {beijingDateTimeFormatter.format(parseApiDate(note.created_at))}
           </div>
         </div>
-        <div className="sticky-card-body">
+        <div className="sticky-card-body" onClick={handleEdit}>
           {isLoading ? (
             <div className="loading-spinner" />
           ) : (

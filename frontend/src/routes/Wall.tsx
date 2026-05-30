@@ -10,6 +10,7 @@ export default function Wall() {
   const { notes, layoutMode, fetchNotes, alignNotes, randomizePositions, getFilteredNotes } = useNotesStore();
   const { user, logout } = useAuthStore();
   const [showEditor, setShowEditor] = useState(false);
+  const [noteToEdit, setNoteToEdit] = useState<Note | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -120,14 +121,14 @@ export default function Wall() {
       ) : layoutMode === 'random' ? (
         <div className="notes-grid random">
           {filteredNotes.map((note: Note) => (
-            <StickyNote key={note.id} note={note} />
+            <StickyNote key={note.id} note={note} setNoteToEdit={setNoteToEdit} setShowEditor={setShowEditor} />
           ))}
         </div>
       ) : (
         <div className="masonry-container">
           {filteredNotes.map((note: Note) => (
             <div key={note.id} className="masonry-item">
-              <StickyNote note={note} />
+              <StickyNote note={note} setNoteToEdit={setNoteToEdit} setShowEditor={setShowEditor}/>
             </div>
           ))}
         </div>
@@ -143,6 +144,7 @@ export default function Wall() {
 
       {showEditor && (
         <NoteEditor
+          note={noteToEdit}
           onClose={() => setShowEditor(false)}
         />
       )}
