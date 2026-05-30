@@ -64,10 +64,10 @@ def test_register(email, password):
             f"{API_BASE}/auth/register",
             json={"email": email, "password": password}
         )
-        if response.status_code == 201:
+        if response.status_code == 200 and response.json().get("code") == 0:
             print_success(f"用户注册成功: {email}")
             return response.json()
-        elif response.status_code == 400 and "already registered" in response.text:
+        elif response.status_code == 200 and "already registered" in response.text:
             print_info(f"用户已存在，跳过注册")
             return {"id": "existing"}
         else:
@@ -85,12 +85,16 @@ def test_login(email, password):
             f"{API_BASE}/auth/login",
             json={"email": email, "password": password}
         )
-        if response.status_code == 200:
-            data = response.json()
-            token = data.get("access_token")
-            print_success("登录成功")
-            print_info(f"Token: {token[:30]}...")
-            return token
+        json_data = response.json()
+        if response.status_code == 200 and json_data.get("code") == 0:
+            token = json_data.get("data", {}).get("access_token")
+            if token:
+                print_success("登录成功")
+                print_info(f"Token: {token[:30]}...")
+                return token
+            else:
+                print_error("Token 为空")
+                return None
         else:
             print_error(f"登录失败: {response.status_code} - {response.text}")
             return None
@@ -114,11 +118,11 @@ def test_create_note(token, content, color="#FFF9C4"):
             },
             headers=headers
         )
-        if response.status_code == 201:
-            note = response.json()
-            print_success(f"便签创建成功: {note['id']}")
-            print_info(f"内容: {note['content']}")
-            print_info(f"颜色: {note['color']}")
+        if response.status_code == 200 and response.json().get("code") == 0:
+            note = response.json().get("data", {}).get("note") or {}
+            print_success(f"便签创建成功: {note.get('id')}")
+            print_info(f"内容: {note.get('content')}")
+            print_info(f"颜色: {note.get('color')}")
             return note
         else:
             print_error(f"创建便签失败: {response.status_code} - {response.text}")
@@ -133,11 +137,12 @@ def test_get_notes(token):
     try:
         headers = {"Authorization": f"Bearer {token}"}
         response = requests.get(f"{API_BASE}/notes", headers=headers)
-        if response.status_code == 200:
-            notes = response.json()
+        if response.status_code == 200 and response.json().get("code") == 0:
+            notes = response.json().get("data", {}).get("notes", [])
             print_success(f"获取到 {len(notes)} 个便签")
             for i, note in enumerate(notes):
-                print_info(f"  {i+1}. {note['content'][:30]}...")
+                content = note.get('content', '')[:30]
+                print_info(f"  {i+1}. {content}...")
             return notes
         else:
             print_error(f"获取便签失败: {response.status_code} - {response.text}")
@@ -156,13 +161,13 @@ def test_update_note(token, note_id, updates):
             json=updates,
             headers=headers
         )
-        if response.status_code == 200:
-            note = response.json()
+        if response.status_code == 200 and response.json().get("code") == 0:
+            note = response.json().get("data", {}).get("note") or {}
             print_success("便签更新成功")
             if "content" in updates:
-                print_info(f"新内容: {note['content']}")
+                print_info(f"新内容: {note.get('content')}")
             if "is_checked" in updates:
-                print_info(f"打卡状态: {note['is_checked']}")
+                print_info(f"打卡状态: {note.get('is_checked')}")
             return note
         else:
             print_error(f"更新便签失败: {response.status_code} - {response.text}")
@@ -180,11 +185,11 @@ def test_toggle_share(token, note_id):
             f"{API_BASE}/notes/{note_id}/share",
             headers=headers
         )
-        if response.status_code == 200:
-            note = response.json()
-            print_success(f"便签分享状态已切换: {note['is_public']}")
-            if note['is_public']:
-                print_info(f"分享链接: /notes/share/{note['share_token']}")
+        if response.status_code == 200 and response.json().get("code") == 0:
+            note = response.json().get("data", {}).get("note") or {}
+            print_success(f"便签分享状态已切换: {note.get('is_public')}")
+            if note.get('is_public'):
+                print_info(f"分享链接: /notes/share/{note.get('share_token')}")
             return note
         else:
             print_error(f"分享失败: {response.status_code} - {response.text}")
@@ -198,10 +203,10 @@ def test_get_public_note(share_token):
     print_title("8. 测试获取公开便签")
     try:
         response = requests.get(f"{API_BASE}/notes/share/{share_token}")
-        if response.status_code == 200:
-            note = response.json()
+        if response.status_code == 200 and response.json().get("code") == 0:
+            note = response.json().get("data", {}).get("note") or {}
             print_success(f"成功获取公开便签")
-            print_info(f"内容: {note['content']}")
+            print_info(f"内容: {note.get('content')}")
             return note
         else:
             print_error(f"获取公开便签失败: {response.status_code} - {response.text}")
@@ -219,7 +224,8 @@ def test_delete_note(token, note_id):
             f"{API_BASE}/notes/{note_id}",
             headers=headers
         )
-        if response.status_code == 204:
+        json_data = response.json()
+        if response.status_code == 200 and json_data.get("code") == 0:
             print_success(f"便签删除成功: {note_id}")
             return True
         else:

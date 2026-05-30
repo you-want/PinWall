@@ -51,7 +51,13 @@ def success_response(data=None, message="成功"):
         "data": data or {}
     })
 
-def error_response(code, message, data=None):
+def error_response(code, message, data=None, status_code=None):
+    if status_code:
+        return jsonify({
+            "code": code,
+            "message": message,
+            "data": data or {}
+        }), status_code
     return jsonify({
         "code": code,
         "message": message,
@@ -61,19 +67,19 @@ def error_response(code, message, data=None):
 # JWT 错误处理
 @jwt.expired_token_loader
 def expired_token_callback(jwt_header, jwt_payload):
-    return error_response(ErrorCode.UNAUTHORIZED, "Token已过期，请重新登录")
+    return error_response(ErrorCode.UNAUTHORIZED, "Token已过期，请重新登录", status_code=401)
 
 @jwt.invalid_token_loader
 def invalid_token_callback(error):
-    return error_response(ErrorCode.UNAUTHORIZED, "Token无效，请重新登录")
+    return error_response(ErrorCode.UNAUTHORIZED, "Token无效，请重新登录", status_code=401)
 
 @jwt.unauthorized_loader
 def missing_token_callback(error):
-    return error_response(ErrorCode.UNAUTHORIZED, "缺少Token")
+    return error_response(ErrorCode.UNAUTHORIZED, "缺少Token", status_code=401)
 
 @jwt.revoked_token_loader
 def revoked_token_callback(jwt_header, jwt_payload):
-    return error_response(ErrorCode.UNAUTHORIZED, "Token已失效，请重新登录")
+    return error_response(ErrorCode.UNAUTHORIZED, "Token已失效，请重新登录", status_code=401)
 
 # 模型
 class User(db.Model):

@@ -83,12 +83,12 @@ api.interceptors.response.use(
 
 export async function register(email: string, password: string): Promise<UserData> {
   const response = await api.post<ApiResponse<UserData>>('/auth/register', { email, password });
-  return response.data.data;
+  return (response as unknown as { data: UserData }).data;
 }
 
 export async function login(email: string, password: string): Promise<{ user: User; token: string }> {
   const response = await api.post<ApiResponse<LoginData>>('/auth/login', { email, password });
-  const data = response.data.data;
+  const data = (response as unknown as { data: LoginData }).data;
   return {
     user: data.user,
     token: data.access_token,
@@ -97,7 +97,7 @@ export async function login(email: string, password: string): Promise<{ user: Us
 
 export async function getNotes(): Promise<Note[]> {
   const response = await api.get<ApiResponse<NotesData>>('/notes');
-  return response.data.data.notes;
+  return (response as unknown as { data: NotesData }).data.notes;
 }
 
 function getRandomPosition(): { x: number; y: number; angle: number } {
@@ -124,12 +124,12 @@ export async function createNote(content: string, color?: string): Promise<Note>
     position_y: position.y,
     angle: position.angle,
   });
-  return response.data.data.note;
+  return (response as unknown as { data: NoteData }).data.note;
 }
 
 export async function updateNote(noteId: string, updates: Partial<Pick<Note, 'content' | 'is_checked' | 'color' | 'position_x' | 'position_y' | 'angle' | 'share_token' | 'is_public'>>): Promise<Note> {
   const response = await api.put<ApiResponse<NoteData>>(`/notes/${noteId}`, updates);
-  return response.data.data.note;
+  return (response as unknown as { data: NoteData }).data.note;
 }
 
 export async function deleteNote(noteId: string): Promise<void> {
@@ -139,7 +139,7 @@ export async function deleteNote(noteId: string): Promise<void> {
 export async function getNoteByShareToken(shareToken: string): Promise<Note | null> {
   try {
     const response = await api.get<ApiResponse<NoteData>>(`/notes/share/${shareToken}`);
-    return response.data.data.note;
+    return (response as unknown as { data: NoteData }).data.note;
   } catch {
     return null;
   }
@@ -147,12 +147,12 @@ export async function getNoteByShareToken(shareToken: string): Promise<Note | nu
 
 export async function getPublicNotes(): Promise<Note[]> {
   const response = await api.get<ApiResponse<NotesData>>('/notes');
-  return response.data.data.notes.filter((note: Note) => note.is_public);
+  return (response as unknown as { data: NotesData }).data.notes.filter((note: Note) => note.is_public);
 }
 
 export async function toggleNoteShare(noteId: string): Promise<Note> {
   const response = await api.post<ApiResponse<NoteData>>(`/notes/${noteId}/share`);
-  return response.data.data.note;
+  return (response as unknown as { data: NoteData }).data.note;
 }
 
 export { ApiError };
