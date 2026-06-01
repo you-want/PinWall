@@ -45,3 +45,8 @@ ENV/
 **/*.sqlite
 **/*.sqlite3
 backend/instance/
+
+# product
+desktop/
+flutter-template/
+mobile/
