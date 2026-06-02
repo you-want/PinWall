@@ -1,0 +1,58 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "PinWall",
+  "version": "0.1.0",
+  "identifier": "com.rain9.pinwall",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "title": "",
+        "width": 800,
+        "height": 600,
+        "fullscreen": false,
+        "decorations": false,
+        "transparent": true,
+        "label": "main",
+        "maximized": true,
+        "resizable": false,
+        "minimizable": false,
+        "maximizable": false
+      },
+      {
+        "title": "PinWall Settings",
+        "width": 800,
+        "height": 600,
+        "fullscreen": false,
+        "decorations": true,
+        "transparent": false,
+        "label": "settings",
+        "visible": false
+      }
+    ],
+    "security": {
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$APPDATA/**"]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

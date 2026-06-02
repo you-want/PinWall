@@ -47,6 +47,5 @@ ENV/
 backend/instance/
 
 # product
-desktop/
 flutter-template/
 mobile/
