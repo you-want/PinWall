@@ -42,6 +42,7 @@ export function StickyNote({ note, setNoteToEdit, setShowEditor }: StickyNotePro
   const pendingUpdateRef = useRef(false);
   const animationFrameRef = useRef<number | null>(null);
   const elementRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
 
   const handleDelete = async () => {
     setShowConfirm(false);
@@ -56,10 +57,12 @@ export function StickyNote({ note, setNoteToEdit, setShowEditor }: StickyNotePro
 
   const handleRestore = () => {
     setIsFullscreen(false);
+    window.dispatchEvent(new CustomEvent('pinwall-fullscreen-change', { detail: false }));
   };
 
   const handleFullscreen = () => {
     setIsFullscreen(true);
+    window.dispatchEvent(new CustomEvent('pinwall-fullscreen-change', { detail: true }));
   };
 
   const handleEdit = () => {
@@ -74,6 +77,7 @@ export function StickyNote({ note, setNoteToEdit, setShowEditor }: StickyNotePro
     e.stopPropagation();
 
     setIsDragging(true);
+    isDraggingRef.current = true;
     const startX = e.clientX;
     const startY = e.clientY;
     const initialX = note.position_x || 0;
@@ -83,6 +87,8 @@ export function StickyNote({ note, setNoteToEdit, setShowEditor }: StickyNotePro
     pendingUpdateRef.current = false;
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
+      if (!isDraggingRef.current) return;
+      
       const deltaX = moveEvent.clientX - startX;
       const deltaY = moveEvent.clientY - startY;
 
@@ -97,7 +103,7 @@ export function StickyNote({ note, setNoteToEdit, setShowEditor }: StickyNotePro
       }
 
       animationFrameRef.current = requestAnimationFrame(() => {
-        if (elementRef.current) {
+        if (elementRef.current && isDraggingRef.current) {
           elementRef.current.style.left = `${newX}px`;
           elementRef.current.style.top = `${newY}px`;
         }
@@ -106,6 +112,7 @@ export function StickyNote({ note, setNoteToEdit, setShowEditor }: StickyNotePro
 
     const handlePointerUp = () => {
       setIsDragging(false);
+      isDraggingRef.current = false;
 
       if (animationFrameRef.current !== null) {
         cancelAnimationFrame(animationFrameRef.current);
@@ -132,8 +139,19 @@ export function StickyNote({ note, setNoteToEdit, setShowEditor }: StickyNotePro
     if (isAbsolute && elementRef.current && !isDragging && !isFullscreen) {
       elementRef.current.style.left = `${note.position_x || 0}px`;
       elementRef.current.style.top = `${note.position_y || 0}px`;
+      elementRef.current.style.transform = `rotate(${note.angle || 0}deg)`;
     }
-  }, [note.position_x, note.position_y, isAbsolute, isDragging, isFullscreen]);
+  }, [note.position_x, note.position_y, isAbsolute, isDragging, isFullscreen, note.angle]);
+
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      isDraggingRef.current = false;
+    };
+  }, []);
 
   return (
     <>
@@ -146,7 +164,9 @@ export function StickyNote({ note, setNoteToEdit, setShowEditor }: StickyNotePro
             left: `${note.position_x || 0}px`,
             top: `${note.position_y || 0}px`,
             transform: `rotate(${note.angle || 0}deg)`,
-            transition: isDragging ? 'none' : 'left 0.1s ease, top 0.1s ease',
+          }),
+          ...(isFullscreen && {
+            transform: 'none',
           }),
         }}
       >

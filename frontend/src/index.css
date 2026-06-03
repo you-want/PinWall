@@ -104,6 +104,7 @@ body {
 
 .sticky-card.absolute:hover {
   transform: translateY(0) scale(1.05);
+  transition: transform 0.2s ease;
 }
 
 .sticky-card.absolute.dragging {
@@ -125,19 +126,77 @@ body {
 }
 
 .sticky-card.fullscreen {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100vw !important;
-  height: 100vh !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
   max-width: none !important;
   max-height: none !important;
-  transform: rotate(0deg) !important;
+  min-width: none !important;
+  min-height: none !important;
+  transform: none !important;
   border-radius: 0 !important;
   border: none !important;
-  z-index: 1000;
+  z-index: 9999 !important;
+  transition: none !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  pointer-events: auto !important;
+}
+
+.sticky-card.fullscreen:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Bug2: 全屏时禁用其他卡片的 hover 动画，防止频闪 */
+.wall-container.has-fullscreen .sticky-card:not(.fullscreen):hover {
+  transform: none !important;
+  box-shadow: 0 16px 35px rgba(0, 0, 0, 0.2);
+}
+
+/* 完全禁用全屏模式下所有元素的 hover 效果，防止闪烁 */
+.wall-container.has-fullscreen *:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Bug1: 修复 masonry 布局下全屏便签花屏问题 */
+.wall-container.has-fullscreen .masonry-item {
+  overflow: visible !important;
+  z-index: auto !important;
+}
+
+.wall-container.has-fullscreen .masonry-item .sticky-card.fullscreen {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  min-width: none !important;
+  min-height: none !important;
+  transform: none !important;
+  border-radius: 0 !important;
+  border: none !important;
+  z-index: 9999 !important;
+  transition: none !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  pointer-events: auto !important;
+}
+
+.wall-container.has-fullscreen .masonry-item .sticky-card.fullscreen:hover {
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 .sticky-card-header {
@@ -466,4 +525,40 @@ body {
   .masonry-item {
     margin-bottom: 16px;
   }
+
+  .fab-new-note {
+    bottom: 24px;
+    right: 24px;
+    width: 52px;
+    height: 52px;
+  }
+}
+
+/* Bug3: 浮动新建按钮 */
+.fab-new-note {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
+  z-index: 900;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.fab-new-note:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.55);
+}
+
+.fab-new-note:active {
+  transform: scale(0.95);
 }

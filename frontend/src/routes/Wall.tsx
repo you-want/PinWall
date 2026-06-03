@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { Plus } from 'lucide-react';
 import { StickyNote } from '@/components/StickyNote';
 import { NoteEditor } from '@/components/NoteEditor';
 import { SearchBar } from '@/components/SearchBar';
@@ -13,8 +14,18 @@ export default function Wall() {
   const [noteToEdit, setNoteToEdit] = useState<Note | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [hasFullscreen, setHasFullscreen] = useState(false);
 
   const filteredNotes = getFilteredNotes();
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setHasFullscreen(!!detail);
+    };
+    window.addEventListener('pinwall-fullscreen-change', handler);
+    return () => window.removeEventListener('pinwall-fullscreen-change', handler);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -106,7 +117,7 @@ export default function Wall() {
 
   return (
     <div
-      className="wall-container"
+      className={`wall-container${hasFullscreen ? ' has-fullscreen' : ''}`}
       onDoubleClick={handleDoubleClick}
       onContextMenu={handleContextMenu}
       onClick={handleCloseContextMenu}
@@ -173,6 +184,17 @@ export default function Wall() {
             退出登录
           </button>
         </div>
+      )}
+
+      {!hasFullscreen && (
+        <button
+          className="fab-new-note"
+          onClick={() => { setNoteToEdit(null); setShowEditor(true); }}
+          title="新建便签（或双击空白处）"
+          aria-label="新建便签"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
       )}
     </div>
   );

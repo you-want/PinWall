@@ -63,7 +63,7 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
   addNote: async (content, color) => {
     try {
       const note = await createNote(content, color);
-      set((state) => ({ notes: [note, ...state.notes] }));
+      set((state) => ({ notes: [...state.notes, note] }));
     } catch (error) {
       console.error('Failed to add note:', error);
     }

@@ -5,7 +5,7 @@
   "identifier": "com.rain9.pinwall",
   "build": {
     "beforeDevCommand": "pnpm dev",
-    "devUrl": "http://localhost:1420",
+    "devUrl": "http://localhost:1930",
     "beforeBuildCommand": "pnpm build",
     "frontendDist": "../dist"
   },
