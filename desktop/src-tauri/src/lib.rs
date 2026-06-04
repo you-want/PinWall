@@ -67,6 +67,16 @@ fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
 
+#[tauri::command]
+fn send_to_background(app: tauri::AppHandle) {
+    set_main_default_layer(&app);
+    let state = app.state::<MainLayerState>()
+        .0
+        .lock()
+        .map(|v| *v)
+        .unwrap_or(false);
+}
+
 #[derive(serde::Serialize)]
 struct ImportedBackgroundImage {
     path: String,
@@ -238,6 +248,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             quit_app,
+            send_to_background,
             import_background_images,
             delete_background_image_file
         ])

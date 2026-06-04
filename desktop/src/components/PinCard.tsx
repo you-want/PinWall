@@ -9,6 +9,7 @@ interface PinCardProps {
   onClose: (id: string) => void;
   onMinimize: (id: string) => void;
   zIndex: number;
+  onContextMenu?: (e: React.MouseEvent) => void;
 }
 
 const colors = [
@@ -30,12 +31,14 @@ export function PinCard({
   card,
   onPositionChange,
   onBringToFront,
-  onToggleCollapse,
+  // onToggleCollapse,
   onClose,
-  onMinimize,
+  // onMinimize,
   zIndex,
+  onContextMenu,
 }: PinCardProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -103,12 +106,12 @@ export function PinCard({
       if (control?.classList.contains("close")) {
         onClose(card.id);
       } else if (control?.classList.contains("minimize")) {
-        onMinimize(card.id);
+        setIsFullscreen(false);
       } else if (control?.classList.contains("collapse")) {
-        onToggleCollapse(card.id);
+        setIsFullscreen(true);
       }
     },
-    [card.id, onClose, onMinimize, onToggleCollapse]
+    [card.id, onClose]
   );
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
@@ -118,11 +121,14 @@ export function PinCard({
   return (
     <div
       ref={cardRef}
-      className={`pin-card ${isDragging ? "dragging" : ""} ${card.collapsed ? "collapsed" : ""}`}
+      data-interactive="true"
+      className={`pin-card ${isDragging ? "dragging" : ""} ${card.collapsed ? "collapsed" : ""} ${isFullscreen ? "fullscreen" : ""}`}
       style={{
-        left: card.x,
-        top: card.y,
-        zIndex,
+        left: isFullscreen ? 0 : card.x,
+        top: isFullscreen ? 0 : card.y,
+        width: isFullscreen ? "100%" : undefined,
+        height: isFullscreen ? "100%" : undefined,
+        zIndex: isFullscreen ? 9999 : zIndex,
         background: getGradient(card.colorIndex),
       }}
       onClick={handleControlClick}
@@ -130,17 +136,29 @@ export function PinCard({
       onMouseDown={(e) => e.stopPropagation()}
       onMouseUp={(e) => e.stopPropagation()}
       onMouseMove={(e) => e.stopPropagation()}
+      onContextMenu={onContextMenu}
     >
       <div className={`pin-card-header`} onPointerDown={handlePointerDown}>
         <div className="window-controls">
           <button className="control close" type="button" aria-label="关闭" />
-          <button className="control minimize" type="button" aria-label="最小化" />
-          <button className="control collapse" type="button" aria-label={card.collapsed ? "展开" : "折叠"} />
+          <button
+            className={`control minimize ${isFullscreen ? "" : "disabled"}`}
+            type="button"
+            aria-label="缩小"
+            disabled={!isFullscreen}
+          />
+          <button
+            className={`control collapse ${isFullscreen ? "disabled" : ""}`}
+            type="button"
+            aria-label="全屏"
+            disabled={isFullscreen}
+          />
         </div>
         <div className={`pin-card-title ${isDragging ? "dragging" : ""}`}>{card.title}</div>
       </div>
 
-      {!card.collapsed && <div className="pin-card-body">{card.content}</div>}
+      {!card.collapsed && !isFullscreen && <div className="pin-card-body">{card.content}</div>}
+      {isFullscreen && <div className="pin-card-body">{card.content}</div>}
     </div>
   );
 }

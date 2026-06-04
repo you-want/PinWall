@@ -1,17 +1,12 @@
 import React from "react";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-// import { Background } from "../components/Background";
 import { PinCard } from "../components/PinCard";
 import { NewCardModal } from "../components/NewCardModal";
-// import type { BackgroundImage, Settings, PinCardData } from "../types";
+import { FloatingAddButton } from "../components/FloatingAddButton";
 import type { Settings, PinCardData } from "../types";
-import {
-  // getCurrentBackgroundImage,
-  // getRandomBackgroundImage,
-  getSettings,
-  // setCurrentBackgroundImage,
-} from "../services/storage";
+import { getSettings } from "../services/storage";
 
 type ContextMenuState =
   | { open: false }
@@ -57,7 +52,6 @@ type NewCardState =
 
 function Wall() {
   const [settings, setSettings] = React.useState<Settings | null>(null);
-  // const [currentImage, setCurrentImage] = React.useState<BackgroundImage | null>(null);
   const [contextMenu, setContextMenu] = React.useState<ContextMenuState>({ open: false });
   const [newCardModal, setNewCardModal] = React.useState<NewCardState>({ open: false });
   const [cards, setCards] = React.useState<PinCardData[]>([]);
@@ -131,8 +125,6 @@ function Wall() {
   const refresh = React.useCallback(async () => {
     const savedSettings = await getSettings();
     setSettings(savedSettings);
-    // const image = await getCurrentBackgroundImage(savedSettings);
-    // setCurrentImage(image);
   }, []);
 
   React.useEffect(() => {
@@ -164,37 +156,26 @@ function Wall() {
     return () => window.removeEventListener("focus", handleFocus);
   }, [refresh]);
 
-  // React.useEffect(() => {
-  //   if (!settings) return;
-  //   if (!settings.autoChangeEnabled) return;
-  //   if (settings.backgroundImages.length === 0) return;
-  //
-  //   const intervalMs = Math.max(1, settings.autoChangeInterval) * 60 * 1000;
-  //
-  //   const timerId = window.setInterval(async () => {
-  //     const latestSettings = await getSettings();
-  //     if (!latestSettings.autoChangeEnabled) return;
-  //     if (latestSettings.backgroundImages.length === 0) return;
-  //
-  //     const next = await getRandomBackgroundImage(latestSettings);
-  //     if (!next) return;
-  //     if (next.id === latestSettings.currentImageId && latestSettings.backgroundImages.length > 1) {
-  //       const different = latestSettings.backgroundImages.find((img) => img.id !== next.id);
-  //       if (different) {
-  //         await setCurrentBackgroundImage(different.id);
-  //         setSettings({ ...latestSettings, currentImageId: different.id });
-  //         setCurrentImage(different);
-  //         return;
-  //       }
-  //     }
-  //
-  //     await setCurrentBackgroundImage(next.id);
-  //     setSettings({ ...latestSettings, currentImageId: next.id });
-  //     setCurrentImage(next);
-  //   }, intervalMs);
-  //
-  //   return () => window.clearInterval(timerId);
-  // }, [settings]);
+  // Click on blank area: send window to background
+  React.useEffect(() => {
+    const handleMouseDown = async (e: MouseEvent) => {
+      // Only handle left click
+      if (e.button !== 0) return;
+      
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const isBlankArea = !el || !el.closest('[data-interactive]');
+      
+      if (isBlankArea) {
+        // Use Rust command to properly update state and send to background
+        await invoke('send_to_background');
+      }
+    };
+
+    document.addEventListener('mousedown', handleMouseDown);
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown);
+    };
+  }, []);
 
   const closeContextMenu = React.useCallback(() => {
     setContextMenu({ open: false });
@@ -263,6 +244,14 @@ function Wall() {
     setCards((prev) => prev.filter((card) => card.id !== id));
   }, []);
 
+  const openNewCardFromMenu = React.useCallback(() => {
+    closeContextMenu();
+    const centerX = window.innerWidth / 2 - 190;
+    const centerY = window.innerHeight / 2 - 160;
+    newCardPositionRef.current = { x: centerX, y: centerY };
+    setNewCardModal({ open: true, x: centerX, y: centerY });
+  }, [closeContextMenu]);
+
   const handleCreateCardShortcut = React.useCallback((e: KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "n") {
       e.preventDefault();
@@ -319,11 +308,8 @@ function Wall() {
   return (
     <div
       className="app-container"
-      onContextMenu={handleContextMenu}
     >
-      {/* <Background image={currentImage} opacity={settings.opacity} /> */}
-
-      <div className="pin-board">
+      <div className="pin-board" onContextMenu={handleContextMenu}>
         {cards.map((card) => (
           <PinCard
             key={card.id}
@@ -334,21 +320,34 @@ function Wall() {
             onClose={handleCloseCard}
             onMinimize={handleMinimizeCard}
             zIndex={zIndexMap[card.id] || 100}
+            onContextMenu={handleContextMenu}
           />
         ))}
       </div>
 
       {cards.length === 0 && (
         <div className="empty-hint">
-          <p>按 Cmd/Ctrl + Shift + N 创建新卡片</p>
-          <p className="hint-subtitle">点击卡片可拖拽移动</p>
+          <p>点击右下角 + 创建卡片</p>
+          <p className="hint-subtitle">右键空白处查看更多操作</p>
         </div>
       )}
 
+      <FloatingAddButton onClick={() => {
+        const centerX = window.innerWidth / 2 - 190;
+        const centerY = window.innerHeight / 2 - 160;
+        newCardPositionRef.current = { x: centerX, y: centerY };
+        setNewCardModal({ open: true, x: centerX, y: centerY });
+      }} />
+
       {contextMenu.open && (
-        <div className="context-menu" style={{ left: contextMenu.x, top: contextMenu.y }}>
+        <div data-interactive="true" className="context-menu" style={{ left: contextMenu.x, top: contextMenu.y }}>
+          <button className="menu-item" onClick={openNewCardFromMenu}>
+            <span className="menu-label">新建卡片</span>
+            <span className="menu-shortcut">⌘⇧N</span>
+          </button>
+          <div className="menu-divider" />
           <button className="menu-item" onClick={openSettingsWindow}>
-            设置 {settings.opacity}
+            <span className="menu-label">设置</span>
           </button>
         </div>
       )}

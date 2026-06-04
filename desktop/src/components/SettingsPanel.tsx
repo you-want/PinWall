@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { convertFileSrc } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-shell";
-import type { Settings, BackgroundImage } from "../types";
+// import { convertFileSrc } from "@tauri-apps/api/core";
+// import { open } from "@tauri-apps/plugin-shell";
+import type { Settings, 
+  // BackgroundImage 
+} from "../types";
 import { AUTO_CHANGE_INTERVALS } from "../types";
 
 interface SettingsPanelProps {
@@ -18,10 +20,10 @@ interface SettingsPanelProps {
 export function SettingsPanel({
   settings,
   onClose,
-  onUpload,
-  onSetDefault,
-  onRemove,
-  onClearBackground,
+  // onUpload,
+  // onSetDefault,
+  // onRemove,
+  // onClearBackground,
   onOpacityChange,
   onAutoChangeSettings,
 }: SettingsPanelProps) {
@@ -38,9 +40,9 @@ export function SettingsPanel({
     onAutoChangeSettings(enabled, selectedInterval);
   };
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleString("zh-CN");
-  };
+  // const formatDate = (timestamp: number) => {
+  //   return new Date(timestamp).toLocaleString("zh-CN");
+  // };
 
   return (
     <div className="settings-panel">
@@ -94,7 +96,7 @@ export function SettingsPanel({
         )}
       </div>
 
-      <div className="settings-section">
+      {/* <div className="settings-section">
         <div className="upload-section">
           <h3>背景图管理</h3>
           <button className="upload-btn" onClick={onUpload}>
@@ -166,7 +168,7 @@ export function SettingsPanel({
             ))}
           </div>
         )}
-      </div>
+      </div> */}
     </div>
   );
 }

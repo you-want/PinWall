@@ -17,6 +17,7 @@ html, body, #root {
   position: relative;
   overflow: hidden;
   background: transparent;
+  pointer-events: auto;
 }
 
 .settings-page {
@@ -79,27 +80,86 @@ html, body, #root {
   background: rgba(30, 30, 30, 0.95);
   border-radius: 8px;
   padding: 4px;
-  min-width: 140px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   z-index: 1000;
   backdrop-filter: blur(10px);
+  pointer-events: auto;
 }
 
 .menu-item {
   width: 100%;
-  padding: 10px 16px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
   text-align: left;
   background: transparent;
   border: none;
   color: #fff;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   border-radius: 4px;
-  transition: background-color 0.2s;
+  transition: background-color 0.15s;
 }
 
 .menu-item:hover {
   background: rgba(255, 255, 255, 0.1);
+}
+
+.menu-label {
+  flex: 1;
+}
+
+.menu-shortcut {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.menu-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 4px 8px;
+}
+
+/* Floating add button */
+.floating-add-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+  color: rgba(255, 255, 255, 0.95);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 50;
+  box-shadow:
+    0 4px 15px rgba(255, 107, 107, 0.4),
+    0 2px 6px rgba(0, 0, 0, 0.15);
+  opacity: 0.85;
+  pointer-events: auto;
+}
+
+.floating-add-btn:hover {
+  opacity: 1;
+  transform: scale(1.15);
+  box-shadow:
+    0 6px 20px rgba(255, 107, 107, 0.5),
+    0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.floating-add-btn:active {
+  transform: scale(0.95);
+  box-shadow:
+    0 2px 8px rgba(255, 142, 83, 0.3),
+    0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 .settings-panel {
@@ -432,6 +492,7 @@ html, body, #root {
   height: 100%;
   overflow: hidden;
   z-index: 1;
+  pointer-events: none;
 }
 
 .pin-card {
@@ -447,6 +508,7 @@ html, body, #root {
     left 0.15s ease-out,
     top 0.15s ease-out,
     box-shadow 0.3s ease;
+  pointer-events: auto;
 }
 
 .pin-card:hover {
@@ -464,6 +526,18 @@ html, body, #root {
 .pin-card.collapsed {
   height: auto;
   min-height: 48px;
+}
+
+.pin-card.fullscreen {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  transition: none;
+}
+
+.control.disabled {
+  pointer-events: none;
+  opacity: 0.4;
 }
 
 .pin-card-header {
@@ -602,6 +676,7 @@ html, body, #root {
   align-items: flex-start;
   justify-content: flex-start;
   z-index: 2000;
+  pointer-events: auto;
 }
 
 .modal-content {
@@ -613,6 +688,7 @@ html, body, #root {
   overflow: hidden;
   backdrop-filter: blur(20px);
   animation: modalFadeIn 0.2s ease-out;
+  pointer-events: auto;
 }
 
 @keyframes modalFadeIn {
@@ -659,6 +735,69 @@ html, body, #root {
 .modal-close:hover {
   background: rgba(0, 0, 0, 0.1);
   color: rgba(0, 0, 0, 0.7);
+}
+
+/* NewCardModal: fullscreen & minimized states */
+.modal-content.fullscreen {
+  display: flex;
+  flex-direction: column;
+  border-radius: 0;
+}
+
+.modal-content.fullscreen .modal-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.modal-content.fullscreen .form-textarea {
+  min-height: 200px;
+  flex: 1;
+}
+
+.modal-content.minimized {
+  width: 260px !important;
+  height: auto;
+}
+
+.modal-content.minimized .modal-header {
+  border-bottom: none;
+  padding: 10px 16px;
+}
+
+/* Title input row with time button */
+.title-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title-input-row .form-input {
+  flex: 1;
+}
+
+.btn-time {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.03);
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.btn-time:hover {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.btn-time:active {
+  transform: scale(0.93);
 }
 
 .modal-body {
