@@ -1,6 +1,7 @@
 import { webviewWindow } from "@tauri-apps/api";
 import Wall from "./pages/Wall";
 import Settings from "./pages/Settings";
+import Notification from "./pages/Notification";
 import "./App.css";
 import React from "react";
 
@@ -29,6 +30,8 @@ function WindowRouter() {
       return <Wall />;
     case "settings":
       return <Settings />;
+    case "notification":
+      return <Notification />;
     default:
       return <Wall />;
   }

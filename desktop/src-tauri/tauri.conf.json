@@ -34,6 +34,18 @@
         "transparent": false,
         "label": "settings",
         "visible": false
+      },
+      {
+        "title": "",
+        "width": 260,
+        "height": 240,
+        "fullscreen": false,
+        "decorations": false,
+        "transparent": true,
+        "label": "notification",
+        "visible": false,
+        "resizable": false,
+        "alwaysOnTop": true
       }
     ],
     "security": {

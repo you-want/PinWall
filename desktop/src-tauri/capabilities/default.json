@@ -22,6 +22,7 @@
     "core:window:allow-set-position",
     "core:window:allow-primary-monitor",
     "core:tray:default",
-    "core:menu:default"
+    "core:menu:default",
+    "core:event:default"
   ]
 }

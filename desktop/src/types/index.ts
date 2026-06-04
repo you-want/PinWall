@@ -24,6 +24,9 @@ export interface PinCardData {
   colorIndex: number;
   createdAt: number;
   updatedAt: number;
+  reminderEnabled: boolean;
+  reminderTime: number | null;
+  reminderFired: boolean;
 }
 
 export const AUTO_CHANGE_INTERVALS = [

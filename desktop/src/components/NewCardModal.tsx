@@ -25,7 +25,13 @@ function formatCurrentTime(): string {
 interface NewCardModalProps {
   x: number;
   y: number;
-  onConfirm: (title: string, content: string, colorIndex: number) => void;
+  onConfirm: (
+    title: string,
+    content: string,
+    colorIndex: number,
+    reminderEnabled: boolean,
+    reminderTime: number | null
+  ) => void;
   onCancel: () => void;
 }
 
@@ -35,10 +41,43 @@ export function NewCardModal({ x, y, onConfirm, onCancel }: NewCardModalProps) {
   const [selectedColorIndex, setSelectedColorIndex] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderDate, setReminderDate] = useState<string>("");
+  const [reminderTimeValue, setReminderTimeValue] = useState<string>("");
+
+  // Set default reminder time to current time + 5 minutes
+  React.useEffect(() => {
+    if (reminderEnabled && !reminderDate) {
+      const now = new Date(Date.now() + 5 * 60 * 1000);
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      const d = String(now.getDate()).padStart(2, "0");
+      setReminderDate(`${y}-${m}-${d}`);
+      const h = String(now.getHours()).padStart(2, "0");
+      const min = String(now.getMinutes()).padStart(2, "0");
+      setReminderTimeValue(`${h}:${min}`);
+    }
+  }, [reminderEnabled]);
 
   const handleConfirm = () => {
-    const colorIndex = selectedColorIndex ?? Math.floor(Math.random() * 8);
-    onConfirm(title || "新建便签", content, colorIndex);
+    if (isCreating) return;
+    setIsCreating(true);
+    try {
+      const colorIndex = selectedColorIndex ?? Math.floor(Math.random() * 8);
+      let reminderTs: number | null = null;
+      if (reminderEnabled && reminderDate && reminderTimeValue) {
+        reminderTs = new Date(`${reminderDate}T${reminderTimeValue}`).getTime();
+        if (isNaN(reminderTs) || reminderTs <= Date.now()) {
+          reminderTs = null;
+        }
+      }
+      const finalReminderEnabled = reminderEnabled && reminderTs !== null;
+      onConfirm(title || "新建便签", content, colorIndex, finalReminderEnabled, reminderTs);
+    } catch (err) {
+      console.error("[NewCardModal] Error in handleConfirm:", err);
+      setIsCreating(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -171,11 +210,50 @@ export function NewCardModal({ x, y, onConfirm, onCancel }: NewCardModalProps) {
                   <span className="color-hint">未选择颜色，将随机分配</span>
                 )}
               </div>
+
+              <div className="form-group">
+                <label className="reminder-toggle-label">
+                  <span>提醒</span>
+                  <input
+                    type="checkbox"
+                    className="toggle-checkbox"
+                    checked={reminderEnabled}
+                    onChange={(e) => setReminderEnabled(e.target.checked)}
+                  />
+                </label>
+                {reminderEnabled && (
+                  <div className="reminder-time-row">
+                    <input
+                      type="date"
+                      className="form-input reminder-date-input"
+                      value={reminderDate}
+                      onChange={(e) => setReminderDate(e.target.value)}
+                    />
+                    <input
+                      type="time"
+                      className="form-input reminder-time-value-input"
+                      value={reminderTimeValue}
+                      onChange={(e) => setReminderTimeValue(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={onCancel}>取消</button>
-              <button className="btn btn-primary" onClick={handleConfirm}>创建</button>
+              <button className="btn btn-secondary" onClick={onCancel} disabled={isCreating}>取消</button>
+              <button
+                className={`btn btn-primary ${isCreating ? "btn-loading" : ""}`}
+                onClick={handleConfirm}
+                disabled={isCreating}
+              >
+                {isCreating ? (
+                  <span className="btn-loading-content">
+                    <span className="btn-spinner" />
+                    创建中...
+                  </span>
+                ) : "创建"}
+              </button>
             </div>
           </>
         )}

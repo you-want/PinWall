@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback } from "react";
+import { confirm } from "@tauri-apps/plugin-dialog";
 import type { PinCardData } from "../types";
 
 interface PinCardProps {
@@ -96,15 +97,41 @@ export function PinCard({
     };
   }, [isDragging, handlePointerMove, handlePointerUp]);
 
+  // Listen for fullscreen event from notification
+  React.useEffect(() => {
+    const handleFullscreenEvent = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail === card.id) {
+        setIsFullscreen(true);
+      }
+    };
+    window.addEventListener("pinwall:fullscreen-card", handleFullscreenEvent);
+    return () => window.removeEventListener("pinwall:fullscreen-card", handleFullscreenEvent);
+  }, [card.id]);
+
   const handleControlClick = useCallback(
-    (e: React.MouseEvent) => {
+    async (e: React.MouseEvent) => {
       e.stopPropagation();
       e.preventDefault();
       const target = e.target as HTMLElement;
       const control = target.closest(".control");
 
       if (control?.classList.contains("close")) {
-        onClose(card.id);
+        let confirmed = false;
+        try {
+          confirmed = await confirm("确定要删除这个便签吗？", {
+            title: "确认删除",
+            kind: "warning",
+            okLabel: "删除",
+            cancelLabel: "取消",
+          });
+        } catch {
+          // Fallback to native browser confirm if Tauri dialog fails
+          confirmed = window.confirm("确定要删除这个便签吗？");
+        }
+        if (confirmed) {
+          onClose(card.id);
+        }
       } else if (control?.classList.contains("minimize")) {
         setIsFullscreen(false);
       } else if (control?.classList.contains("collapse")) {

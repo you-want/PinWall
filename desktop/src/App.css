@@ -935,6 +935,37 @@ html, body, #root {
   background: rgba(0, 0, 0, 0.1);
 }
 
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-loading {
+  opacity: 0.8;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn-loading-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: btnSpin 0.6s linear infinite;
+}
+
+@keyframes btnSpin {
+  to { transform: rotate(360deg); }
+}
+
 .empty-hint {
   position: absolute;
   top: 50%;
@@ -970,4 +1001,105 @@ html, body, #root {
   .pin-card-title {
     font-size: 12px;
   }
+}
+
+/* Reminder toggle */
+.reminder-toggle-label {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.reminder-time-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.reminder-date-input,
+.reminder-time-value-input {
+  flex: 1;
+}
+
+/* Reminder notification */
+.reminder-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 220px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  overflow: hidden;
+  z-index: 99999;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  pointer-events: auto;
+  animation: reminderSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.reminder-notification.exiting {
+  animation: reminderSlideOut 0.3s ease forwards;
+}
+
+@keyframes reminderSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(120%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes reminderSlideOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(120%);
+  }
+}
+
+.reminder-notification-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.25);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.reminder-badge {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.reminder-notification-actions {
+  padding: 8px 14px 12px;
+  display: flex;
+  gap: 8px;
+}
+
+.btn-reminder {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.btn-reminder-view {
+  background: rgba(255, 255, 255, 0.5);
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.btn-reminder-view:hover {
+  background: rgba(255, 255, 255, 0.75);
+  color: rgba(0, 0, 0, 0.85);
 }

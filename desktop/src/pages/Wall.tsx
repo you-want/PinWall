@@ -1,7 +1,7 @@
 import React from "react";
-import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { webviewWindow } from "@tauri-apps/api";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { listen, emit } from "@tauri-apps/api/event";
 import { PinCard } from "../components/PinCard";
 import { NewCardModal } from "../components/NewCardModal";
 import { FloatingAddButton } from "../components/FloatingAddButton";
@@ -34,16 +34,16 @@ const messages = [
 ];
 
 const initialCards: Omit<PinCardData, "x" | "y">[] = [
-  { id: "1", title: "温馨提示", content: "保持好心情", collapsed: false, colorIndex: 0, createdAt: Date.now(), updatedAt: Date.now() },
-  { id: "2", title: "健康提醒", content: "多喝水哦", collapsed: false, colorIndex: 1, createdAt: Date.now(), updatedAt: Date.now() },
-  { id: "3", title: "工作建议", content: "今天辛苦啦", collapsed: false, colorIndex: 2, createdAt: Date.now(), updatedAt: Date.now() },
-  { id: "4", title: "作息提醒", content: "早点休息", collapsed: false, colorIndex: 3, createdAt: Date.now(), updatedAt: Date.now() },
-  { id: "5", title: "饮食建议", content: "记得吃水果", collapsed: false, colorIndex: 4, createdAt: Date.now(), updatedAt: Date.now() },
-  { id: "6", title: "励志语录", content: "加油，你可以的", collapsed: false, colorIndex: 5, createdAt: Date.now(), updatedAt: Date.now() },
-  { id: "7", title: "祝福寄语", content: "祝你顺利", collapsed: false, colorIndex: 6, createdAt: Date.now(), updatedAt: Date.now() },
-  { id: "8", title: "心情提示", content: "保持微笑呀", collapsed: false, colorIndex: 7, createdAt: Date.now(), updatedAt: Date.now() },
-  { id: "9", title: "愿望清单", content: "愿所有烦恼都消失", collapsed: false, colorIndex: 0, createdAt: Date.now(), updatedAt: Date.now() },
-  { id: "10", title: "友情提醒", content: "期待下一次见面", collapsed: false, colorIndex: 1, createdAt: Date.now(), updatedAt: Date.now() },
+  { id: "1", title: "温馨提示", content: "保持好心情", collapsed: false, colorIndex: 0, createdAt: Date.now(), updatedAt: Date.now(), reminderEnabled: false, reminderTime: null, reminderFired: false },
+  { id: "2", title: "健康提醒", content: "多喝水哦", collapsed: false, colorIndex: 1, createdAt: Date.now(), updatedAt: Date.now(), reminderEnabled: false, reminderTime: null, reminderFired: false },
+  { id: "3", title: "工作建议", content: "今天辛苦啦", collapsed: false, colorIndex: 2, createdAt: Date.now(), updatedAt: Date.now(), reminderEnabled: false, reminderTime: null, reminderFired: false },
+  { id: "4", title: "作息提醒", content: "早点休息", collapsed: false, colorIndex: 3, createdAt: Date.now(), updatedAt: Date.now(), reminderEnabled: false, reminderTime: null, reminderFired: false },
+  { id: "5", title: "饮食建议", content: "记得吃水果", collapsed: false, colorIndex: 4, createdAt: Date.now(), updatedAt: Date.now(), reminderEnabled: false, reminderTime: null, reminderFired: false },
+  { id: "6", title: "励志语录", content: "加油，你可以的", collapsed: false, colorIndex: 5, createdAt: Date.now(), updatedAt: Date.now(), reminderEnabled: false, reminderTime: null, reminderFired: false },
+  { id: "7", title: "祝福寄语", content: "祝你顺利", collapsed: false, colorIndex: 6, createdAt: Date.now(), updatedAt: Date.now(), reminderEnabled: false, reminderTime: null, reminderFired: false },
+  { id: "8", title: "心情提示", content: "保持微笑呀", collapsed: false, colorIndex: 7, createdAt: Date.now(), updatedAt: Date.now(), reminderEnabled: false, reminderTime: null, reminderFired: false },
+  { id: "9", title: "愿望清单", content: "愿所有烦恼都消失", collapsed: false, colorIndex: 0, createdAt: Date.now(), updatedAt: Date.now(), reminderEnabled: false, reminderTime: null, reminderFired: false },
+  { id: "10", title: "友情提醒", content: "期待下一次见面", collapsed: false, colorIndex: 1, createdAt: Date.now(), updatedAt: Date.now(), reminderEnabled: false, reminderTime: null, reminderFired: false },
 ];
 
 type NewCardState =
@@ -58,6 +58,7 @@ function Wall() {
   const [zIndexMap, setZIndexMap] = React.useState<Record<string, number>>({});
   const zIndexCounter = React.useRef(100);
   const newCardPositionRef = React.useRef({ x: 0, y: 0 });
+  const pendingNotificationRef = React.useRef<string | null>(null);
 
   const loadCardsFromStorage = React.useCallback(() => {
     try {
@@ -65,7 +66,13 @@ function Wall() {
       if (stored) {
         const parsed = JSON.parse(stored) as PinCardData[];
         if (parsed.length > 0) {
-          return parsed;
+          // Migrate: ensure reminder fields exist for old data
+          return parsed.map((c) => ({
+            ...c,
+            reminderEnabled: c.reminderEnabled ?? false,
+            reminderTime: c.reminderTime ?? null,
+            reminderFired: c.reminderFired ?? false,
+          }));
         }
       }
     } catch (e) {
@@ -199,7 +206,7 @@ function Wall() {
 
   const openSettingsWindow = React.useCallback(async () => {
     closeContextMenu();
-    const settingsWindow = await WebviewWindow.getByLabel("settings");
+    const settingsWindow = await webviewWindow.WebviewWindow.getByLabel("settings");
     if (settingsWindow !== null) {
       await settingsWindow.show();
       await settingsWindow.setFocus();
@@ -273,7 +280,13 @@ function Wall() {
     return () => window.removeEventListener("keydown", handleCreateCardShortcut);
   }, [handleCreateCardShortcut]);
 
-  const handleCreateCard = React.useCallback((title: string, content: string, colorIndex: number) => {
+  const handleCreateCard = React.useCallback((
+    title: string,
+    content: string,
+    colorIndex: number,
+    reminderEnabled: boolean,
+    reminderTime: number | null
+  ) => {
     const now = Date.now();
     const pos = newCardPositionRef.current;
     const newCard: PinCardData = {
@@ -286,6 +299,9 @@ function Wall() {
       colorIndex,
       createdAt: now,
       updatedAt: now,
+      reminderEnabled,
+      reminderTime,
+      reminderFired: false,
     };
 
     setCards((prev) => [...prev, newCard]);
@@ -299,6 +315,85 @@ function Wall() {
 
   const handleCancelCreate = React.useCallback(() => {
     setNewCardModal({ open: false });
+  }, []);
+
+  // Show notification in a separate Tauri window
+  const showNotificationWindow = React.useCallback(async (cardId: string) => {
+    try {
+      const notifWin = await webviewWindow.WebviewWindow.getByLabel("notification");
+      if (!notifWin) return;
+      // Position at top-right of screen using window.screen
+      const screenW = window.screen?.width ?? 1920;
+      const scaleFactor = window.devicePixelRatio || 1;
+      const x = Math.round((screenW - 280) * scaleFactor);
+      const y = Math.round(40 * scaleFactor);
+      await notifWin.setPosition({ x, y, type: "Physical" } as any);
+      await notifWin.show();
+      await notifWin.setFocus();
+      // Wait for notification window to signal it's ready
+      await new Promise<void>((resolve) => {
+        const timeout = setTimeout(() => resolve(), 2000); // fallback timeout
+        listen("notification:ready", () => {
+          clearTimeout(timeout);
+          resolve();
+        }).then(() => {});
+      });
+      // Now emit card ID
+      await emit("notification:show-card", { cardId });
+    } catch (err) {
+      console.error("Failed to show notification window:", err);
+    }
+  }, []);
+
+  // Process pending notifications (separate from setCards to avoid async-in-sync issues)
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      const cardId = pendingNotificationRef.current;
+      if (cardId) {
+        pendingNotificationRef.current = null;
+        showNotificationWindow(cardId);
+      }
+    }, 200);
+    return () => clearInterval(interval);
+  }, [showNotificationWindow]);
+
+  // Reminder timer: check every second for due reminders
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setCards((prev) => {
+        const dueCard = prev.find(
+          (c) => c.reminderEnabled && !c.reminderFired && c.reminderTime !== null && c.reminderTime <= now
+        );
+        if (dueCard) {
+          // Queue notification for processing outside setCards
+          pendingNotificationRef.current = dueCard.id;
+          return prev.map((c) =>
+            c.id === dueCard.id ? { ...c, reminderFired: true, updatedAt: now } : c
+          );
+        }
+        return prev;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Listen for notification window's "view card" event
+  React.useEffect(() => {
+    const unlisten = listen<{ cardId: string }>("notification:view-card", (event) => {
+      const cardId = event.payload.cardId;
+      zIndexCounter.current += 1;
+      setZIndexMap((prev) => ({
+        ...prev,
+        [cardId]: zIndexCounter.current,
+      }));
+      // Summon main window and fullscreen the card
+      invoke("summon_main").catch(() => {});
+      window.dispatchEvent(new CustomEvent("pinwall:fullscreen-card", { detail: cardId }));
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
   }, []);
 
   if (!settings) {

@@ -70,11 +70,16 @@ fn quit_app(app: tauri::AppHandle) {
 #[tauri::command]
 fn send_to_background(app: tauri::AppHandle) {
     set_main_default_layer(&app);
-    let state = app.state::<MainLayerState>()
+    let _state = app.state::<MainLayerState>()
         .0
         .lock()
         .map(|v| *v)
         .unwrap_or(false);
+}
+
+#[tauri::command]
+fn summon_main(app: tauri::AppHandle) {
+    summon_main_window(&app);
 }
 
 #[derive(serde::Serialize)]
@@ -249,6 +254,7 @@ pub fn run() {
             greet,
             quit_app,
             send_to_background,
+            summon_main,
             import_background_images,
             delete_background_image_file
         ])
