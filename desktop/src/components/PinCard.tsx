@@ -10,7 +10,6 @@ interface PinCardProps {
   onClose: (id: string) => void;
   onMinimize: (id: string) => void;
   zIndex: number;
-  onContextMenu?: (e: React.MouseEvent) => void;
 }
 
 const colors = [
@@ -36,7 +35,6 @@ export function PinCard({
   onClose,
   // onMinimize,
   zIndex,
-  onContextMenu,
 }: PinCardProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -163,7 +161,6 @@ export function PinCard({
       onMouseDown={(e) => e.stopPropagation()}
       onMouseUp={(e) => e.stopPropagation()}
       onMouseMove={(e) => e.stopPropagation()}
-      onContextMenu={onContextMenu}
     >
       <div className={`pin-card-header`} onPointerDown={handlePointerDown}>
         <div className="window-controls">

@@ -1,23 +1,27 @@
+import { useState, useEffect } from "react";
 import { webviewWindow } from "@tauri-apps/api";
+
 import Wall from "./pages/Wall";
 import Settings from "./pages/Settings";
 import Notification from "./pages/Notification";
 import "./App.css";
-import React from "react";
 
 async function getWindowLabel(): Promise<string> {
-  const currentWindow = webviewWindow.getCurrentWebviewWindow();
-  return currentWindow.label;
-}
-
-function App() {
-  return <WindowRouter />;
+  try {
+    const currentWindow = webviewWindow.getCurrentWebviewWindow();
+    if (currentWindow) {
+      return currentWindow.label;
+    }
+  } catch {
+    // Running in browser, not Tauri
+  }
+  return "main";
 }
 
 function WindowRouter() {
-  const [windowLabel, setWindowLabel] = React.useState<string | null>(null);
+  const [windowLabel, setWindowLabel] = useState<string | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     getWindowLabel().then(setWindowLabel);
   }, []);
 
@@ -35,6 +39,10 @@ function WindowRouter() {
     default:
       return <Wall />;
   }
+}
+
+function App() {
+  return <WindowRouter />;
 }
 
 export default App;

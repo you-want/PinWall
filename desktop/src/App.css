@@ -123,28 +123,65 @@ html, body, #root {
   margin: 4px 8px;
 }
 
-/* Floating add button */
-.floating-add-btn {
+/* Floating buttons container */
+.floating-buttons {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  width: 44px;
-  height: 44px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 9999;
+  pointer-events: auto;
+}
+
+/* Floating button base */
+.floating-btn {
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
-  border: none;
-  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
-  color: rgba(255, 255, 255, 0.95);
+  border: 2px solid rgba(255, 255, 255, 0.5);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-  z-index: 50;
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+/* Settings button */
+.floating-settings-btn {
+  background: linear-gradient(135deg, #4a90d9 0%, #3a80c9 100%);
+  color: #ffffff;
+  box-shadow:
+    0 4px 15px rgba(74, 144, 217, 0.4),
+    0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.floating-settings-btn:hover {
+  opacity: 1;
+  transform: scale(1.15);
+  box-shadow:
+    0 6px 20px rgba(74, 144, 217, 0.5),
+    0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.floating-settings-btn:active {
+  transform: scale(0.95);
+  box-shadow:
+    0 2px 8px rgba(74, 144, 217, 0.3),
+    0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Add button */
+.floating-add-btn {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+  color: #ffffff;
   box-shadow:
     0 4px 15px rgba(255, 107, 107, 0.4),
     0 2px 6px rgba(0, 0, 0, 0.15);
-  opacity: 0.85;
-  pointer-events: auto;
 }
 
 .floating-add-btn:hover {
@@ -975,6 +1012,7 @@ html, body, #root {
   color: rgba(0, 0, 0, 0.4);
   pointer-events: none;
   z-index: 10;
+  color: #fff;
 }
 
 .empty-hint p {
@@ -984,7 +1022,6 @@ html, body, #root {
 
 .empty-hint .hint-subtitle {
   font-size: 14px;
-  color: rgba(0, 0, 0, 0.3);
 }
 
 @media (max-width: 768px) {
