@@ -99,10 +99,10 @@ export function ReminderNotification({ card, onView, onDismiss }: ReminderNotifi
             onClick={handleDismiss}
           />
         </div>
-        <div className="pin-card-title">{card.title}</div>
+        <div className="card-title">{card.title}</div>
         <span className="reminder-badge">🔔</span>
       </div>
-      <div className="pin-card-body">
+      <div className="card-body">
         {card.content.length > 80
           ? card.content.slice(0, 80) + "..."
           : card.content}

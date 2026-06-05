@@ -61,19 +61,14 @@ function Wall() {
   useEffect(() => {
     const handleMouseDown = async (e: MouseEvent) => {
       if (e.button !== 0) return;
-      
       const el = document.elementFromPoint(e.clientX, e.clientY);
       const isBlankArea = !el || !el.closest('[data-interactive]');
-      
       if (isBlankArea) {
         await invoke('send_to_background');
       }
     };
-
     document.addEventListener('mousedown', handleMouseDown);
-    return () => {
-      document.removeEventListener('mousedown', handleMouseDown);
-    };
+    return () => document.removeEventListener('mousedown', handleMouseDown);
   }, []);
 
   const openNewCardModal = useCallback(() => {
@@ -139,8 +134,8 @@ function Wall() {
 
           {cards.length === 0 && (
             <div className="empty-hint">
-              <p>欢迎来到 PinWall</p>
-              <p>点击右下角按钮创建便签或打开设置</p>
+              <p className="hint-title">欢迎来到 PinWall</p>
+              <p className="hint-subtitle">点击右下角按钮创建便签或打开设置</p>
             </div>
           )}
 

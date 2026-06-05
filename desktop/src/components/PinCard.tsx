@@ -132,16 +132,12 @@ export function PinCard({
         }
       } else if (control?.classList.contains("minimize")) {
         setIsFullscreen(false);
-      } else if (control?.classList.contains("collapse")) {
+      } else if (control?.classList.contains("maximize")) {
         setIsFullscreen(true);
       }
     },
     [card.id, onClose]
   );
-
-  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-  }, []);
 
   return (
     <div
@@ -156,33 +152,36 @@ export function PinCard({
         zIndex: isFullscreen ? 9999 : zIndex,
         background: getGradient(card.colorIndex),
       }}
-      onClick={handleControlClick}
-      onDoubleClick={handleDoubleClick}
-      onMouseDown={(e) => e.stopPropagation()}
-      onMouseUp={(e) => e.stopPropagation()}
-      onMouseMove={(e) => e.stopPropagation()}
     >
-      <div className={`pin-card-header`} onPointerDown={handlePointerDown}>
-        <div className="window-controls">
+      <div className="card-header" onPointerDown={handlePointerDown}>
+        <div className="window-controls" onClick={handleControlClick}>
           <button className="control close" type="button" aria-label="关闭" />
           <button
             className={`control minimize ${isFullscreen ? "" : "disabled"}`}
             type="button"
-            aria-label="缩小"
+            aria-label="最小化"
             disabled={!isFullscreen}
           />
           <button
-            className={`control collapse ${isFullscreen ? "disabled" : ""}`}
+            className={`control maximize ${isFullscreen ? "disabled" : ""}`}
             type="button"
-            aria-label="全屏"
+            aria-label="最大化"
             disabled={isFullscreen}
           />
         </div>
-        <div className={`pin-card-title ${isDragging ? "dragging" : ""}`}>{card.title}</div>
+        <div className={`card-title ${isDragging ? "dragging" : ""}`}>{card.title}</div>
       </div>
 
-      {!card.collapsed && !isFullscreen && <div className="pin-card-body">{card.content}</div>}
-      {isFullscreen && <div className="pin-card-body">{card.content}</div>}
+      {(!card.collapsed || isFullscreen) && (
+        <div
+          className="card-body"
+          onMouseDown={(e) => e.stopPropagation()}
+          onMouseUp={(e) => e.stopPropagation()}
+          onMouseMove={(e) => e.stopPropagation()}
+        >
+          {card.content}
+        </div>
+      )}
     </div>
   );
 }

@@ -23,6 +23,8 @@ fn set_main_default_layer<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
         let _ = window.set_always_on_top(false);
         let _ = window.set_always_on_bottom(true);
         let _ = window.set_visible_on_all_workspaces(true);
+        let _ = window.set_ignore_cursor_events(true);
+        let _ = window.set_shadow(false);
         let _ = window.show();
     }
 }
@@ -35,6 +37,8 @@ fn summon_main_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
         let _ = window.set_always_on_bottom(false);
         let _ = window.set_always_on_top(true);
         let _ = window.set_visible_on_all_workspaces(true);
+        let _ = window.set_ignore_cursor_events(false);
+        let _ = window.set_shadow(false);
         let _ = window.show();
         let _ = window.unminimize();
         let _ = window.set_focus();
@@ -80,6 +84,11 @@ fn send_to_background(app: tauri::AppHandle) {
 #[tauri::command]
 fn summon_main(app: tauri::AppHandle) {
     summon_main_window(&app);
+}
+
+#[tauri::command]
+fn set_cursor_passthrough(window: tauri::WebviewWindow, ignore: bool) {
+    let _ = window.set_ignore_cursor_events(ignore);
 }
 
 #[derive(serde::Serialize)]
@@ -255,6 +264,7 @@ pub fn run() {
             quit_app,
             send_to_background,
             summon_main,
+            set_cursor_passthrough,
             import_background_images,
             delete_background_image_file
         ])
