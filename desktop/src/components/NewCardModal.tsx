@@ -76,6 +76,7 @@ export function NewCardModal({ x, y, onConfirm, onCancel }: NewCardModalProps) {
       onConfirm(title || "新建便签", content, colorIndex, finalReminderEnabled, reminderTs);
     } catch (err) {
       console.error("[NewCardModal] Error in handleConfirm:", err);
+    } finally {
       setIsCreating(false);
     }
   };

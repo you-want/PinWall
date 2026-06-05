@@ -1,9 +1,6 @@
-import React from "react";
-import { emit, listen } from "@tauri-apps/api/event";
+import { useRef, useEffect } from "react";
 import { webviewWindow } from "@tauri-apps/api";
-import type { PinCardData } from "../types";
-
-const STORAGE_KEY = "pinwall_cards";
+import { useNotificationStore } from "../stores/notificationStore";
 
 const colors = [
   "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)",
@@ -54,53 +51,17 @@ function playDingSound() {
   }
 }
 
-function loadCardFromStorage(cardId: string): PinCardData | null {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const cards = JSON.parse(stored) as PinCardData[];
-      return cards.find((c) => c.id === cardId) || null;
-    }
-  } catch {
-    // ignore
-  }
-  return null;
-}
-
 function Notification() {
-  const [card, setCard] = React.useState<PinCardData | null>(null);
-  const [exiting, setExiting] = React.useState(false);
-  const soundPlayed = React.useRef(false);
-
-  // Listen for card data from main window
-  React.useEffect(() => {
-    // Register listener first, then signal ready
-    const setup = async () => {
-      const unlisten = await listen<{ cardId: string }>("notification:show-card", (event) => {
-        const cardId = event.payload.cardId;
-        const loaded = loadCardFromStorage(cardId);
-        if (loaded) {
-          setCard(loaded);
-          setExiting(false);
-        }
-      });
-      // Signal that listener is ready
-      await emit("notification:ready");
-      return unlisten;
-    };
-    let unlistenFn: (() => void) | null = null;
-    setup().then((fn) => { unlistenFn = fn; });
-    return () => {
-      unlistenFn?.();
-    };
-  }, []);
+  const card = useNotificationStore((s) => s.notificationCard);
+  const dismissNotification = useNotificationStore((s) => s.dismissNotification);
+  const viewCardAction = useNotificationStore((s) => s.viewCard);
+  const exitingRef = useRef(false);
 
   // Play sound when card changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (card) {
-      soundPlayed.current = false;
       playDingSound();
-      soundPlayed.current = true;
+      exitingRef.current = false;
 
       // Auto-dismiss after 15 seconds
       const timer = setTimeout(() => {
@@ -111,13 +72,14 @@ function Notification() {
   }, [card?.id]);
 
   const handleDismiss = async () => {
-    setExiting(true);
+    if (exitingRef.current) return;
+    exitingRef.current = true;
     setTimeout(async () => {
+      dismissNotification();
       try {
         const win = webviewWindow.getCurrentWebviewWindow();
         await win.hide();
       } catch {
-        // fallback
         window.close();
       }
     }, 300);
@@ -125,11 +87,11 @@ function Notification() {
 
   const handleView = async () => {
     if (!card) return;
-    setExiting(true);
+    if (exitingRef.current) return;
+    exitingRef.current = true;
     setTimeout(async () => {
+      viewCardAction(card.id);
       try {
-        // Tell the main window to fullscreen this card
-        await emit("notification:view-card", { cardId: card.id });
         const win = webviewWindow.getCurrentWebviewWindow();
         await win.hide();
       } catch {
@@ -143,35 +105,33 @@ function Notification() {
   }
 
   return (
-    <div
-      className={`reminder-notification ${exiting ? "exiting" : ""}`}
-      style={{
-        background: getGradient(card.colorIndex),
-        width: "100vw",
-        height: "100vh",
-      }}
-    >
-      <div className="reminder-notification-header">
-        <div className="window-controls">
-          <button
-            className="control close"
-            type="button"
-            aria-label="关闭提醒"
-            onClick={handleDismiss}
-          />
+    <div className="reminder-notification">
+      <div
+        className="reminder-notification-inner"
+        style={{ background: getGradient(card.colorIndex) }}
+      >
+        <div className="reminder-notification-header">
+          <div className="window-controls">
+            <button
+              className="control close"
+              type="button"
+              aria-label="关闭提醒"
+              onClick={handleDismiss}
+            />
+          </div>
+          <div className="card-title">{card.title}</div>
+          <span className="reminder-badge">🔔</span>
         </div>
-        <div className="card-title">{card.title}</div>
-        <span className="reminder-badge">🔔</span>
-      </div>
-      <div className="card-body">
-        {card.content.length > 80
-          ? card.content.slice(0, 80) + "..."
-          : card.content}
-      </div>
-      <div className="reminder-notification-actions">
-        <button className="btn-reminder btn-reminder-view" onClick={handleView}>
-          全屏查看
-        </button>
+        <div className="card-body">
+          {card.content.length > 80
+            ? card.content.slice(0, 80) + "..."
+            : card.content}
+        </div>
+        <div className="reminder-notification-actions">
+          <button className="btn-reminder btn-reminder-view" onClick={handleView}>
+            全屏查看
+          </button>
+        </div>
       </div>
     </div>
   );
