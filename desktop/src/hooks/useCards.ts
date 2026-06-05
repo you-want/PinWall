@@ -1,7 +1,8 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import type { PinCardData } from "../types";
 
 const STORAGE_KEY = "pinwall_cards";
+const VISIBLE_LIMIT = 5;
 
 const messages = [
   "保持好心情",
@@ -159,8 +160,30 @@ export function useCards() {
     );
   }, []);
 
+  const sortedCards = useMemo(() => {
+    return [...cards].sort((a, b) => b.updatedAt - a.updatedAt);
+  }, [cards]);
+
+  const visibleCards = useMemo(() => {
+    return sortedCards.slice(0, VISIBLE_LIMIT);
+  }, [sortedCards]);
+
+  const stashedCards = useMemo(() => {
+    return sortedCards.slice(VISIBLE_LIMIT);
+  }, [sortedCards]);
+
+  const handleUnstashCard = useCallback((id: string) => {
+    setCards((prev) =>
+      prev.map((card) =>
+        card.id === id ? { ...card, updatedAt: Date.now() } : card
+      )
+    );
+  }, []);
+
   return {
     cards,
+    visibleCards,
+    stashedCards,
     zIndexMap,
     handlePositionChange,
     handleBringToFront,
@@ -168,6 +191,7 @@ export function useCards() {
     handleCloseCard,
     handleMinimizeCard,
     handleCreateCard,
+    handleUnstashCard,
     updateCardReminder,
     handleReminderFired,
   };

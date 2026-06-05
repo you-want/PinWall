@@ -6,6 +6,7 @@ import { webviewWindow } from "@tauri-apps/api";
 import { PinBoard } from "../components/PinBoard";
 import { NewCardModal } from "../components/NewCardModal";
 import { FloatingButtons } from "../components/FloatingButtons";
+import { CardStack } from "../components/CardStack";
 import type { Settings } from "../types";
 import { getSettings } from "../services/storage";
 import { useCards } from "../hooks/useCards";
@@ -22,6 +23,8 @@ function Wall() {
 
   const {
     cards,
+    visibleCards,
+    stashedCards,
     zIndexMap,
     handlePositionChange,
     handleBringToFront,
@@ -29,6 +32,7 @@ function Wall() {
     handleCloseCard,
     handleMinimizeCard,
     handleCreateCard,
+    handleUnstashCard,
     handleReminderFired,
   } = useCards();
 
@@ -123,13 +127,18 @@ function Wall() {
       {hasSettings && (
         <>
           <PinBoard
-            cards={cards}
+            cards={visibleCards}
             zIndexMap={zIndexMap}
             onPositionChange={handlePositionChange}
             onBringToFront={handleBringToFront}
             onToggleCollapse={handleToggleCollapse}
             onClose={handleCloseCard}
             onMinimize={handleMinimizeCard}
+          />
+
+          <CardStack
+            stashedCards={stashedCards}
+            onUnstash={handleUnstashCard}
           />
 
           {cards.length === 0 && (
