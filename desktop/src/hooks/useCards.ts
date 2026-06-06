@@ -1,198 +1,110 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import type { PinCardData } from "../types";
+import { useMemo, useCallback } from "react";
+import { useCardStore } from "../stores/cardStore";
+import { resolveCollisions } from "../utils/collision";
 
-const STORAGE_KEY = "pinwall_cards";
 const VISIBLE_LIMIT = 5;
 
-const messages = [
-  "保持好心情",
-  "多喝水哦",
-  "今天辛苦啦",
-  "早点休息",
-  "记得吃水果",
-  "加油，你可以的",
-  "祝你顺利",
-  "保持微笑呀",
-  "愿所有烦恼都消失",
-  "期待下一次见面",
-  "梦想总会实现",
-  "天气冷了，多穿衣服",
-  "记得给自己放松",
-  "每天都要元气满满",
-  "今天也要好好爱自己",
-  "适当休息一下",
-];
-
 export function useCards() {
-  const [cards, setCards] = useState<PinCardData[]>([]);
-  const [zIndexMap, setZIndexMap] = useState<Record<string, number>>({});
-  const zIndexCounter = useRef(100);
+  const cards = useCardStore((s) => s.cards);
+  const zIndexMap = useCardStore((s) => s.zIndexMap);
+  const setPosition = useCardStore((s) => s.setPosition);
+  const batchSetPositions = useCardStore((s) => s.batchSetPositions);
+  const bringToFront = useCardStore((s) => s.bringToFront);
+  const toggleCollapse = useCardStore((s) => s.toggleCollapse);
+  const closeCard = useCardStore((s) => s.closeCard);
+  const createCard = useCardStore((s) => s.createCard);
+  const updateReminder = useCardStore((s) => s.updateReminder);
+  const reminderFired = useCardStore((s) => s.reminderFired);
+  const unstashCard = useCardStore((s) => s.unstashCard);
 
-  const loadCardsFromStorage = useCallback((): PinCardData[] | null => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as PinCardData[];
-        if (parsed.length > 0) {
-          return parsed.map((c) => ({
-            ...c,
-            reminderEnabled: c.reminderEnabled ?? false,
-            reminderTime: c.reminderTime ?? null,
-            reminderFired: c.reminderFired ?? false,
-          }));
-        }
+  const sortedCards = useMemo(
+    () => [...cards].sort((a, b) => b.updatedAt - a.updatedAt),
+    [cards]
+  );
+  const visibleCards = useMemo(() => sortedCards.slice(0, VISIBLE_LIMIT), [sortedCards]);
+  const stashedCards = useMemo(() => sortedCards.slice(VISIBLE_LIMIT), [sortedCards]);
+
+  // 碰撞解决：拖动结束或创建卡片后，推开重叠的卡片
+  const resolveOverlaps = useCallback(
+    (activeId: string) => {
+      const visible = visibleCards;
+      if (visible.length < 2) return;
+
+      const positions = resolveCollisions(
+        visible.map((c) => ({ id: c.id, x: c.x, y: c.y, content: c.content })),
+        activeId
+      );
+
+      // 检查是否有位置变化，没有就不触发更新
+      const hasChange = positions.some((p) => {
+        const card = visible.find((c) => c.id === p.id);
+        return card && (Math.abs(card.x - p.x) > 1 || Math.abs(card.y - p.y) > 1);
+      });
+
+      if (hasChange) {
+        batchSetPositions(positions);
       }
-    } catch (e) {
-      console.error("Failed to load cards from storage:", e);
-    }
-    return null;
-  }, []);
+    },
+    [visibleCards, batchSetPositions]
+  );
 
-  const saveCardsToStorage = useCallback((cards: PinCardData[]) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
-    } catch (e) {
-      console.error("Failed to save cards to storage:", e);
-    }
-  }, []);
+  const handleDragEnd = useCallback(
+    (id: string) => {
+      resolveOverlaps(id);
+    },
+    [resolveOverlaps]
+  );
 
-  const initializeCards = useCallback(() => {
-    const storedCards = loadCardsFromStorage();
-    
-    const initializedCards: PinCardData[] = storedCards && storedCards.length > 0 ? storedCards : [];
-
-    setCards(initializedCards);
-    saveCardsToStorage(initializedCards);
-
-    const initialZIndex: Record<string, number> = {};
-    initializedCards.forEach((card, index) => {
-      initialZIndex[card.id] = 100 + index;
-    });
-    setZIndexMap(initialZIndex);
-  }, [loadCardsFromStorage, saveCardsToStorage]);
-
-  useEffect(() => {
-    initializeCards();
-  }, [initializeCards]);
-
-  useEffect(() => {
-    saveCardsToStorage(cards);
-  }, [cards, saveCardsToStorage]);
-
-  const handlePositionChange = useCallback((id: string, x: number, y: number) => {
-    setCards((prev) =>
-      prev.map((card) =>
-        card.id === id ? { ...card, x, y, updatedAt: Date.now() } : card
-      )
-    );
-  }, []);
-
-  const handleBringToFront = useCallback((id: string) => {
-    zIndexCounter.current += 1;
-    setZIndexMap((prev) => ({
-      ...prev,
-      [id]: zIndexCounter.current,
-    }));
-  }, []);
-
-  const handleToggleCollapse = useCallback((id: string) => {
-    setCards((prev) =>
-      prev.map((card) =>
-        card.id === id ? { ...card, collapsed: !card.collapsed, updatedAt: Date.now() } : card
-      )
-    );
-  }, []);
-
-  const handleCloseCard = useCallback((id: string) => {
-    setCards((prev) => prev.filter((card) => card.id !== id));
-  }, []);
-
-  const handleMinimizeCard = useCallback((id: string) => {
-    setCards((prev) => prev.filter((card) => card.id !== id));
-  }, []);
-
-  const handleCreateCard = useCallback((
-    title: string,
-    content: string,
-    colorIndex: number,
-    reminderEnabled: boolean,
-    reminderTime: number | null,
-    x: number,
-    y: number
-  ) => {
-    const now = Date.now();
-    const newCard: PinCardData = {
-      id: `card-${now}`,
-      title,
-      content: content || messages[Math.floor(Math.random() * messages.length)],
-      x: x + 190 - 110,
-      y: y + 160 - 70,
-      collapsed: false,
-      colorIndex,
-      createdAt: now,
-      updatedAt: now,
-      reminderEnabled,
-      reminderTime,
-      reminderFired: false,
-    };
-
-    setCards((prev) => [...prev, newCard]);
-    zIndexCounter.current += 1;
-    setZIndexMap((prev) => ({
-      ...prev,
-      [newCard.id]: zIndexCounter.current,
-    }));
-  }, []);
-
-  const updateCardReminder = useCallback((id: string, reminderEnabled: boolean, reminderTime: number | null) => {
-    setCards((prev) =>
-      prev.map((card) =>
-        card.id === id ? { ...card, reminderEnabled, reminderTime, reminderFired: false, updatedAt: Date.now() } : card
-      )
-    );
-  }, []);
-
-  const handleReminderFired = useCallback((id: string) => {
-    setCards((prev) =>
-      prev.map((card) =>
-        card.id === id ? { ...card, reminderFired: true, updatedAt: Date.now() } : card
-      )
-    );
-  }, []);
-
-  const sortedCards = useMemo(() => {
-    return [...cards].sort((a, b) => b.updatedAt - a.updatedAt);
-  }, [cards]);
-
-  const visibleCards = useMemo(() => {
-    return sortedCards.slice(0, VISIBLE_LIMIT);
-  }, [sortedCards]);
-
-  const stashedCards = useMemo(() => {
-    return sortedCards.slice(VISIBLE_LIMIT);
-  }, [sortedCards]);
-
-  const handleUnstashCard = useCallback((id: string) => {
-    setCards((prev) =>
-      prev.map((card) =>
-        card.id === id ? { ...card, updatedAt: Date.now() } : card
-      )
-    );
-  }, []);
+  // 包装 createCard，创建后解决碰撞
+  const handleCreateCard = useCallback(
+    (
+      title: string,
+      content: string,
+      colorIndex: number,
+      reminderEnabled: boolean,
+      reminderTime: number | null,
+      x: number,
+      y: number
+    ) => {
+      createCard(title, content, colorIndex, reminderEnabled, reminderTime, x, y);
+      // 下一帧解决碰撞，确保新卡片已加入 store
+      setTimeout(() => {
+        const latest = useCardStore.getState().cards;
+        const sorted = [...latest].sort((a, b) => b.updatedAt - a.updatedAt);
+        const visible = sorted.slice(0, VISIBLE_LIMIT);
+        const newCard = visible[0];
+        if (newCard && visible.length > 1) {
+          const positions = resolveCollisions(
+            visible.map((c) => ({ id: c.id, x: c.x, y: c.y, content: c.content })),
+            newCard.id
+          );
+          const hasChange = positions.some((p) => {
+            const card = visible.find((c) => c.id === p.id);
+            return card && (Math.abs(card.x - p.x) > 1 || Math.abs(card.y - p.y) > 1);
+          });
+          if (hasChange) {
+            useCardStore.getState().batchSetPositions(positions);
+          }
+        }
+      }, 50);
+    },
+    [createCard]
+  );
 
   return {
     cards,
     visibleCards,
     stashedCards,
     zIndexMap,
-    handlePositionChange,
-    handleBringToFront,
-    handleToggleCollapse,
-    handleCloseCard,
-    handleMinimizeCard,
+    handlePositionChange: setPosition,
+    handleBringToFront: bringToFront,
+    handleToggleCollapse: toggleCollapse,
+    handleCloseCard: closeCard,
+    handleMinimizeCard: closeCard,
     handleCreateCard,
-    handleUnstashCard,
-    updateCardReminder,
-    handleReminderFired,
+    handleUnstashCard: unstashCard,
+    handleDragEnd,
+    updateCardReminder: updateReminder,
+    handleReminderFired: reminderFired,
   };
 }

@@ -9,6 +9,7 @@ interface PinCardProps {
   onToggleCollapse: (id: string) => void;
   onClose: (id: string) => void;
   onMinimize: (id: string) => void;
+  onDragEnd: (id: string) => void;
   zIndex: number;
 }
 
@@ -34,6 +35,7 @@ export function PinCard({
   // onToggleCollapse,
   onClose,
   // onMinimize,
+  onDragEnd,
   zIndex,
 }: PinCardProps) {
   const [isDragging, setIsDragging] = useState(false);
@@ -79,7 +81,8 @@ export function PinCard({
 
   const handlePointerUp = useCallback(() => {
     setIsDragging(false);
-  }, []);
+    onDragEnd(card.id);
+  }, [card.id, onDragEnd]);
 
   React.useEffect(() => {
     if (isDragging) {

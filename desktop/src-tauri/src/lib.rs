@@ -271,8 +271,10 @@ pub fn run() {
         ])
         .on_window_event(|window, event| match event {
             tauri::WindowEvent::CloseRequested { api, .. } => {
+                // 所有窗口关闭时仅隐藏，不退出 APP
+                // 退出只能通过托盘菜单「退出」
                 api.prevent_close();
-                window.app_handle().exit(0);
+                let _ = window.hide();
             }
             _ => {}
         })

@@ -9,6 +9,7 @@ interface PinBoardProps {
   onToggleCollapse: (id: string) => void;
   onClose: (id: string) => void;
   onMinimize: (id: string) => void;
+  onDragEnd: (id: string) => void;
 }
 
 export function PinBoard({
@@ -19,6 +20,7 @@ export function PinBoard({
   onToggleCollapse,
   onClose,
   onMinimize,
+  onDragEnd,
 }: PinBoardProps) {
   return (
     <div className="pin-board">
@@ -31,6 +33,7 @@ export function PinBoard({
           onToggleCollapse={onToggleCollapse}
           onClose={onClose}
           onMinimize={onMinimize}
+          onDragEnd={onDragEnd}
           zIndex={zIndexMap[card.id] || 100}
         />
       ))}

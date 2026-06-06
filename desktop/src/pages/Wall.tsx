@@ -33,6 +33,7 @@ function Wall() {
     handleMinimizeCard,
     handleCreateCard,
     handleUnstashCard,
+    handleDragEnd,
     handleReminderFired,
   } = useCards();
 
@@ -134,6 +135,7 @@ function Wall() {
             onToggleCollapse={handleToggleCollapse}
             onClose={handleCloseCard}
             onMinimize={handleMinimizeCard}
+            onDragEnd={handleDragEnd}
           />
 
           <CardStack
