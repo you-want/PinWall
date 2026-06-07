@@ -1,0 +1,202 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+            arch: aarch64
+          - platform: macos-latest
+            target: x86_64-apple-darwin
+            arch: x86_64
+          - platform: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            arch: x86_64
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+            arch: x86_64
+
+    runs-on: ${{ matrix.platform }}
+    defaults:
+      run:
+        working-directory: desktop
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: desktop/pnpm-lock.yaml
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Ubuntu dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - uses: tauri-apps/tauri-action@v0
+        id: tauri
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: --target ${{ matrix.target }}
+          projectPath: desktop
+
+      # Upload artifacts for later universal binary merge (macOS only)
+      - name: Upload macOS artifact
+        if: matrix.platform == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}
+          path: |
+            desktop/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.dmg
+            desktop/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.app.tar.gz
+            desktop/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.app.tar.gz.sig
+
+      - name: Upload Linux artifact
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: |
+            desktop/src-tauri/target/release/bundle/**/*.deb
+            desktop/src-tauri/target/release/bundle/**/*.AppImage
+            desktop/src-tauri/target/release/bundle/**/*.AppImage.tar.gz
+            desktop/src-tauri/target/release/bundle/**/*.AppImage.tar.gz.sig
+
+      - name: Upload Windows artifact
+        if: matrix.platform == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            desktop/src-tauri/target/release/bundle/**/*.msi
+            desktop/src-tauri/target/release/bundle/**/*.msi.zip
+            desktop/src-tauri/target/release/bundle/**/*.msi.zip.sig
+            desktop/src-tauri/target/release/bundle/**/*.exe
+
+  # Merge macOS x86_64 and aarch64 into universal binary
+  macos-universal:
+    needs: release
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: desktop
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download aarch64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-aarch64
+          path: macos-aarch64
+
+      - name: Download x86_64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-x86_64
+          path: macos-x86_64
+
+      - name: Create universal .app bundle
+        run: |
+          # Find .app directories
+          AARCH64_APP=$(find ../macos-aarch64 -name "*.app" -type d | head -1)
+          X86_64_APP=$(find ../macos-x86_64 -name "*.app" -type d | head -1)
+          APP_NAME=$(basename "$AARCH64_APP")
+
+          if [ -z "$AARCH64_APP" ] || [ -z "$X86_64_APP" ]; then
+            echo "Could not find .app bundles"
+            exit 1
+          fi
+
+          # Copy aarch64 as base
+          cp -R "$AARCH64_APP" "Universal-$APP_NAME"
+
+          # Merge binaries with lipo
+          BINARY_NAME="PinWall"
+          UNIVERSAL_BIN="Universal-$APP_NAME/Contents/MacOS/$BINARY_NAME"
+
+          lipo -create \
+            "$AARCH64_APP/Contents/MacOS/$BINARY_NAME" \
+            "$X86_64_APP/Contents/MacOS/$BINARY_NAME" \
+            -output "$UNIVERSAL_BIN"
+
+          echo "Universal binary created:"
+          lipo -info "$UNIVERSAL_BIN"
+
+      - name: Create universal DMG
+        run: |
+          UNIVERSAL_APP=$(find . -name "*.app" -type d -maxdepth 1 | head -1)
+          hdiutil create -volname "PinWall" -srcfolder "$UNIVERSAL_APP" -ov -format UDZO "PinWall-universal.dmg"
+
+      - name: Upload universal DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-universal
+          path: desktop/PinWall-universal.dmg
+
+  # Create GitHub Release with all artifacts
+  publish:
+    needs: [release, macos-universal]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/macos-universal/*.dmg
+            artifacts/macos-aarch64/**/*.dmg
+            artifacts/macos-x86_64/**/*.dmg
+            artifacts/linux/**/*.deb
+            artifacts/linux/**/*.AppImage
+            artifacts/windows/**/*.msi
+            artifacts/windows/**/*.exe
+          draft: true
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ## Downloads
+
+            | Platform | File |
+            |---|---|
+            | macOS (Universal) | `PinWall-universal.dmg` |
+            | macOS (Apple Silicon) | `.dmg` (aarch64) |
+            | macOS (Intel) | `.dmg` (x86_64) |
+            | Windows | `.msi` or `.exe` |
+            | Linux | `.deb` or `.AppImage` |
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
