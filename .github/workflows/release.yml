@@ -69,16 +69,21 @@ jobs:
           args: --target ${{ matrix.target }}
           projectPath: desktop
 
-      # Upload artifacts for later universal binary merge (macOS only)
+      - name: Debug bundle output
+        if: matrix.platform == 'macos-latest'
+        run: |
+          echo "=== Bundle directory contents ==="
+          find src-tauri/target/${{ matrix.target }}/release/bundle -type f -o -type d | head -30 || echo "Bundle dir not found"
+
+      # Upload macOS .app.tar.gz for universal binary merge
       - name: Upload macOS artifact
         if: matrix.platform == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
           name: macos-${{ matrix.arch }}
           path: |
-            desktop/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.dmg
-            desktop/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.app.tar.gz
-            desktop/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.app.tar.gz.sig
+            desktop/src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz
+            desktop/src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.dmg
 
       - name: Upload Linux artifact
         if: matrix.platform == 'ubuntu-22.04'
@@ -86,10 +91,8 @@ jobs:
         with:
           name: linux
           path: |
-            desktop/src-tauri/target/release/bundle/**/*.deb
-            desktop/src-tauri/target/release/bundle/**/*.AppImage
-            desktop/src-tauri/target/release/bundle/**/*.AppImage.tar.gz
-            desktop/src-tauri/target/release/bundle/**/*.AppImage.tar.gz.sig
+            desktop/src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb
+            desktop/src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
 
       - name: Upload Windows artifact
         if: matrix.platform == 'windows-latest'
@@ -97,22 +100,15 @@ jobs:
         with:
           name: windows
           path: |
-            desktop/src-tauri/target/release/bundle/**/*.msi
-            desktop/src-tauri/target/release/bundle/**/*.msi.zip
-            desktop/src-tauri/target/release/bundle/**/*.msi.zip.sig
-            desktop/src-tauri/target/release/bundle/**/*.exe
+            desktop/src-tauri/target/${{ matrix.target }}/release/bundle/msi/*.msi
+            desktop/src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
 
   # Merge macOS x86_64 and aarch64 into universal binary
   macos-universal:
     needs: release
     runs-on: macos-latest
-    defaults:
-      run:
-        working-directory: desktop
 
     steps:
-      - uses: actions/checkout@v4
-
       - name: Download aarch64 artifact
         uses: actions/download-artifact@v4
         with:
@@ -125,23 +121,54 @@ jobs:
           name: macos-x86_64
           path: macos-x86_64
 
+      - name: List downloaded files
+        run: |
+          echo "=== aarch64 ==="
+          find macos-aarch64 -type f
+          echo "=== x86_64 ==="
+          find macos-x86_64 -type f
+
       - name: Create universal .app bundle
         run: |
-          # Find .app directories
-          AARCH64_APP=$(find ../macos-aarch64 -name "*.app" -type d | head -1)
-          X86_64_APP=$(find ../macos-x86_64 -name "*.app" -type d | head -1)
-          APP_NAME=$(basename "$AARCH64_APP")
+          set -euo pipefail
 
-          if [ -z "$AARCH64_APP" ] || [ -z "$X86_64_APP" ]; then
-            echo "Could not find .app bundles"
+          # Extract .app from tar.gz
+          mkdir -p aarch64-app x86_64-app
+
+          AARCH64_TAR=$(find macos-aarch64 -name "*.app.tar.gz" | head -1)
+          X86_64_TAR=$(find macos-x86_64 -name "*.app.tar.gz" | head -1)
+
+          if [ -z "$AARCH64_TAR" ] || [ -z "$X86_64_TAR" ]; then
+            echo "ERROR: Could not find .app.tar.gz files"
+            echo "aarch64 files:"
+            find macos-aarch64 -type f
+            echo "x86_64 files:"
+            find macos-x86_64 -type f
             exit 1
           fi
 
-          # Copy aarch64 as base
+          echo "Extracting aarch64: $AARCH64_TAR"
+          tar -xzf "$AARCH64_TAR" -C aarch64-app
+
+          echo "Extracting x86_64: $X86_64_TAR"
+          tar -xzf "$X86_64_TAR" -C x86_64-app
+
+          # Find extracted .app directories
+          AARCH64_APP=$(find aarch64-app -name "*.app" -type d -maxdepth 2 | head -1)
+          X86_64_APP=$(find x86_64-app -name "*.app" -type d -maxdepth 2 | head -1)
+
+          echo "aarch64 .app: $AARCH64_APP"
+          echo "x86_64 .app: $X86_64_APP"
+
+          APP_NAME=$(basename "$AARCH64_APP")
+          BINARY_NAME="${APP_NAME%.app}"
+
+          echo "App name: $APP_NAME, Binary: $BINARY_NAME"
+
+          # Copy aarch64 as base for universal app
           cp -R "$AARCH64_APP" "Universal-$APP_NAME"
 
           # Merge binaries with lipo
-          BINARY_NAME="PinWall"
           UNIVERSAL_BIN="Universal-$APP_NAME/Contents/MacOS/$BINARY_NAME"
 
           lipo -create \
@@ -152,16 +179,20 @@ jobs:
           echo "Universal binary created:"
           lipo -info "$UNIVERSAL_BIN"
 
-      - name: Create universal DMG
-        run: |
-          UNIVERSAL_APP=$(find . -name "*.app" -type d -maxdepth 1 | head -1)
-          hdiutil create -volname "PinWall" -srcfolder "$UNIVERSAL_APP" -ov -format UDZO "PinWall-universal.dmg"
+          # Create universal DMG
+          hdiutil create -volname "PinWall" \
+            -srcfolder "Universal-$APP_NAME" \
+            -ov -format UDZO \
+            "PinWall-universal.dmg"
+
+          echo "Universal DMG created"
+          ls -lh PinWall-universal.dmg
 
       - name: Upload universal DMG
         uses: actions/upload-artifact@v4
         with:
           name: macos-universal
-          path: desktop/PinWall-universal.dmg
+          path: PinWall-universal.dmg
 
   # Create GitHub Release with all artifacts
   publish:
@@ -174,17 +205,20 @@ jobs:
         with:
           path: artifacts
 
+      - name: List all artifacts
+        run: find artifacts -type f
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             artifacts/macos-universal/*.dmg
-            artifacts/macos-aarch64/**/*.dmg
-            artifacts/macos-x86_64/**/*.dmg
-            artifacts/linux/**/*.deb
-            artifacts/linux/**/*.AppImage
-            artifacts/windows/**/*.msi
-            artifacts/windows/**/*.exe
+            artifacts/macos-aarch64/*.dmg
+            artifacts/macos-x86_64/*.dmg
+            artifacts/linux/*.deb
+            artifacts/linux/*.AppImage
+            artifacts/windows/*.msi
+            artifacts/windows/*.exe
           draft: true
           prerelease: false
           generate_release_notes: true
