@@ -7,6 +7,7 @@ import { PinBoard } from "../components/PinBoard";
 import { NewCardModal } from "../components/NewCardModal";
 import { FloatingButtons } from "../components/FloatingButtons";
 import { CardStack } from "../components/CardStack";
+import { useI18n } from "../i18n";
 import type { Settings } from "../types";
 import { getSettings } from "../services/storage";
 import { useCards } from "../hooks/useCards";
@@ -17,6 +18,7 @@ type NewCardState =
   | { open: true; x: number; y: number };
 
 function Wall() {
+  const { t } = useI18n();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [newCardModal, setNewCardModal] = useState<NewCardState>({ open: false });
   const newCardPositionRef = useRef({ x: 0, y: 0 });
@@ -123,7 +125,7 @@ function Wall() {
 
   return (
     <div className="app-container">
-      {!hasSettings && <div className="loading">加载中...</div>}
+      {!hasSettings && <div className="loading">{t.loading}</div>}
       
       {hasSettings && (
         <>
@@ -145,8 +147,8 @@ function Wall() {
 
           {cards.length === 0 && (
             <div className="empty-hint">
-              <p className="hint-title">欢迎来到 PinWall</p>
-              <p className="hint-subtitle">点击右下角按钮创建便签或打开设置</p>
+              <p className="hint-title">{t.welcome_title}</p>
+              <p className="hint-subtitle">{t.welcome_subtitle}</p>
             </div>
           )}
 

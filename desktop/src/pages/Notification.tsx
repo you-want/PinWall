@@ -1,6 +1,7 @@
 import { useRef, useEffect } from "react";
 import { webviewWindow } from "@tauri-apps/api";
 import { useNotificationStore } from "../stores/notificationStore";
+import { useI18n } from "../i18n";
 
 const colors = [
   "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)",
@@ -52,6 +53,7 @@ function playDingSound() {
 }
 
 function Notification() {
+  const { t } = useI18n();
   const card = useNotificationStore((s) => s.notificationCard);
   const dismissNotification = useNotificationStore((s) => s.dismissNotification);
   const viewCardAction = useNotificationStore((s) => s.viewCard);
@@ -115,7 +117,7 @@ function Notification() {
             <button
               className="control close"
               type="button"
-              aria-label="关闭提醒"
+              aria-label={t.aria_dismiss_reminder}
               onClick={handleDismiss}
             />
           </div>
@@ -129,7 +131,7 @@ function Notification() {
         </div>
         <div className="reminder-notification-actions">
           <button className="btn-reminder btn-reminder-view" onClick={handleView}>
-            全屏查看
+            {t.view_fullscreen}
           </button>
         </div>
       </div>

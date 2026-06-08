@@ -1,7 +1,10 @@
 import { useEffect } from "react";
 import { webviewWindow } from "@tauri-apps/api";
+import { useI18n } from "../i18n";
 
 function Settings() {
+  const { t } = useI18n();
+
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -37,8 +40,8 @@ function Settings() {
             </svg>
           </div>
 
-          <h1 className="settings-coming-title">正在开发中</h1>
-          <p className="settings-coming-subtitle">敬请期待</p>
+          <h1 className="settings-coming-title">{t.developing_title}</h1>
+          <p className="settings-coming-subtitle">{t.developing_subtitle}</p>
         </div>
       </div>
     </div>

@@ -1,25 +1,17 @@
 import { create } from "zustand";
 import { createTauriStore } from "@tauri-store/zustand";
+import { getTranslations } from "../i18n";
+import { useLanguageStore } from "./languageStore";
 import type { PinCardData } from "../types";
 
-const messages = [
-  "保持好心情",
-  "多喝水哦",
-  "今天辛苦啦",
-  "早点休息",
-  "记得吃水果",
-  "加油，你可以的",
-  "祝你顺利",
-  "保持微笑呀",
-  "愿所有烦恼都消失",
-  "期待下一次见面",
-  "梦想总会实现",
-  "天气冷了，多穿衣服",
-  "记得给自己放松",
-  "每天都要元气满满",
-  "今天也要好好爱自己",
-  "适当休息一下",
-];
+function getDefaultMessages(): string[] {
+  const lang = useLanguageStore.getState().lang;
+  const t = getTranslations(lang);
+  return [
+    t.msg_1, t.msg_2, t.msg_3, t.msg_4, t.msg_5, t.msg_6, t.msg_7, t.msg_8,
+    t.msg_9, t.msg_10, t.msg_11, t.msg_12, t.msg_13, t.msg_14, t.msg_15, t.msg_16,
+  ];
+}
 
 type CardState = {
   cards: PinCardData[];
@@ -95,7 +87,7 @@ export const useCardStore = create<CardState>((set, get) => ({
     const newCard: PinCardData = {
       id: `card-${now}`,
       title,
-      content: content || messages[Math.floor(Math.random() * messages.length)],
+      content: content || getDefaultMessages()[Math.floor(Math.random() * 16)],
       x: x + 190 - 110,
       y: y + 160 - 70,
       collapsed: false,

@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import { useI18n, interpolate } from "../i18n";
 
 const colors = [
   "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)",
@@ -36,7 +37,8 @@ interface NewCardModalProps {
 }
 
 export function NewCardModal({ x, y, onConfirm, onCancel }: NewCardModalProps) {
-  const [title, setTitle] = useState("新建便签");
+  const { t } = useI18n();
+  const [title, setTitle] = useState<string>(t.new_card);
   const [content, setContent] = useState("");
   const [selectedColorIndex, setSelectedColorIndex] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -73,7 +75,7 @@ export function NewCardModal({ x, y, onConfirm, onCancel }: NewCardModalProps) {
         }
       }
       const finalReminderEnabled = reminderEnabled && reminderTs !== null;
-      onConfirm(title || "新建便签", content, colorIndex, finalReminderEnabled, reminderTs);
+      onConfirm(title || t.new_card, content, colorIndex, finalReminderEnabled, reminderTs);
     } catch (err) {
       console.error("[NewCardModal] Error in handleConfirm:", err);
     } finally {
@@ -139,21 +141,21 @@ export function NewCardModal({ x, y, onConfirm, onCancel }: NewCardModalProps) {
       >
         <div className="modal-header" onClick={handleControlClick}>
           <div className="window-controls">
-            <button className="control close" type="button" aria-label="关闭" />
+            <button className="control close" type="button" aria-label={t.aria_close} />
             <button
               className={`control minimize ${isFullscreen || isMinimized ? "" : "disabled"}`}
               type="button"
-              aria-label="恢复"
+              aria-label={t.aria_restore}
               disabled={!isFullscreen && !isMinimized}
             />
             <button
               className={`control collapse ${isFullscreen ? "disabled" : ""}`}
               type="button"
-              aria-label="全屏"
+              aria-label={t.aria_fullscreen}
               disabled={isFullscreen}
             />
           </div>
-          <span className="modal-title">新建便签</span>
+          <span className="modal-title">{t.new_card}</span>
           <div style={{ width: 60 }} />
         </div>
 
@@ -161,14 +163,14 @@ export function NewCardModal({ x, y, onConfirm, onCancel }: NewCardModalProps) {
           <>
             <div className="modal-body">
               <div className="form-group">
-                <label htmlFor="card-title">标题</label>
+                <label htmlFor="card-title">{t.title_label}</label>
                 <div className="title-input-row">
                   <input
                     id="card-title"
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    placeholder="输入标题..."
+                    placeholder={t.title_placeholder}
                     className="form-input"
                     autoFocus
                   />
@@ -176,7 +178,7 @@ export function NewCardModal({ x, y, onConfirm, onCancel }: NewCardModalProps) {
                     type="button"
                     className="btn-time"
                     onClick={handleUseCurrentTime}
-                    title="使用当前时间作为标题"
+                    title={t.use_current_time}
                   >
                     🕐
                   </button>
@@ -184,18 +186,18 @@ export function NewCardModal({ x, y, onConfirm, onCancel }: NewCardModalProps) {
               </div>
 
               <div className="form-group">
-                <label htmlFor="card-content">内容</label>
+                <label htmlFor="card-content">{t.content_label}</label>
                 <textarea
                   id="card-content"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  placeholder="输入内容..."
+                  placeholder={t.content_placeholder}
                   className="form-textarea"
                 />
               </div>
 
               <div className="form-group">
-                <label>颜色</label>
+                <label>{t.color_label}</label>
                 <div className="color-picker">
                   {colors.map((color, index) => (
                     <button
@@ -203,18 +205,18 @@ export function NewCardModal({ x, y, onConfirm, onCancel }: NewCardModalProps) {
                       className={`color-option ${selectedColorIndex === index ? "selected" : ""}`}
                       style={{ background: color }}
                       onClick={() => setSelectedColorIndex(index)}
-                      title={`颜色 ${index + 1}`}
+                      title={interpolate(t.color_n, { n: index + 1 })}
                     />
                   ))}
                 </div>
                 {selectedColorIndex === null && (
-                  <span className="color-hint">未选择颜色，将随机分配</span>
+                  <span className="color-hint">{t.color_random_hint}</span>
                 )}
               </div>
 
               <div className="form-group">
                 <label className="reminder-toggle-label">
-                  <span>提醒</span>
+                  <span>{t.reminder_label}</span>
                   <input
                     type="checkbox"
                     className="toggle-checkbox"
@@ -242,7 +244,7 @@ export function NewCardModal({ x, y, onConfirm, onCancel }: NewCardModalProps) {
             </div>
 
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={onCancel} disabled={isCreating}>取消</button>
+              <button className="btn btn-secondary" onClick={onCancel} disabled={isCreating}>{t.btn_cancel}</button>
               <button
                 className={`btn btn-primary ${isCreating ? "btn-loading" : ""}`}
                 onClick={handleConfirm}
@@ -251,9 +253,9 @@ export function NewCardModal({ x, y, onConfirm, onCancel }: NewCardModalProps) {
                 {isCreating ? (
                   <span className="btn-loading-content">
                     <span className="btn-spinner" />
-                    创建中...
+                    {t.btn_creating}
                   </span>
-                ) : "创建"}
+                ) : t.btn_create}
               </button>
             </div>
           </>

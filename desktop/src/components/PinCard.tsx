@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from "react";
 import { confirm } from "@tauri-apps/plugin-dialog";
+import { useI18n } from "../i18n";
 import type { PinCardData } from "../types";
 
 interface PinCardProps {
@@ -38,6 +39,7 @@ export function PinCard({
   onDragEnd,
   zIndex,
 }: PinCardProps) {
+  const { t } = useI18n();
   const [isDragging, setIsDragging] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
@@ -120,15 +122,15 @@ export function PinCard({
       if (control?.classList.contains("close")) {
         let confirmed = false;
         try {
-          confirmed = await confirm("确定要删除这个便签吗？", {
-            title: "确认删除",
+          confirmed = await confirm(t.confirm_delete_msg, {
+            title: t.confirm_delete_title,
             kind: "warning",
-            okLabel: "删除",
-            cancelLabel: "取消",
+            okLabel: t.btn_delete,
+            cancelLabel: t.btn_cancel,
           });
         } catch {
           // Fallback to native browser confirm if Tauri dialog fails
-          confirmed = window.confirm("确定要删除这个便签吗？");
+          confirmed = window.confirm(t.confirm_delete_msg);
         }
         if (confirmed) {
           onClose(card.id);
@@ -158,17 +160,17 @@ export function PinCard({
     >
       <div className="card-header" onPointerDown={handlePointerDown}>
         <div className="window-controls" onClick={handleControlClick}>
-          <button className="control close" type="button" aria-label="关闭" />
+          <button className="control close" type="button" aria-label={t.aria_close} />
           <button
             className={`control minimize ${isFullscreen ? "" : "disabled"}`}
             type="button"
-            aria-label="最小化"
+            aria-label={t.aria_minimize}
             disabled={!isFullscreen}
           />
           <button
             className={`control maximize ${isFullscreen ? "disabled" : ""}`}
             type="button"
-            aria-label="最大化"
+            aria-label={t.aria_maximize}
             disabled={isFullscreen}
           />
         </div>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 // import { convertFileSrc } from "@tauri-apps/api/core";
 // import { open } from "@tauri-apps/plugin-shell";
+import { useI18n } from "../i18n";
 import type { Settings, 
   // BackgroundImage 
 } from "../types";
@@ -27,6 +28,7 @@ export function SettingsPanel({
   onOpacityChange,
   onAutoChangeSettings,
 }: SettingsPanelProps) {
+  const { t, lang, setLang } = useI18n();
   const [selectedInterval, setSelectedInterval] = useState(settings.autoChangeInterval);
   const [autoChangeEnabled, setAutoChangeEnabled] = useState(settings.autoChangeEnabled);
 
@@ -40,19 +42,68 @@ export function SettingsPanel({
     onAutoChangeSettings(enabled, selectedInterval);
   };
 
+  // Map interval value → i18n label
+  const intervalLabelMap: Record<number, string> = {
+    1:    t.interval_1min,
+    5:    t.interval_5min,
+    10:   t.interval_10min,
+    30:   t.interval_30min,
+    60:   t.interval_1hour,
+    360:  t.interval_6hour,
+    1440: t.interval_1day,
+  };
+
   // const formatDate = (timestamp: number) => {
-  //   return new Date(timestamp).toLocaleString("zh-CN");
+  //   return new Date(timestamp).toLocaleString(lang === "zh" ? "zh-CN" : "en-US");
   // };
 
   return (
     <div className="settings-panel">
       <div className="settings-header">
-        <h2>设置</h2>
+        <h2>{t.settings_title}</h2>
         <button className="close-btn" onClick={onClose}>×</button>
       </div>
 
       <div className="settings-section">
-        <h3>窗口透明度</h3>
+        <h3>{t.language_label}</h3>
+        <div className="language-switcher" style={{ display: "flex", gap: "8px" }}>
+          <button
+            className={`btn-lang ${lang === "zh" ? "active" : ""}`}
+            onClick={() => setLang("zh")}
+            style={{
+              padding: "6px 16px",
+              borderRadius: "6px",
+              border: "1px solid rgba(255,255,255,0.2)",
+              background: lang === "zh" ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.06)",
+              color: "rgba(255,255,255,0.85)",
+              cursor: "pointer",
+              fontWeight: lang === "zh" ? 600 : 400,
+              transition: "all 0.15s",
+            }}
+          >
+            中文
+          </button>
+          <button
+            className={`btn-lang ${lang === "en" ? "active" : ""}`}
+            onClick={() => setLang("en")}
+            style={{
+              padding: "6px 16px",
+              borderRadius: "6px",
+              border: "1px solid rgba(255,255,255,0.2)",
+              background: lang === "en" ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.06)",
+              color: "rgba(255,255,255,0.85)",
+              cursor: "pointer",
+              fontWeight: lang === "en" ? 600 : 400,
+              transition: "all 0.15s",
+            }}
+          >
+            English
+          </button>
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <h3>{t.window_opacity}</h3>
         <div className="opacity-control">
           <input
             type="range"
@@ -67,7 +118,7 @@ export function SettingsPanel({
       </div>
 
       <div className="settings-section">
-        <h3>自动切换背景</h3>
+        <h3>{t.auto_change_bg}</h3>
         <label className="toggle-label">
           <input
             type="checkbox"
@@ -75,12 +126,12 @@ export function SettingsPanel({
             onChange={(e) => handleAutoChangeToggle(e.target.checked)}
             className="toggle-checkbox"
           />
-          <span className="toggle-text">启用自动切换</span>
+          <span className="toggle-text">{t.enable_auto_change}</span>
         </label>
 
         {autoChangeEnabled && (
           <div className="interval-selector">
-            <span>切换间隔：</span>
+            <span>{t.interval_label}</span>
             <select
               value={selectedInterval}
               onChange={(e) => handleIntervalChange(Number(e.target.value))}
@@ -88,7 +139,7 @@ export function SettingsPanel({
             >
               {AUTO_CHANGE_INTERVALS.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {intervalLabelMap[option.value] ?? option.label}
                 </option>
               ))}
             </select>

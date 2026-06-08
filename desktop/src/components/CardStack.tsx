@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useI18n, interpolate } from "../i18n";
 import type { PinCardData } from "../types";
 
 interface CardStackProps {
@@ -22,6 +23,7 @@ function getGradient(index: number): string {
 }
 
 export function CardStack({ stashedCards, onUnstash }: CardStackProps) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -70,13 +72,13 @@ export function CardStack({ stashedCards, onUnstash }: CardStackProps) {
         <div className="card-stack-panel">
           <div className="card-stack-panel-header">
             <span className="card-stack-panel-title">
-              收纳的便签 ({stashedCards.length})
+              {interpolate(t.stashed_notes, { n: stashedCards.length })}
             </span>
             <button
               className="card-stack-panel-close"
               onClick={toggleExpanded}
               type="button"
-              aria-label="收起"
+              aria-label={t.aria_collapse}
             >
               ×
             </button>
@@ -98,8 +100,8 @@ export function CardStack({ stashedCards, onUnstash }: CardStackProps) {
                   className="card-stack-item-pin"
                   onClick={(e) => handleUnstash(card.id, e)}
                   type="button"
-                  aria-label="钉回桌面"
-                  title="钉回桌面"
+                  aria-label={t.pin_back}
+                  title={t.pin_back}
                 >
                   📌
                 </button>
