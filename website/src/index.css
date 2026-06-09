@@ -353,7 +353,8 @@ img {
 .desktop-mock {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 16 / 11;
+  min-height: 340px;
   background: linear-gradient(145deg, #2a2520 0%, #1a1612 100%);
   border-radius: var(--r-lg);
   overflow: hidden;
@@ -416,6 +417,107 @@ img {
   line-height: 1.5;
 }
 
+/* Mock card stack (bottom-left) */
+.mock-stack {
+  position: absolute;
+  bottom: 18px;
+  left: 18px;
+  z-index: 5;
+}
+
+.mock-stack-card {
+  position: relative;
+  width: 68px;
+  height: 50px;
+  border-radius: 9px;
+  border: 1px solid rgba(255,255,255,0.65);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  padding: 7px 8px;
+  margin-bottom: -38px;
+}
+
+.mock-stack-card:last-of-type {
+  margin-bottom: 0;
+}
+
+.mock-stack-card-title {
+  display: block;
+  font-size: 8px;
+  font-weight: 600;
+  color: rgba(0,0,0,0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.mock-stack-line {
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(0,0,0,0.1);
+}
+
+.mock-stack-badge {
+  position: absolute;
+  bottom: -6px;
+  right: -8px;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  box-shadow: 0 2px 8px rgba(255,107,107,0.4);
+  border: 2px solid rgba(255,255,255,0.8);
+  z-index: 10;
+}
+
+/* Mock floating buttons (bottom-right) */
+.mock-floating {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 6;
+}
+
+.mock-floating-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+}
+
+.mock-floating-settings {
+  background: linear-gradient(135deg, #4a90d9 0%, #3a80c9 100%);
+}
+
+.mock-floating-settings span {
+  font-size: 14px;
+}
+
+.mock-floating-add {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+}
+
+.mock-floating-add span {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+}
+
 /* Floating elements for hero bg */
 .hero-bg-element {
   position: absolute;
@@ -471,7 +573,7 @@ img {
 .section-desc {
   font-size: 1.1rem;
   color: var(--c-ink-soft);
-  max-width: 560px;
+  max-width: 760px;
   line-height: 1.7;
   margin-bottom: var(--space-xl);
 }
@@ -518,8 +620,8 @@ img {
 }
 
 .feature-icon {
-  width: 56px;
-  height: 56px;
+  width: 68px;
+  height: 68px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -709,7 +811,7 @@ img {
 }
 
 .cap-icon {
-  font-size: 1.5rem;
+  font-size: 2.5rem;
   margin-bottom: 1rem;
 }
 

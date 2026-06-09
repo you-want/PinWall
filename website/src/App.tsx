@@ -169,8 +169,9 @@ function AppContent() {
               <div className="desktop-mock">
                 <div className="desktop-mock-wallpaper" />
 
+                {/* Scattered cards */}
                 <div className="mock-card" style={{
-                  top: '12%', left: '8%', width: '160px',
+                  top: '8%', left: '6%', width: '185px',
                   background: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
                   transform: 'rotate(-2deg)', '--rot': '-2deg',
                 } as React.CSSProperties}>
@@ -184,7 +185,7 @@ function AppContent() {
                 </div>
 
                 <div className="mock-card" style={{
-                  top: '18%', right: '12%', width: '140px',
+                  top: '14%', right: '10%', width: '170px',
                   background: 'linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)',
                   transform: 'rotate(3deg)', '--rot': '3deg', animationDelay: '-1.5s',
                 } as React.CSSProperties}>
@@ -198,23 +199,9 @@ function AppContent() {
                 </div>
 
                 <div className="mock-card" style={{
-                  bottom: '20%', left: '15%', width: '150px',
-                  background: 'linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%)',
-                  transform: 'rotate(1deg)', '--rot': '1deg', animationDelay: '-2.5s',
-                } as React.CSSProperties}>
-                  <div className="mock-card-header">
-                    <span className="mock-dot r" />
-                    <span className="mock-dot y" />
-                    <span className="mock-dot g" />
-                    <span className="mock-card-title">{t.mock_card_3_title}</span>
-                  </div>
-                  <div className="mock-card-body">{renderText(t.mock_card_3_body)}</div>
-                </div>
-
-                <div className="mock-card" style={{
-                  bottom: '15%', right: '18%', width: '130px',
+                  top: '42%', left: '30%', width: '160px',
                   background: 'linear-gradient(135deg, #fdcbf1 0%, #e6dee9 100%)',
-                  transform: 'rotate(-4deg)', '--rot': '-4deg', animationDelay: '-3.2s',
+                  transform: 'rotate(-3deg)', '--rot': '-3deg', animationDelay: '-3.2s',
                 } as React.CSSProperties}>
                   <div className="mock-card-header">
                     <span className="mock-dot r" />
@@ -225,14 +212,41 @@ function AppContent() {
                   <div className="mock-card-body">{renderText(t.mock_card_4_body)}</div>
                 </div>
 
-                <div style={{
-                  position: 'absolute', bottom: '16px', right: '16px',
-                  width: '36px', height: '36px',
-                  background: 'rgba(247,243,238,0.9)', borderRadius: '50%',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '1.2rem', fontWeight: 700, color: '#1A1612',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-                }}>+</div>
+                {/* Card stack (bottom-left) — 3 stashed cards */}
+                <div className="mock-stack">
+                  <div className="mock-stack-card" style={{
+                    background: 'linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%)',
+                    transform: 'rotate(-4deg)', zIndex: 1,
+                  }}>
+                    <span className="mock-stack-card-title">{t.mock_card_3_title}</span>
+                    <div className="mock-stack-line" style={{ width: '75%' }} />
+                  </div>
+                  <div className="mock-stack-card" style={{
+                    background: 'linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)',
+                    transform: 'rotate(2deg) translate(14px, -8px)', zIndex: 2,
+                  }}>
+                    <span className="mock-stack-card-title">{t.stack_idea}</span>
+                    <div className="mock-stack-line" style={{ width: '60%' }} />
+                  </div>
+                  <div className="mock-stack-card" style={{
+                    background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+                    transform: 'rotate(-1deg) translate(28px, -16px)', zIndex: 3,
+                  }}>
+                    <span className="mock-stack-card-title">{t.stack_notes}</span>
+                    <div className="mock-stack-line" style={{ width: '85%' }} />
+                  </div>
+                  <div className="mock-stack-badge">3</div>
+                </div>
+
+                {/* Floating buttons (bottom-right) */}
+                <div className="mock-floating">
+                  <div className="mock-floating-btn mock-floating-settings">
+                    <span>⚙️</span>
+                  </div>
+                  <div className="mock-floating-btn mock-floating-add">
+                    <span>+</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -406,7 +420,7 @@ function AppContent() {
               <li><a href={LICENSE_URL} target="_blank" rel="noopener noreferrer">License</a></li>
             </ul>
             <div className="footer-right">
-              © 2024 – 2026 PinWall. MIT License.
+              © 2026 PinWall. MIT License.
             </div>
           </div>
         </div>

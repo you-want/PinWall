@@ -26,7 +26,7 @@ export const zh = {
 
   // Features
   features_label: '核心功能',
-  features_title: '不只是便签，\n是你的桌面伙伴',
+  features_title: '不只是便签，是你的桌面伙伴',
   features_desc: 'PinWall 深度融入 macOS 桌面体验。透明窗口铺在壁纸之上，便签像是直接漂浮在你的桌面上。',
 
   feature_transparent_title: '透明桌面窗口',
