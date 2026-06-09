@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { useI18n } from "../i18n";
 import type { Settings, AIConfig } from "../types";
 
@@ -19,6 +20,11 @@ export function SettingsPanel({
   onAIConfigChange,
 }: SettingsPanelProps) {
   const { t, lang, setLang } = useI18n();
+
+  const changeLang = (newLang: "zh" | "en") => {
+    setLang(newLang);
+    invoke("update_tray_menu", { lang: newLang }).catch(console.error);
+  };
 
   const [aiConfig, setAIConfig] = useState<AIConfig>(settings.ai ?? {
     enabled: false,
@@ -45,13 +51,13 @@ export function SettingsPanel({
             <div className="ap-segmented">
               <button
                 className={`ap-segment ${lang === "zh" ? "active" : ""}`}
-                onClick={() => setLang("zh")}
+                onClick={() => changeLang("zh")}
               >
                 中文
               </button>
               <button
                 className={`ap-segment ${lang === "en" ? "active" : ""}`}
-                onClick={() => setLang("en")}
+                onClick={() => changeLang("en")}
               >
                 English
               </button>
