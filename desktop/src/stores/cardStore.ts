@@ -33,6 +33,7 @@ type CardState = {
     y: number
   ) => void;
   updateReminder: (id: string, reminderEnabled: boolean, reminderTime: number | null) => void;
+  updateContent: (id: string, content: string) => void;
   reminderFired: (id: string) => void;
   unstashCard: (id: string) => void;
 };
@@ -114,6 +115,14 @@ export const useCardStore = create<CardState>((set, get) => ({
         card.id === id
           ? { ...card, reminderEnabled, reminderTime, reminderFired: false, updatedAt: Date.now() }
           : card
+      ),
+    }));
+  },
+
+  updateContent: (id, content) => {
+    set((s) => ({
+      cards: s.cards.map((card) =>
+        card.id === id ? { ...card, content, updatedAt: Date.now() } : card
       ),
     }));
   },

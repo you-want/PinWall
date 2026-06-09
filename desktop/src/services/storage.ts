@@ -1,6 +1,7 @@
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { BaseDirectory } from "@tauri-apps/plugin-fs";
-import type { Settings, BackgroundImage } from "../types";
+import type { Settings, BackgroundImage, AIConfig } from "../types";
+import { DEFAULT_AI_CONFIG } from "../types";
 
 const SETTINGS_FILE = "pinwall-settings.json";
 
@@ -10,12 +11,16 @@ const defaultSettings: Settings = {
   opacity: 0.8,
   autoChangeEnabled: false,
   autoChangeInterval: 60,
+  ai: { ...DEFAULT_AI_CONFIG },
 };
 
 export async function getSettings(): Promise<Settings> {
   try {
     const content = await readTextFile(SETTINGS_FILE, { baseDir: BaseDirectory.AppData });
-    return JSON.parse(content);
+    const parsed = JSON.parse(content);
+    // Ensure ai config exists (backward compat)
+    if (!parsed.ai) parsed.ai = { ...DEFAULT_AI_CONFIG };
+    return parsed;
   } catch {
     return { ...defaultSettings };
   }
@@ -98,4 +103,18 @@ export async function getRandomBackgroundImage(settings: Settings): Promise<Back
   if (settings.backgroundImages.length === 0) return null;
   const randomIndex = Math.floor(Math.random() * settings.backgroundImages.length);
   return settings.backgroundImages[randomIndex];
+}
+
+export async function updateAIConfig(ai: AIConfig): Promise<Settings> {
+  const settings = await getSettings();
+  settings.ai = ai;
+  await saveSettings(settings);
+  return settings;
+}
+
+export async function updateLastDailyCardDate(date: string): Promise<Settings> {
+  const settings = await getSettings();
+  settings.lastDailyCardDate = date;
+  await saveSettings(settings);
+  return settings;
 }

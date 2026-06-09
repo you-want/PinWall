@@ -1,5 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { useI18n, interpolate } from "../i18n";
+import { getSettings } from "../services/storage";
+import { generateNoteContent } from "../services/aiService";
 
 const colors = [
   "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)",
@@ -47,6 +49,7 @@ export function NewCardModal({ x, y, onConfirm, onCancel }: NewCardModalProps) {
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [reminderDate, setReminderDate] = useState<string>("");
   const [reminderTimeValue, setReminderTimeValue] = useState<string>("");
+  const [isAIGenerating, setIsAIGenerating] = useState(false);
 
   // Set default reminder time to current time + 5 minutes
   React.useEffect(() => {
@@ -94,6 +97,25 @@ export function NewCardModal({ x, y, onConfirm, onCancel }: NewCardModalProps) {
   const handleUseCurrentTime = useCallback(() => {
     setTitle(formatCurrentTime());
   }, []);
+
+  const handleAIGenerate = useCallback(async () => {
+    if (isAIGenerating || isCreating) return;
+    const keyword = title.trim() || content.trim();
+    if (!keyword) return;
+    setIsAIGenerating(true);
+    try {
+      const settings = await getSettings();
+      if (!settings.ai?.enabled || !settings.ai.apiKey) {
+        return;
+      }
+      const generated = await generateNoteContent(settings.ai, keyword, (navigator.language.startsWith("zh") ? "zh" : "en") as "zh" | "en");
+      setContent(generated);
+    } catch (err) {
+      console.error("[NewCardModal] AI generate error:", err);
+    } finally {
+      setIsAIGenerating(false);
+    }
+  }, [isAIGenerating, isCreating, title, content]);
 
   React.useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -194,6 +216,22 @@ export function NewCardModal({ x, y, onConfirm, onCancel }: NewCardModalProps) {
                   placeholder={t.content_placeholder}
                   className="form-textarea"
                 />
+                <button
+                  type="button"
+                  className="btn-ai-generate"
+                  onClick={handleAIGenerate}
+                  disabled={isAIGenerating || isCreating || (!title.trim() && !content.trim())}
+                  title={t.ai_generate}
+                >
+                  {isAIGenerating ? (
+                    <span className="btn-loading-content">
+                      <span className="btn-spinner" />
+                      {t.ai_generating}
+                    </span>
+                  ) : (
+                    <span>✨ {t.ai_generate}</span>
+                  )}
+                </button>
               </div>
 
               <div className="form-group">

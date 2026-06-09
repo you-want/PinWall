@@ -59,6 +59,25 @@ export const zh = {
   developing_title: "正在开发中",
   developing_subtitle: "敬请期待",
 
+  // AI Features
+  ai_settings_title: "AI 智能助手",
+  ai_enable: "启用 AI 功能",
+  ai_endpoint: "API 地址",
+  ai_endpoint_placeholder: "https://api.openai.com/v1",
+  ai_api_key: "API 密钥",
+  ai_api_key_placeholder: "sk-...",
+  ai_model: "模型",
+  ai_model_placeholder: "gpt-4o-mini",
+  ai_generate: "AI 生成",
+  ai_generating: "AI 生成中...",
+  ai_polish: "AI 润色",
+  ai_condense: "AI 精简",
+  ai_polishing: "润色中...",
+  ai_condensing: "精简中...",
+  ai_not_configured: "请先在设置中配置 AI",
+  ai_error: "AI 生成失败，请重试",
+  ai_daily_title: "每日一句",
+
   // Notification
   aria_dismiss_reminder: "关闭提醒",
   view_fullscreen: "全屏查看",

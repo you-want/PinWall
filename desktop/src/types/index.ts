@@ -6,12 +6,28 @@ export interface BackgroundImage {
   isDefault: boolean;
 }
 
+export interface AIConfig {
+  enabled: boolean;
+  apiEndpoint: string;
+  apiKey: string;
+  model: string;
+}
+
+export const DEFAULT_AI_CONFIG: AIConfig = {
+  enabled: false,
+  apiEndpoint: "https://api.openai.com/v1",
+  apiKey: "",
+  model: "gpt-4o-mini",
+};
+
 export interface Settings {
   backgroundImages: BackgroundImage[];
   currentImageId: string | null;
   opacity: number;
   autoChangeEnabled: boolean;
   autoChangeInterval: number; // in minutes
+  ai?: AIConfig;
+  lastDailyCardDate?: string; // YYYY-MM-DD, tracks last daily card generation
 }
 
 export interface PinCardData {

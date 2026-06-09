@@ -1,6 +1,9 @@
 import React, { useState, useRef, useCallback } from "react";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { useI18n } from "../i18n";
+import { getSettings } from "../services/storage";
+import { polishContent, condenseContent } from "../services/aiService";
+import { useCardStore } from "../stores/cardStore";
 import type { PinCardData } from "../types";
 
 interface PinCardProps {
@@ -42,6 +45,8 @@ export function PinCard({
   const { t } = useI18n();
   const [isDragging, setIsDragging] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [aiLoading, setAiLoading] = useState<"polish" | "condense" | null>(null);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -144,6 +149,60 @@ export function PinCard({
     [card.id, onClose]
   );
 
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setContextMenu({ x: e.clientX, y: e.clientY });
+    },
+    []
+  );
+
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+
+  // Close context menu when clicking elsewhere
+  React.useEffect(() => {
+    if (contextMenu) {
+      const handler = () => closeContextMenu();
+      window.addEventListener("click", handler);
+      return () => window.removeEventListener("click", handler);
+    }
+  }, [contextMenu, closeContextMenu]);
+
+  const handleAIPolish = useCallback(async () => {
+    closeContextMenu();
+    if (aiLoading || !card.content) return;
+    setAiLoading("polish");
+    try {
+      const settings = await getSettings();
+      if (!settings.ai?.enabled || !settings.ai.apiKey) return;
+      const lang = (navigator.language.startsWith("zh") ? "zh" : "en") as "zh" | "en";
+      const polished = await polishContent(settings.ai, card.content, lang);
+      useCardStore.getState().updateContent(card.id, polished);
+    } catch (err) {
+      console.error("[PinCard] AI polish error:", err);
+    } finally {
+      setAiLoading(null);
+    }
+  }, [aiLoading, card.id, card.content, closeContextMenu]);
+
+  const handleAICondense = useCallback(async () => {
+    closeContextMenu();
+    if (aiLoading || !card.content) return;
+    setAiLoading("condense");
+    try {
+      const settings = await getSettings();
+      if (!settings.ai?.enabled || !settings.ai.apiKey) return;
+      const lang = (navigator.language.startsWith("zh") ? "zh" : "en") as "zh" | "en";
+      const condensed = await condenseContent(settings.ai, card.content, lang);
+      useCardStore.getState().updateContent(card.id, condensed);
+    } catch (err) {
+      console.error("[PinCard] AI condense error:", err);
+    } finally {
+      setAiLoading(null);
+    }
+  }, [aiLoading, card.id, card.content, closeContextMenu]);
+
   return (
     <div
       ref={cardRef}
@@ -157,6 +216,7 @@ export function PinCard({
         zIndex: isFullscreen ? 9999 : zIndex,
         background: getGradient(card.colorIndex),
       }}
+      onContextMenu={handleContextMenu}
     >
       <div className="card-header" onPointerDown={handlePointerDown}>
         <div className="window-controls" onClick={handleControlClick}>
@@ -184,7 +244,27 @@ export function PinCard({
           onMouseUp={(e) => e.stopPropagation()}
           onMouseMove={(e) => e.stopPropagation()}
         >
-          {card.content}
+          {aiLoading ? (
+            <span className="ai-loading-inline">
+              <span className="btn-spinner" />
+              {aiLoading === "polish" ? t.ai_polishing : t.ai_condensing}
+            </span>
+          ) : card.content}
+        </div>
+      )}
+
+      {contextMenu && (
+        <div
+          className="context-menu"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button className="menu-item" onClick={handleAIPolish} disabled={!!aiLoading}>
+            <span className="menu-label">✨ {t.ai_polish}</span>
+          </button>
+          <button className="menu-item" onClick={handleAICondense} disabled={!!aiLoading}>
+            <span className="menu-label">📝 {t.ai_condense}</span>
+          </button>
         </div>
       )}
     </div>

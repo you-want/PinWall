@@ -59,6 +59,25 @@ export const en = {
   developing_title: "In Development",
   developing_subtitle: "Stay tuned",
 
+  // AI Features
+  ai_settings_title: "AI Assistant",
+  ai_enable: "Enable AI Features",
+  ai_endpoint: "API Endpoint",
+  ai_endpoint_placeholder: "https://api.openai.com/v1",
+  ai_api_key: "API Key",
+  ai_api_key_placeholder: "sk-...",
+  ai_model: "Model",
+  ai_model_placeholder: "gpt-4o-mini",
+  ai_generate: "AI Generate",
+  ai_generating: "Generating...",
+  ai_polish: "AI Polish",
+  ai_condense: "AI Condense",
+  ai_polishing: "Polishing...",
+  ai_condensing: "Condensing...",
+  ai_not_configured: "Please configure AI in settings",
+  ai_error: "AI generation failed, please retry",
+  ai_daily_title: "Daily Quote",
+
   // Notification
   aria_dismiss_reminder: "Dismiss reminder",
   view_fullscreen: "View Fullscreen",

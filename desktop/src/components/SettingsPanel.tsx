@@ -1,11 +1,6 @@
 import { useState } from "react";
-// import { convertFileSrc } from "@tauri-apps/api/core";
-// import { open } from "@tauri-apps/plugin-shell";
 import { useI18n } from "../i18n";
-import type { Settings, 
-  // BackgroundImage 
-} from "../types";
-import { AUTO_CHANGE_INTERVALS } from "../types";
+import type { Settings, AIConfig } from "../types";
 
 interface SettingsPanelProps {
   settings: Settings;
@@ -16,210 +11,116 @@ interface SettingsPanelProps {
   onClearBackground: () => void;
   onOpacityChange: (opacity: number) => void;
   onAutoChangeSettings: (enabled: boolean, interval: number) => void;
+  onAIConfigChange?: (config: AIConfig) => void;
 }
 
 export function SettingsPanel({
   settings,
-  onClose,
-  // onUpload,
-  // onSetDefault,
-  // onRemove,
-  // onClearBackground,
-  onOpacityChange,
-  onAutoChangeSettings,
+  onAIConfigChange,
 }: SettingsPanelProps) {
   const { t, lang, setLang } = useI18n();
-  const [selectedInterval, setSelectedInterval] = useState(settings.autoChangeInterval);
-  const [autoChangeEnabled, setAutoChangeEnabled] = useState(settings.autoChangeEnabled);
 
-  const handleIntervalChange = (value: number) => {
-    setSelectedInterval(value);
-    onAutoChangeSettings(autoChangeEnabled, value);
+  const [aiConfig, setAIConfig] = useState<AIConfig>(settings.ai ?? {
+    enabled: false,
+    apiEndpoint: "https://api.openai.com/v1",
+    apiKey: "",
+    model: "gpt-4o-mini",
+  });
+
+  const updateAI = (partial: Partial<AIConfig>) => {
+    const next = { ...aiConfig, ...partial };
+    setAIConfig(next);
+    onAIConfigChange?.(next);
   };
-
-  const handleAutoChangeToggle = (enabled: boolean) => {
-    setAutoChangeEnabled(enabled);
-    onAutoChangeSettings(enabled, selectedInterval);
-  };
-
-  // Map interval value → i18n label
-  const intervalLabelMap: Record<number, string> = {
-    1:    t.interval_1min,
-    5:    t.interval_5min,
-    10:   t.interval_10min,
-    30:   t.interval_30min,
-    60:   t.interval_1hour,
-    360:  t.interval_6hour,
-    1440: t.interval_1day,
-  };
-
-  // const formatDate = (timestamp: number) => {
-  //   return new Date(timestamp).toLocaleString(lang === "zh" ? "zh-CN" : "en-US");
-  // };
 
   return (
-    <div className="settings-panel">
-      <div className="settings-header">
-        <h2>{t.settings_title}</h2>
-        <button className="close-btn" onClick={onClose}>×</button>
-      </div>
+    <div className="ap-settings">
+      {/* Scrollable content */}
+      <div className="ap-scroll">
 
-      <div className="settings-section">
-        <h3>{t.language_label}</h3>
-        <div className="language-switcher" style={{ display: "flex", gap: "8px" }}>
-          <button
-            className={`btn-lang ${lang === "zh" ? "active" : ""}`}
-            onClick={() => setLang("zh")}
-            style={{
-              padding: "6px 16px",
-              borderRadius: "6px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: lang === "zh" ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.06)",
-              color: "rgba(255,255,255,0.85)",
-              cursor: "pointer",
-              fontWeight: lang === "zh" ? 600 : 400,
-              transition: "all 0.15s",
-            }}
-          >
-            中文
-          </button>
-          <button
-            className={`btn-lang ${lang === "en" ? "active" : ""}`}
-            onClick={() => setLang("en")}
-            style={{
-              padding: "6px 16px",
-              borderRadius: "6px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: lang === "en" ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.06)",
-              color: "rgba(255,255,255,0.85)",
-              cursor: "pointer",
-              fontWeight: lang === "en" ? 600 : 400,
-              transition: "all 0.15s",
-            }}
-          >
-            English
-          </button>
-        </div>
-      </div>
-
-      <div className="settings-section">
-        <h3>{t.window_opacity}</h3>
-        <div className="opacity-control">
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={Math.round(settings.opacity * 100)}
-            onChange={(e) => onOpacityChange(Number(e.target.value) / 100)}
-            className="opacity-slider"
-          />
-          <span className="opacity-value">{Math.round(settings.opacity * 100)}%</span>
-        </div>
-      </div>
-
-      <div className="settings-section">
-        <h3>{t.auto_change_bg}</h3>
-        <label className="toggle-label">
-          <input
-            type="checkbox"
-            checked={autoChangeEnabled}
-            onChange={(e) => handleAutoChangeToggle(e.target.checked)}
-            className="toggle-checkbox"
-          />
-          <span className="toggle-text">{t.enable_auto_change}</span>
-        </label>
-
-        {autoChangeEnabled && (
-          <div className="interval-selector">
-            <span>{t.interval_label}</span>
-            <select
-              value={selectedInterval}
-              onChange={(e) => handleIntervalChange(Number(e.target.value))}
-              className="interval-select"
-            >
-              {AUTO_CHANGE_INTERVALS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {intervalLabelMap[option.value] ?? option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-      </div>
-
-      {/* <div className="settings-section">
-        <div className="upload-section">
-          <h3>背景图管理</h3>
-          <button className="upload-btn" onClick={onUpload}>
-            上传背景图
-          </button>
-        </div>
-
-        <div className={`image-item ${settings.currentImageId === null ? "active" : ""}`}>
-          <div className="image-thumbnail empty-thumbnail">
-            <span className="empty-icon">◎</span>
-          </div>
-          <div className="image-info">
-            <span className="image-name">无背景（显示桌面）</span>
-            <span className="image-date">直接显示桌面背景</span>
-          </div>
-          <div className="image-actions">
-            {settings.currentImageId !== null && (
+        {/* ── Language ── */}
+        <div className="ap-group">
+          <div className="ap-group-label">{t.language_label}</div>
+          <div className="ap-card">
+            <div className="ap-segmented">
               <button
-                className="action-btn default-btn"
-                onClick={onClearBackground}
+                className={`ap-segment ${lang === "zh" ? "active" : ""}`}
+                onClick={() => setLang("zh")}
               >
-                设置为默认
+                中文
               </button>
-            )}
+              <button
+                className={`ap-segment ${lang === "en" ? "active" : ""}`}
+                onClick={() => setLang("en")}
+              >
+                English
+              </button>
+            </div>
           </div>
         </div>
 
-        {settings.backgroundImages.length === 0 ? (
-          <p className="empty-state">暂无背景图，请上传</p>
-        ) : (
-          <div className="image-list">
-            {settings.backgroundImages.map((image: BackgroundImage) => (
-              <div
-                key={image.id}
-                className={`image-item ${settings.currentImageId === image.id ? "active" : ""}`}
-              >
-                <div className="image-thumbnail">
-                  <img src={convertFileSrc(image.path)} alt={image.fileName} />
-                </div>
-                <div className="image-info">
-                  <span className="image-name">{image.fileName}</span>
-                  <span className="image-date">{formatDate(image.createdAt)}</span>
-                </div>
-                <div className="image-actions">
-                  {settings.currentImageId !== image.id && (
-                    <button
-                      className="action-btn default-btn"
-                      onClick={() => onSetDefault(image.id)}
-                    >
-                      设置为默认
-                    </button>
-                  )}
-                  {settings.backgroundImages.length > 1 && (
-                    <button
-                      className="action-btn remove-btn"
-                      onClick={() => onRemove(image.id)}
-                    >
-                      删除
-                    </button>
-                  )}
-                  <button
-                    className="action-btn open-btn"
-                    onClick={() => open(image.path)}
-                  >
-                    打开位置
-                  </button>
-                </div>
+        {/* ── AI Assistant ── */}
+        <div className="ap-group">
+          <div className="ap-group-label">{t.ai_settings_title}</div>
+          <div className="ap-card">
+            {/* Toggle row */}
+            <div className="ap-row ap-row-toggle">
+              <span className="ap-row-label">{t.ai_enable}</span>
+              <label className="ap-switch">
+                <input
+                  type="checkbox"
+                  checked={aiConfig.enabled}
+                  onChange={(e) => updateAI({ enabled: e.target.checked })}
+                />
+                <span className="ap-switch-track">
+                  <span className="ap-switch-thumb" />
+                </span>
+              </label>
+            </div>
+
+            {/* AI config fields (animated reveal) */}
+            <div className={`ap-ai-fields ${aiConfig.enabled ? "open" : ""}`}>
+              <div className="ap-divider" />
+              <div className="ap-field">
+                <label className="ap-field-label">{t.ai_endpoint}</label>
+                <input
+                  className="ap-input"
+                  type="text"
+                  value={aiConfig.apiEndpoint}
+                  onChange={(e) => updateAI({ apiEndpoint: e.target.value })}
+                  placeholder={t.ai_endpoint_placeholder}
+                  spellCheck={false}
+                />
               </div>
-            ))}
+              <div className="ap-divider" />
+              <div className="ap-field">
+                <label className="ap-field-label">{t.ai_api_key}</label>
+                <input
+                  className="ap-input"
+                  type="password"
+                  value={aiConfig.apiKey}
+                  onChange={(e) => updateAI({ apiKey: e.target.value })}
+                  placeholder={t.ai_api_key_placeholder}
+                  spellCheck={false}
+                />
+              </div>
+              <div className="ap-divider" />
+              <div className="ap-field">
+                <label className="ap-field-label">{t.ai_model}</label>
+                <input
+                  className="ap-input"
+                  type="text"
+                  value={aiConfig.model}
+                  onChange={(e) => updateAI({ model: e.target.value })}
+                  placeholder={t.ai_model_placeholder}
+                  spellCheck={false}
+                />
+              </div>
+            </div>
           </div>
-        )}
-      </div> */}
+        </div>
+
+      </div>
     </div>
   );
 }

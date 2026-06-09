@@ -12,6 +12,7 @@ import type { Settings } from "../types";
 import { getSettings } from "../services/storage";
 import { useCards } from "../hooks/useCards";
 import { useReminders } from "../hooks/useReminders";
+import { useDailyCard } from "../hooks/useDailyCard";
 
 type NewCardState =
   | { open: false }
@@ -40,6 +41,7 @@ function Wall() {
   } = useCards();
 
   useReminders(cards, handleReminderFired);
+  useDailyCard();
 
   const refresh = useCallback(async () => {
     const savedSettings = await getSettings();
