@@ -863,7 +863,7 @@ html, body, #root {
 
 .pin-card {
   position: absolute;
-  width: 220px;
+  width: 280px;
   border-radius: 16px;
   box-shadow: none;
   border: 1px solid rgba(255, 255, 255, 0.6);
@@ -1004,6 +1004,10 @@ html, body, #root {
   padding-left: 10px;
   flex: 1;
   cursor: grab;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .card-title.dragging {
@@ -1414,7 +1418,7 @@ html, body, #root {
 
 @media (max-width: 768px) {
   .pin-card {
-    width: 180px;
+    width: 240px;
     border-radius: 14px;
   }
 

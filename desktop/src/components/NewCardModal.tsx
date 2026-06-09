@@ -50,6 +50,7 @@ export function NewCardModal({ x, y, onConfirm, onCancel }: NewCardModalProps) {
   const [reminderDate, setReminderDate] = useState<string>("");
   const [reminderTimeValue, setReminderTimeValue] = useState<string>("");
   const [isAIGenerating, setIsAIGenerating] = useState(false);
+  const [aiError, setAiError] = useState<string>("");
 
   // Set default reminder time to current time + 5 minutes
   React.useEffect(() => {
@@ -103,15 +104,18 @@ export function NewCardModal({ x, y, onConfirm, onCancel }: NewCardModalProps) {
     const keyword = title.trim() || content.trim();
     if (!keyword) return;
     setIsAIGenerating(true);
+    setAiError("");
     try {
       const settings = await getSettings();
       if (!settings.ai?.enabled || !settings.ai.apiKey) {
+        setAiError(t.ai_not_configured);
         return;
       }
       const generated = await generateNoteContent(settings.ai, keyword, (navigator.language.startsWith("zh") ? "zh" : "en") as "zh" | "en");
       setContent(generated);
     } catch (err) {
       console.error("[NewCardModal] AI generate error:", err);
+      setAiError(t.ai_error);
     } finally {
       setIsAIGenerating(false);
     }
@@ -191,7 +195,8 @@ export function NewCardModal({ x, y, onConfirm, onCancel }: NewCardModalProps) {
                     id="card-title"
                     type="text"
                     value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    onChange={(e) => setTitle(e.target.value.slice(0, 20))}
+                    maxLength={20}
                     placeholder={t.title_placeholder}
                     className="form-input"
                     autoFocus
@@ -232,6 +237,11 @@ export function NewCardModal({ x, y, onConfirm, onCancel }: NewCardModalProps) {
                     <span>✨ {t.ai_generate}</span>
                   )}
                 </button>
+                {aiError && (
+                  <span className="ai-error-msg" style={{ display: "block", color: "#e74c3c", fontSize: 12, marginTop: 4 }}>
+                    {aiError}
+                  </span>
+                )}
               </div>
 
               <div className="form-group">
