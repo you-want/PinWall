@@ -200,6 +200,10 @@ pub fn run() {
                 Manager,
             };
 
+            // 隐藏 Dock 图标，仅通过托盘图标交互
+            #[cfg(target_os = "macos")]
+            app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+
             app.handle()
                 .plugin(tauri_plugin_global_shortcut::Builder::new().build())?;
 
@@ -219,7 +223,7 @@ pub fn run() {
 
             let tray = TrayIconBuilder::new()
                 .menu(&menu)
-                .icon(app.default_window_icon().unwrap().clone())
+                .icon(tauri::image::Image::from_bytes(include_bytes!("../icons/tray/icon_32.png")).unwrap())
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "tray.open" => {
                         summon_main_window(app);
