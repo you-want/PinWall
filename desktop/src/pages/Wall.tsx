@@ -7,12 +7,14 @@ import { PinBoard } from "../components/PinBoard";
 import { NewCardModal } from "../components/NewCardModal";
 import { FloatingButtons } from "../components/FloatingButtons";
 import { CardStack } from "../components/CardStack";
+import { QuotaCard } from "../components/QuotaCard";
 import { useI18n } from "../i18n";
 import type { Settings } from "../types";
 import { getSettings } from "../services/storage";
 import { useCards } from "../hooks/useCards";
 import { useReminders } from "../hooks/useReminders";
 import { useDailyCard } from "../hooks/useDailyCard";
+import { useQuotaMonitor } from "../hooks/useQuotaMonitor";
 
 type NewCardState =
   | { open: false }
@@ -42,6 +44,9 @@ function Wall() {
 
   useReminders(cards, handleReminderFired);
   useDailyCard();
+
+  const { results: quotaResults, loading: quotaLoading, refresh: quotaRefresh } =
+    useQuotaMonitor(settings?.quotaMonitor);
 
   const refresh = useCallback(async () => {
     const savedSettings = await getSettings();
@@ -155,6 +160,15 @@ function Wall() {
           )}
 
           <FloatingButtons onNewCard={openNewCardModal} onSettings={openSettingsWindow} />
+
+          {settings?.quotaMonitor?.enabled && settings.quotaMonitor.models.length > 0 && (
+            <QuotaCard
+              results={quotaResults}
+              models={settings.quotaMonitor.models}
+              loading={quotaLoading}
+              onRefresh={quotaRefresh}
+            />
+          )}
 
           {newCardModal.open && (
             <NewCardModal

@@ -1,7 +1,7 @@
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { BaseDirectory } from "@tauri-apps/plugin-fs";
-import type { Settings, BackgroundImage, AIConfig } from "../types";
-import { DEFAULT_AI_CONFIG } from "../types";
+import type { Settings, BackgroundImage, AIConfig, QuotaMonitorConfig } from "../types";
+import { DEFAULT_AI_CONFIG, DEFAULT_QUOTA_MONITOR } from "../types";
 
 const SETTINGS_FILE = "pinwall-settings.json";
 
@@ -12,6 +12,7 @@ const defaultSettings: Settings = {
   autoChangeEnabled: false,
   autoChangeInterval: 60,
   ai: { ...DEFAULT_AI_CONFIG },
+  quotaMonitor: { ...DEFAULT_QUOTA_MONITOR },
 };
 
 export async function getSettings(): Promise<Settings> {
@@ -20,6 +21,8 @@ export async function getSettings(): Promise<Settings> {
     const parsed = JSON.parse(content);
     // Ensure ai config exists (backward compat)
     if (!parsed.ai) parsed.ai = { ...DEFAULT_AI_CONFIG };
+    // Ensure quotaMonitor config exists (backward compat)
+    if (!parsed.quotaMonitor) parsed.quotaMonitor = { ...DEFAULT_QUOTA_MONITOR, models: [] };
     return parsed;
   } catch {
     return { ...defaultSettings };
@@ -115,6 +118,13 @@ export async function updateAIConfig(ai: AIConfig): Promise<Settings> {
 export async function updateLastDailyCardDate(date: string): Promise<Settings> {
   const settings = await getSettings();
   settings.lastDailyCardDate = date;
+  await saveSettings(settings);
+  return settings;
+}
+
+export async function updateQuotaMonitorConfig(config: QuotaMonitorConfig): Promise<Settings> {
+  const settings = await getSettings();
+  settings.quotaMonitor = config;
   await saveSettings(settings);
   return settings;
 }

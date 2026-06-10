@@ -376,7 +376,7 @@ html, body, #root {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 32px 20px;
+  padding: 32px 20px 48px;
 }
 
 .ap-scroll::-webkit-scrollbar {
@@ -544,7 +544,7 @@ html, body, #root {
 }
 
 .ap-ai-fields.open {
-  max-height: 400px;
+  max-height: 1200px;
 }
 
 /* ── Input Field ── */
@@ -1898,4 +1898,8 @@ html, body, #root {
   html {
     @apply font-sans;
   }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }

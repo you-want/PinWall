@@ -82,6 +82,24 @@ export const en = {
   aria_dismiss_reminder: "Dismiss reminder",
   view_fullscreen: "View Fullscreen",
 
+  // Quota Monitor
+  quota_title: "Quota Monitor",
+  quota_enable: "Enable Quota Monitor",
+  quota_provider: "Provider",
+  quota_add_model: "Add Model",
+  quota_confirm_add: "Confirm",
+  quota_cancel: "Cancel",
+  quota_model_name: "Model Name",
+  quota_refresh_interval: "Refresh Interval",
+  quota_remaining: "Remaining",
+  quota_used: "Used",
+  quota_total: "Total",
+  quota_last_update: "Last Updated",
+  quota_refresh: "Refresh",
+  quota_error: "Query Failed",
+  quota_no_models: "No models configured",
+  quota_models_monitoring: "models monitored",
+
   // Card default messages (used when no content provided)
   msg_1: "Stay in a good mood",
   msg_2: "Drink more water",

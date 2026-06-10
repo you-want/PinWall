@@ -82,6 +82,24 @@ export const zh = {
   aria_dismiss_reminder: "关闭提醒",
   view_fullscreen: "全屏查看",
 
+  // Quota Monitor
+  quota_title: "额度监测",
+  quota_enable: "启用额度监测",
+  quota_provider: "服务提供商",
+  quota_add_model: "添加模型",
+  quota_confirm_add: "确认添加",
+  quota_cancel: "取消",
+  quota_model_name: "模型名称",
+  quota_refresh_interval: "刷新间隔",
+  quota_remaining: "剩余",
+  quota_used: "已用",
+  quota_total: "总额",
+  quota_last_update: "最后更新",
+  quota_refresh: "刷新",
+  quota_error: "查询失败",
+  quota_no_models: "暂无监测模型",
+  quota_models_monitoring: "个模型监测中",
+
   // Card default messages (used when no content provided)
   msg_1: "保持好心情",
   msg_2: "多喝水哦",
