@@ -114,3 +114,29 @@ export async function generateDailyQuote(
   const content = lines.slice(1).join("\n").replace(/^["']|["']$/g, "").trim() || result;
   return { title, content };
 }
+
+/** Generate holiday greeting card */
+export async function generateHolidayGreeting(
+  holidayName: string,
+  config: AIConfig,
+  lang: "zh" | "en",
+): Promise<{ title: string; content: string }> {
+  const systemPrompt =
+    lang === "zh"
+      ? "你是一个节日祝福助手。根据节日名称生成一条温馨的节日祝福卡片。格式：第一行是标题（4-8字，如'中秋快乐'），换行后是正文祝福语（30-80字，温暖有诗意）。只输出标题和正文，用换行分隔。"
+      : "You are a holiday greeting assistant. Generate a warm holiday greeting card based on the holiday name. Format: first line is title (3-6 words, e.g. 'Happy Mid-Autumn'), then greeting content (20-50 words, warm and poetic). Only output title and content, separated by newline.";
+
+  const result = await chatCompletion(
+    config,
+    [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: lang === "zh" ? `今天是${holidayName}，请生成节日祝福` : `Today is ${holidayName}, generate a holiday greeting` },
+    ],
+    200,
+  );
+
+  const lines = result.split("\n").filter((l) => l.trim());
+  const title = lines[0]?.replace(/^[#\-*"']+\s*/, "").trim() || holidayName;
+  const content = lines.slice(1).join("\n").replace(/^["']|["']$/g, "").trim() || result;
+  return { title, content };
+}

@@ -14,6 +14,7 @@ import { getSettings } from "../services/storage";
 import { useCards } from "../hooks/useCards";
 import { useReminders } from "../hooks/useReminders";
 import { useDailyCard } from "../hooks/useDailyCard";
+import { useHolidayCard } from "../hooks/useHolidayCard";
 import { useQuotaMonitor } from "../hooks/useQuotaMonitor";
 
 type NewCardState =
@@ -44,6 +45,7 @@ function Wall() {
 
   useReminders(cards, handleReminderFired);
   useDailyCard();
+  useHolidayCard();
 
   const { results: quotaResults, loading: quotaLoading, refresh: quotaRefresh } =
     useQuotaMonitor(settings?.quotaMonitor);

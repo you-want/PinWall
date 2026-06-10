@@ -100,6 +100,10 @@ export const zh = {
   quota_no_models: "暂无监测模型",
   quota_models_monitoring: "个模型监测中",
 
+  // Holiday Greetings
+  holiday_enable: "节日祝福",
+  holiday_notification_title: "节日祝福",
+
   // Card default messages (used when no content provided)
   msg_1: "保持好心情",
   msg_2: "多喝水哦",

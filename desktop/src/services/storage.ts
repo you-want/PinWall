@@ -13,6 +13,7 @@ const defaultSettings: Settings = {
   autoChangeInterval: 60,
   ai: { ...DEFAULT_AI_CONFIG },
   quotaMonitor: { ...DEFAULT_QUOTA_MONITOR },
+  holidayEnabled: true,
 };
 
 export async function getSettings(): Promise<Settings> {
@@ -23,6 +24,8 @@ export async function getSettings(): Promise<Settings> {
     if (!parsed.ai) parsed.ai = { ...DEFAULT_AI_CONFIG };
     // Ensure quotaMonitor config exists (backward compat)
     if (!parsed.quotaMonitor) parsed.quotaMonitor = { ...DEFAULT_QUOTA_MONITOR, models: [] };
+    // Ensure holidayEnabled defaults to true (backward compat)
+    if (parsed.holidayEnabled === undefined) parsed.holidayEnabled = true;
     return parsed;
   } catch {
     return { ...defaultSettings };
@@ -125,6 +128,20 @@ export async function updateLastDailyCardDate(date: string): Promise<Settings> {
 export async function updateQuotaMonitorConfig(config: QuotaMonitorConfig): Promise<Settings> {
   const settings = await getSettings();
   settings.quotaMonitor = config;
+  await saveSettings(settings);
+  return settings;
+}
+
+export async function updateHolidayEnabled(enabled: boolean): Promise<Settings> {
+  const settings = await getSettings();
+  settings.holidayEnabled = enabled;
+  await saveSettings(settings);
+  return settings;
+}
+
+export async function updateLastHolidayCardDate(date: string): Promise<Settings> {
+  const settings = await getSettings();
+  settings.lastHolidayCardDate = date;
   await saveSettings(settings);
   return settings;
 }

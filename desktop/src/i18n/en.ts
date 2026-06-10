@@ -100,6 +100,10 @@ export const en = {
   quota_no_models: "No models configured",
   quota_models_monitoring: "models monitored",
 
+  // Holiday Greetings
+  holiday_enable: "Holiday Greetings",
+  holiday_notification_title: "Holiday Greeting",
+
   // Card default messages (used when no content provided)
   msg_1: "Stay in a good mood",
   msg_2: "Drink more water",

@@ -3,7 +3,7 @@ import { webviewWindow } from "@tauri-apps/api";
 import { useI18n } from "../i18n";
 import { SettingsPanel } from "../components/SettingsPanel";
 import type { Settings as SettingsType, AIConfig, QuotaMonitorConfig } from "../types";
-import { getSettings, saveSettings, updateAIConfig, updateQuotaMonitorConfig } from "../services/storage";
+import { getSettings, saveSettings, updateAIConfig, updateQuotaMonitorConfig, updateHolidayEnabled } from "../services/storage";
 
 function Settings() {
   const { t } = useI18n();
@@ -47,6 +47,11 @@ function Settings() {
     setSettings(s);
   }, []);
 
+  const handleHolidayEnabledChange = useCallback(async (enabled: boolean) => {
+    const s = await updateHolidayEnabled(enabled);
+    setSettings(s);
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -83,6 +88,7 @@ function Settings() {
       onAutoChangeSettings={handleAutoChange}
       onAIConfigChange={handleAIConfigChange}
       onQuotaMonitorChange={handleQuotaMonitorChange}
+      onHolidayEnabledChange={handleHolidayEnabledChange}
     />
   );
 }

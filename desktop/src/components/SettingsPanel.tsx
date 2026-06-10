@@ -37,12 +37,14 @@ interface SettingsPanelProps {
   onAutoChangeSettings: (enabled: boolean, interval: number) => void;
   onAIConfigChange?: (config: AIConfig) => void;
   onQuotaMonitorChange?: (config: QuotaMonitorConfig) => void;
+  onHolidayEnabledChange?: (enabled: boolean) => void;
 }
 
 export function SettingsPanel({
   settings,
   onAIConfigChange,
   onQuotaMonitorChange,
+  onHolidayEnabledChange,
 }: SettingsPanelProps) {
   const { t, lang, setLang } = useI18n();
 
@@ -193,6 +195,26 @@ export function SettingsPanel({
                   spellCheck={false}
                 />
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Holiday Greetings ── */}
+        <div className="ap-group">
+          <div className="ap-group-label">{t.holiday_enable}</div>
+          <div className="ap-card">
+            <div className="ap-row ap-row-toggle">
+              <span className="ap-row-label">{t.holiday_enable}</span>
+              <label className="ap-switch">
+                <input
+                  type="checkbox"
+                  checked={settings.holidayEnabled ?? true}
+                  onChange={(e) => onHolidayEnabledChange?.(e.target.checked)}
+                />
+                <span className="ap-switch-track">
+                  <span className="ap-switch-thumb" />
+                </span>
+              </label>
             </div>
           </div>
         </div>
