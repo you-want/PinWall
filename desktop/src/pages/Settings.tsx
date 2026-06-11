@@ -3,7 +3,9 @@ import { webviewWindow } from "@tauri-apps/api";
 import { useI18n } from "../i18n";
 import { SettingsPanel } from "../components/SettingsPanel";
 import type { Settings as SettingsType, AIConfig, QuotaMonitorConfig } from "../types";
-import { getSettings, saveSettings, updateAIConfig, updateQuotaMonitorConfig, updateHolidayEnabled } from "../services/storage";
+import { DEFAULT_GLOBAL_SHORTCUT } from "../types";
+import { getSettings, saveSettings, updateAIConfig, updateQuotaMonitorConfig, updateHolidayEnabled, updateGlobalShortcut } from "../services/storage";
+import { invoke } from "@tauri-apps/api/core";
 
 function Settings() {
   const { t } = useI18n();
@@ -52,6 +54,26 @@ function Settings() {
     setSettings(s);
   }, []);
 
+  const handleShortcutChange = useCallback(async (newShortcut: string) => {
+    const s = await getSettings();
+    const oldShortcut = s.globalShortcut ?? DEFAULT_GLOBAL_SHORTCUT;
+
+    if (oldShortcut === newShortcut) return;
+
+    try {
+      // Delegate to Rust: unregister old, register new, update tray display
+      await invoke("update_shortcut_display", {
+        oldShortcut,
+        newShortcut,
+      });
+      // Save to settings
+      const updated = await updateGlobalShortcut(newShortcut);
+      setSettings(updated);
+    } catch (err) {
+      console.error("Failed to update shortcut:", err);
+    }
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -89,6 +111,7 @@ function Settings() {
       onAIConfigChange={handleAIConfigChange}
       onQuotaMonitorChange={handleQuotaMonitorChange}
       onHolidayEnabledChange={handleHolidayEnabledChange}
+      onShortcutChange={handleShortcutChange}
     />
   );
 }

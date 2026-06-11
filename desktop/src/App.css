@@ -2401,3 +2401,123 @@ html, body, #root {
   border-radius: 50%;
   animation: btnSpin 0.6s linear infinite;
 }
+
+/* ══════════════════════════════════════════════════
+   Shortcut Recorder
+   ══════════════════════════════════════════════════ */
+
+.shortcut-recorder {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shortcut-display-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.shortcut-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
+  height: 32px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.3px;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.shortcut-kbd.recording {
+  border-color: rgba(74, 144, 217, 0.8);
+  background: rgba(74, 144, 217, 0.15);
+  color: rgba(74, 144, 217, 1);
+  font-family: inherit;
+  font-size: 12px;
+  animation: shortcutPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes shortcutPulse {
+  0%, 100% { border-color: rgba(74, 144, 217, 0.8); box-shadow: 0 0 0 0 rgba(74, 144, 217, 0); }
+  50% { border-color: rgba(74, 144, 217, 1); box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.15); }
+}
+
+.shortcut-record-btn {
+  padding: 5px 12px !important;
+  font-size: 12px !important;
+  border-radius: 8px;
+  background: rgba(74, 144, 217, 0.2) !important;
+  color: rgba(74, 144, 217, 1) !important;
+  border: 1px solid rgba(74, 144, 217, 0.35) !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.shortcut-record-btn:hover {
+  background: rgba(74, 144, 217, 0.3) !important;
+}
+
+.shortcut-record-btn:active {
+  transform: scale(0.96);
+}
+
+.shortcut-error {
+  font-size: 11px;
+  color: rgba(255, 59, 48, 0.9);
+  padding-left: 2px;
+}
+
+.shortcut-saved {
+  font-size: 11px;
+  color: rgba(52, 199, 89, 0.9);
+  padding-left: 2px;
+  animation: fadeInOut 1.5s ease;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(-2px); }
+  15% { opacity: 1; transform: translateY(0); }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.shortcut-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shortcut-reset-btn {
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: rgba(255, 159, 10, 0.9);
+  cursor: pointer;
+  padding: 2px 0;
+  transition: opacity 0.2s ease;
+}
+
+.shortcut-reset-btn:hover {
+  opacity: 0.75;
+}
+
+.shortcut-reset-btn:active {
+  opacity: 0.6;
+}
+
+.shortcut-hint {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+  margin-left: auto;
+}

@@ -31,7 +31,10 @@ export interface Settings {
   holidayEnabled?: boolean; // 节日祝福开关，默认 true
   lastDailyCardDate?: string; // YYYY-MM-DD, tracks last daily card generation
   lastHolidayCardDate?: string; // YYYY-MM-DD, tracks last holiday card generation
+  globalShortcut?: string; // 自定义全局快捷键，默认 CommandOrControl+Shift+Space
 }
+
+export const DEFAULT_GLOBAL_SHORTCUT = "CommandOrControl+Shift+Space";
 
 export type CardType = "note" | "reminder" | "daily-checkin";
 

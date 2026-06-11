@@ -10,6 +10,9 @@
     "shell:allow-open",
     "fs:allow-appdata-read-recursive",
     "fs:allow-appdata-write-recursive",
-    "core:window:allow-close"
+    "core:window:allow-close",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister",
+    "global-shortcut:allow-is-registered"
   ]
 }

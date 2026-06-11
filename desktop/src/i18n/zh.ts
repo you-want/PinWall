@@ -104,6 +104,16 @@ export const zh = {
   holiday_enable: "节日祝福",
   holiday_notification_title: "节日祝福",
 
+  // Global Shortcut
+  shortcut_title: "全局快捷键",
+  shortcut_desc: "用于唤出 / 隐藏 PinWall 窗口",
+  shortcut_record: "录制快捷键",
+  shortcut_recording: "请按下组合键...",
+  shortcut_reset: "恢复默认",
+  shortcut_saved: "已保存",
+  shortcut_need_modifier: "需要至少一个修饰键",
+  shortcut_hint: "提示：按 Esc 取消录制",
+
   // Card Types
   card_type_note: "普通便签",
   card_type_reminder: "一次性提醒",

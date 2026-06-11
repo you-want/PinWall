@@ -6,6 +6,7 @@ mod window_layer;
 
 use tauri::Manager;
 use window_layer::{set_main_default_layer, MainLayerState};
+use tray::CurrentShortcut;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -17,6 +18,10 @@ pub fn run() {
 
             app.handle()
                 .plugin(tauri_plugin_global_shortcut::Builder::new().build())?;
+
+            // Initialize current shortcut state BEFORE tray (tray menu reads it)
+            let shortcut = i18n::read_shortcut_from_disk(&app.handle());
+            app.manage(CurrentShortcut(std::sync::Mutex::new(shortcut)));
 
             tray::setup_tray(app)?;
 
@@ -40,7 +45,8 @@ pub fn run() {
             window_layer::set_cursor_passthrough,
             background::import_background_images,
             background::delete_background_image_file,
-            tray::update_tray_menu
+            tray::update_tray_menu,
+            tray::update_shortcut_display
         ])
         .on_window_event(|window, event| match event {
             tauri::WindowEvent::CloseRequested { api, .. } => {

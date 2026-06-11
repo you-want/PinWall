@@ -28,16 +28,49 @@ pub fn tray_translations(lang: Lang) -> TrayTranslations {
     }
 }
 
-pub fn shortcut_display() -> &'static str {
-    #[cfg(target_os = "macos")]
-    {
-        "Cmd+Shift+Space"
-    }
+/// Convert a Tauri shortcut string to a human-readable display string.
+/// e.g. "CommandOrControl+Shift+Space" -> "Cmd+Shift+Space" (macOS) / "Ctrl+Shift+Space" (other)
+pub fn format_shortcut(shortcut: &str) -> String {
+    shortcut
+        .split('+')
+        .map(|part| {
+            let p = part.trim();
+            match p {
+                "CommandOrControl" | "CmdOrCtrl" => {
+                    if cfg!(target_os = "macos") { "Cmd" } else { "Ctrl" }
+                }
+                "Command" | "Cmd" => "Cmd",
+                "Control" | "Ctrl" => {
+                    if cfg!(target_os = "macos") { "Ctrl" } else { "Ctrl" }
+                }
+                "Alt" | "Option" => "Alt",
+                "Shift" => "Shift",
+                "Super" | "Meta" => {
+                    if cfg!(target_os = "macos") { "Cmd" } else { "Win" }
+                }
+                other => other,
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("+")
+}
 
-    #[cfg(not(target_os = "macos"))]
-    {
-        "Ctrl+Shift+Space"
+/// Read the globalShortcut from pinwall-settings.json on disk.
+/// Returns the default shortcut if the file doesn't exist or can't be parsed.
+pub fn read_shortcut_from_disk(app: &tauri::AppHandle) -> String {
+    if let Ok(data_dir) = app.path().app_data_dir() {
+        let path = data_dir.join("pinwall-settings.json");
+        if let Ok(content) = std::fs::read_to_string(&path) {
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(s) = v.get("globalShortcut").and_then(|v| v.as_str()) {
+                    if !s.is_empty() {
+                        return s.to_string();
+                    }
+                }
+            }
+        }
     }
+    "CommandOrControl+Shift+Space".to_string()
 }
 
 pub fn detect_lang_from_disk(app: &tauri::AppHandle) -> Lang {

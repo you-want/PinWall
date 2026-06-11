@@ -2,7 +2,8 @@ import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useI18n } from "../i18n";
 import type { Settings, AIConfig, QuotaMonitorConfig, QuotaMonitorModel } from "../types";
-import { DEFAULT_QUOTA_MONITOR, QUOTA_REFRESH_INTERVALS } from "../types";
+import { DEFAULT_QUOTA_MONITOR, QUOTA_REFRESH_INTERVALS, DEFAULT_GLOBAL_SHORTCUT } from "../types";
+import { ShortcutRecorder } from "./ShortcutRecorder";
 
 // ── Provider presets ──────────────────────────────────────
 const PROVIDER_PRESETS = [
@@ -38,6 +39,7 @@ interface SettingsPanelProps {
   onAIConfigChange?: (config: AIConfig) => void;
   onQuotaMonitorChange?: (config: QuotaMonitorConfig) => void;
   onHolidayEnabledChange?: (enabled: boolean) => void;
+  onShortcutChange?: (shortcut: string) => void;
 }
 
 export function SettingsPanel({
@@ -45,6 +47,7 @@ export function SettingsPanel({
   onAIConfigChange,
   onQuotaMonitorChange,
   onHolidayEnabledChange,
+  onShortcutChange,
 }: SettingsPanelProps) {
   const { t, lang, setLang } = useI18n();
 
@@ -134,6 +137,25 @@ export function SettingsPanel({
               >
                 English
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Global Shortcut ── */}
+        <div className="ap-group">
+          <div className="ap-group-label">{t.shortcut_title}</div>
+          <div className="ap-card">
+            <div className="ap-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+                {t.shortcut_desc}
+              </div>
+              <ShortcutRecorder
+                value={settings.globalShortcut ?? DEFAULT_GLOBAL_SHORTCUT}
+                defaultValue={DEFAULT_GLOBAL_SHORTCUT}
+                onChange={(shortcut) => onShortcutChange?.(shortcut)}
+                onReset={() => onShortcutChange?.(DEFAULT_GLOBAL_SHORTCUT)}
+                t={t as unknown as Record<string, string>}
+              />
             </div>
           </div>
         </div>

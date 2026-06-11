@@ -1,7 +1,7 @@
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { BaseDirectory } from "@tauri-apps/plugin-fs";
 import type { Settings, BackgroundImage, AIConfig, QuotaMonitorConfig } from "../types";
-import { DEFAULT_AI_CONFIG, DEFAULT_QUOTA_MONITOR } from "../types";
+import { DEFAULT_AI_CONFIG, DEFAULT_QUOTA_MONITOR, DEFAULT_GLOBAL_SHORTCUT } from "../types";
 
 const SETTINGS_FILE = "pinwall-settings.json";
 
@@ -14,6 +14,7 @@ const defaultSettings: Settings = {
   ai: { ...DEFAULT_AI_CONFIG },
   quotaMonitor: { ...DEFAULT_QUOTA_MONITOR },
   holidayEnabled: true,
+  globalShortcut: DEFAULT_GLOBAL_SHORTCUT,
 };
 
 export async function getSettings(): Promise<Settings> {
@@ -26,6 +27,8 @@ export async function getSettings(): Promise<Settings> {
     if (!parsed.quotaMonitor) parsed.quotaMonitor = { ...DEFAULT_QUOTA_MONITOR, models: [] };
     // Ensure holidayEnabled defaults to true (backward compat)
     if (parsed.holidayEnabled === undefined) parsed.holidayEnabled = true;
+    // Ensure globalShortcut defaults (backward compat)
+    if (!parsed.globalShortcut) parsed.globalShortcut = DEFAULT_GLOBAL_SHORTCUT;
     return parsed;
   } catch {
     return { ...defaultSettings };
@@ -142,6 +145,13 @@ export async function updateHolidayEnabled(enabled: boolean): Promise<Settings> 
 export async function updateLastHolidayCardDate(date: string): Promise<Settings> {
   const settings = await getSettings();
   settings.lastHolidayCardDate = date;
+  await saveSettings(settings);
+  return settings;
+}
+
+export async function updateGlobalShortcut(shortcut: string): Promise<Settings> {
+  const settings = await getSettings();
+  settings.globalShortcut = shortcut;
   await saveSettings(settings);
   return settings;
 }

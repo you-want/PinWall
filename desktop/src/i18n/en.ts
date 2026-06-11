@@ -104,6 +104,16 @@ export const en = {
   holiday_enable: "Holiday Greetings",
   holiday_notification_title: "Holiday Greeting",
 
+  // Global Shortcut
+  shortcut_title: "Global Shortcut",
+  shortcut_desc: "Show or hide the PinWall window",
+  shortcut_record: "Record Shortcut",
+  shortcut_recording: "Press keys...",
+  shortcut_reset: "Reset to Default",
+  shortcut_saved: "Saved",
+  shortcut_need_modifier: "At least one modifier key is required",
+  shortcut_hint: "Tip: Press Esc to cancel recording",
+
   // Card Types
   card_type_note: "Note",
   card_type_reminder: "One-time Reminder",
