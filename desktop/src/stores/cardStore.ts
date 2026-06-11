@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { createTauriStore } from "@tauri-store/zustand";
 import { getTranslations } from "../i18n";
 import { useLanguageStore } from "./languageStore";
-import type { PinCardData } from "../types";
+import type { PinCardData, CardType } from "../types";
 
 function getDefaultMessages(): string[] {
   const lang = useLanguageStore.getState().lang;
@@ -11,6 +11,16 @@ function getDefaultMessages(): string[] {
     t.msg_1, t.msg_2, t.msg_3, t.msg_4, t.msg_5, t.msg_6, t.msg_7, t.msg_8,
     t.msg_9, t.msg_10, t.msg_11, t.msg_12, t.msg_13, t.msg_14, t.msg_15, t.msg_16,
   ];
+}
+
+// 向后兼容迁移：旧卡片推断类型
+function migrateCard(card: any): PinCardData {
+  if (!card.cardType) {
+    card.cardType = card.reminderEnabled ? "reminder" : "note";
+  }
+  card.checkinDone ??= false;
+  card.lastCheckinDate ??= null;
+  return card as PinCardData;
 }
 
 type CardState = {
@@ -27,6 +37,7 @@ type CardState = {
     title: string,
     content: string,
     colorIndex: number,
+    cardType: CardType,
     reminderEnabled: boolean,
     reminderTime: number | null,
     x: number,
@@ -36,6 +47,8 @@ type CardState = {
   updateContent: (id: string, content: string) => void;
   reminderFired: (id: string) => void;
   unstashCard: (id: string) => void;
+  checkinCard: (id: string) => void;
+  resetDailyCheckins: () => void;
 };
 
 export const useCardStore = create<CardState>((set, get) => ({
@@ -83,7 +96,7 @@ export const useCardStore = create<CardState>((set, get) => ({
     set((s) => ({ cards: s.cards.filter((card) => card.id !== id) }));
   },
 
-  createCard: (title, content, colorIndex, reminderEnabled, reminderTime, x, y) => {
+  createCard: (title, content, colorIndex, cardType, reminderEnabled, reminderTime, x, y) => {
     const now = Date.now();
     const newCard: PinCardData = {
       id: `card-${now}`,
@@ -95,9 +108,12 @@ export const useCardStore = create<CardState>((set, get) => ({
       colorIndex,
       createdAt: now,
       updatedAt: now,
+      cardType,
       reminderEnabled,
       reminderTime,
       reminderFired: false,
+      checkinDone: false,
+      lastCheckinDate: null,
     };
     const { zIndexMap, _zIndexCounter } = get();
     const maxInMap = Math.max(0, ...Object.values(zIndexMap));
@@ -142,6 +158,28 @@ export const useCardStore = create<CardState>((set, get) => ({
       ),
     }));
   },
+
+  checkinCard: (id) => {
+    const today = new Date().toISOString().slice(0, 10);
+    set((s) => ({
+      cards: s.cards.map((card) =>
+        card.id === id
+          ? { ...card, checkinDone: true, lastCheckinDate: today, updatedAt: Date.now() }
+          : card
+      ),
+    }));
+  },
+
+  resetDailyCheckins: () => {
+    const today = new Date().toISOString().slice(0, 10);
+    set((s) => ({
+      cards: s.cards.map((card) =>
+        card.cardType === "daily-checkin" && card.lastCheckinDate !== today
+          ? { ...card, checkinDone: false, reminderFired: false, updatedAt: Date.now() }
+          : card
+      ),
+    }));
+  },
 }));
 
 // createTauriStore 自动处理：
@@ -154,3 +192,15 @@ export const tauriHandler = createTauriStore("cards", useCardStore, {
   filterKeys: ["_zIndexCounter"],
   filterKeysStrategy: "omit",
 });
+
+// 向后兼容迁移：在 store 初始化后执行一次
+export function migrateCardsIfNeeded() {
+  const cards = useCardStore.getState().cards;
+  const needsMigration = cards.some(
+    (c: any) => !c.cardType || c.checkinDone === undefined || c.lastCheckinDate === undefined
+  );
+  if (needsMigration) {
+    const migrated = cards.map(migrateCard);
+    useCardStore.setState({ cards: migrated });
+  }
+}

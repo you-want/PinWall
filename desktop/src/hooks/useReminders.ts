@@ -44,9 +44,17 @@ export function useReminders(cards: PinCardData[], onReminderFired: (cardId: str
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
-      const dueCard = cards.find(
-        (c) => c.reminderEnabled && !c.reminderFired && c.reminderTime !== null && c.reminderTime <= now
-      );
+      const dueCard = cards.find((c) => {
+        if (!c.reminderEnabled || c.reminderFired || c.reminderTime === null || c.reminderTime > now) {
+          return false;
+        }
+        // daily-checkin 类型：仅在未打卡时触发
+        if (c.cardType === "daily-checkin") {
+          return !c.checkinDone;
+        }
+        // 其他类型（reminder）：正常触发
+        return true;
+      });
       if (dueCard) {
         pendingNotificationRef.current = dueCard.id;
         onReminderFired(dueCard.id);

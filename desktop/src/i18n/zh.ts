@@ -104,6 +104,15 @@ export const zh = {
   holiday_enable: "节日祝福",
   holiday_notification_title: "节日祝福",
 
+  // Card Types
+  card_type_note: "普通便签",
+  card_type_reminder: "一次性提醒",
+  card_type_daily_checkin: "每日打卡",
+  card_type_label: "类型",
+  checkin_time_label: "提醒时间",
+  btn_checkin: "打卡",
+  btn_checked_in: "已打卡",
+
   // Card default messages (used when no content provided)
   msg_1: "保持好心情",
   msg_2: "多喝水哦",

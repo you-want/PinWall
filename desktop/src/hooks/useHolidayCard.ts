@@ -58,7 +58,7 @@ export function useHolidayCard() {
         const y = 80 + Math.floor(Math.random() * 80);
         const colorIndex = Math.floor(Math.random() * 8);
 
-        useCardStore.getState().createCard(title, content, colorIndex, false, null, x, y);
+        useCardStore.getState().createCard(title, content, colorIndex, "note", false, null, x, y);
         await updateLastHolidayCardDate(today);
 
         // Show notification popup after a short delay (let the card be created first)

@@ -13,9 +13,11 @@ import type { Settings } from "../types";
 import { getSettings } from "../services/storage";
 import { useCards } from "../hooks/useCards";
 import { useReminders } from "../hooks/useReminders";
+import { useDailyReset } from "../hooks/useDailyReset";
 import { useDailyCard } from "../hooks/useDailyCard";
 import { useHolidayCard } from "../hooks/useHolidayCard";
 import { useQuotaMonitor } from "../hooks/useQuotaMonitor";
+import type { CardType } from "../types";
 
 type NewCardState =
   | { open: false }
@@ -44,6 +46,7 @@ function Wall() {
   } = useCards();
 
   useReminders(cards, handleReminderFired);
+  useDailyReset();
   useDailyCard();
   useHolidayCard();
 
@@ -118,11 +121,12 @@ function Wall() {
     title: string,
     content: string,
     colorIndex: number,
+    cardType: CardType,
     reminderEnabled: boolean,
     reminderTime: number | null
   ) => {
     const pos = newCardPositionRef.current;
-    handleCreateCard(title, content, colorIndex, reminderEnabled, reminderTime, pos.x, pos.y);
+    handleCreateCard(title, content, colorIndex, cardType, reminderEnabled, reminderTime, pos.x, pos.y);
     setNewCardModal({ open: false });
   }, [handleCreateCard]);
 

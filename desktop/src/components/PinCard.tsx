@@ -203,6 +203,11 @@ export function PinCard({
     }
   }, [aiLoading, card.id, card.content, closeContextMenu]);
 
+  const handleCheckin = useCallback(() => {
+    if (card.checkinDone) return;
+    useCardStore.getState().checkinCard(card.id);
+  }, [card.id, card.checkinDone]);
+
   return (
     <div
       ref={cardRef}
@@ -250,6 +255,15 @@ export function PinCard({
               {aiLoading === "polish" ? t.ai_polishing : t.ai_condensing}
             </span>
           ) : card.content}
+          {card.cardType === "daily-checkin" && (
+            <button
+              className={`btn-checkin ${card.checkinDone ? "checked" : ""}`}
+              onClick={handleCheckin}
+              disabled={card.checkinDone}
+            >
+              {card.checkinDone ? "✓ " + t.btn_checked_in : t.btn_checkin}
+            </button>
+          )}
         </div>
       )}
 

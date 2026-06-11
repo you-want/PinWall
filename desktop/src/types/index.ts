@@ -33,6 +33,8 @@ export interface Settings {
   lastHolidayCardDate?: string; // YYYY-MM-DD, tracks last holiday card generation
 }
 
+export type CardType = "note" | "reminder" | "daily-checkin";
+
 export interface PinCardData {
   id: string;
   title: string;
@@ -43,9 +45,12 @@ export interface PinCardData {
   colorIndex: number;
   createdAt: number;
   updatedAt: number;
+  cardType: CardType;
   reminderEnabled: boolean;
   reminderTime: number | null;
   reminderFired: boolean;
+  checkinDone: boolean;
+  lastCheckinDate: string | null;
 }
 
 export const AUTO_CHANGE_INTERVALS = [

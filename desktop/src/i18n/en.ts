@@ -104,6 +104,15 @@ export const en = {
   holiday_enable: "Holiday Greetings",
   holiday_notification_title: "Holiday Greeting",
 
+  // Card Types
+  card_type_note: "Note",
+  card_type_reminder: "One-time Reminder",
+  card_type_daily_checkin: "Daily Check-in",
+  card_type_label: "Type",
+  checkin_time_label: "Reminder Time",
+  btn_checkin: "Check in",
+  btn_checked_in: "Checked in",
+
   // Card default messages (used when no content provided)
   msg_1: "Stay in a good mood",
   msg_2: "Drink more water",

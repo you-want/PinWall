@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from "react";
 import { useCardStore } from "../stores/cardStore";
 import { resolveCollisions } from "../utils/collision";
+import type { CardType } from "../types";
 
 const VISIBLE_LIMIT = 5;
 
@@ -61,12 +62,13 @@ export function useCards() {
       title: string,
       content: string,
       colorIndex: number,
+      cardType: CardType,
       reminderEnabled: boolean,
       reminderTime: number | null,
       x: number,
       y: number
     ) => {
-      createCard(title, content, colorIndex, reminderEnabled, reminderTime, x, y);
+      createCard(title, content, colorIndex, cardType, reminderEnabled, reminderTime, x, y);
       // 下一帧解决碰撞，确保新卡片已加入 store
       setTimeout(() => {
         const latest = useCardStore.getState().cards;
