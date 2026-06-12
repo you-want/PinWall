@@ -30,10 +30,6 @@ const PROVIDER_PRESETS = [
 interface SettingsPanelProps {
   settings: Settings;
   onClose: () => void;
-  onUpload: () => void;
-  onSetDefault: (id: string) => void;
-  onRemove: (id: string) => void;
-  onClearBackground: () => void;
   onOpacityChange: (opacity: number) => void;
   onAutoChangeSettings: (enabled: boolean, interval: number) => void;
   onAIConfigChange?: (config: AIConfig) => void;
@@ -145,8 +141,8 @@ export function SettingsPanel({
         <div className="ap-group">
           <div className="ap-group-label">{t.shortcut_title}</div>
           <div className="ap-card">
-            <div className="ap-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+            <div className="ap-row flex-col! items-start! gap-2">
+              <div className="text-xs text-white/45">
                 {t.shortcut_desc}
               </div>
               <ShortcutRecorder
@@ -266,7 +262,7 @@ export function SettingsPanel({
               <div className="ap-divider" />
               <div className="ap-field">
                 <label className="ap-field-label">{t.quota_refresh_interval}</label>
-                <div className="ap-segmented" style={{ marginTop: 6 }}>
+                <div className="ap-segmented mt-1.5">
                   {QUOTA_REFRESH_INTERVALS.map((opt) => (
                     <button
                       key={opt.value}
@@ -283,18 +279,17 @@ export function SettingsPanel({
               {quotaConfig.models.map((m) => (
                 <div key={m.id}>
                   <div className="ap-divider" />
-                  <div className="ap-row" style={{ justifyContent: "space-between" }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.9)" }}>
+                  <div className="ap-row justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[13px] font-medium text-white/90">
                         {m.name}
                       </div>
-                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div className="mt-0.5 truncate text-[11px] text-white/40">
                         {m.model} &middot; {m.apiEndpoint}
                       </div>
                     </div>
                     <button
-                      className="ap-btn"
-                      style={{ marginLeft: 8, padding: "4px 10px", fontSize: 11, color: "rgba(255,59,48,0.9)" }}
+                      className="ap-btn ml-2 cursor-pointer px-2.5 py-1 text-xl text-red-500/90"
                       onClick={() => removeModel(m.id)}
                     >
                       ✕
@@ -314,7 +309,7 @@ export function SettingsPanel({
                   <div className="ap-divider" />
                   <div className="ap-field">
                     <label className="ap-field-label">{t.quota_provider}</label>
-                    <div className="ap-segmented" style={{ marginTop: 6 }}>
+                    <div className="ap-segmented mt-1.5">
                       {PROVIDER_PRESETS.map((p) => (
                         <button
                           key={p.id}
@@ -387,14 +382,14 @@ export function SettingsPanel({
                   {selectedProvider !== "custom" && (
                     <>
                       <div className="ap-divider" />
-                      <div className="ap-row" style={{ padding: "8px 16px", gap: 8 }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{t.ai_endpoint}</div>
-                          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 2 }}>{newModel.apiEndpoint}</div>
+                      <div className="ap-row gap-2 px-4 py-2">
+                        <div className="flex-1">
+                          <div className="text-[11px] text-white/35">{t.ai_endpoint}</div>
+                          <div className="mt-0.5 text-xs text-white/70">{newModel.apiEndpoint}</div>
                         </div>
                         <div>
-                          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{t.ai_model}</div>
-                          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 2 }}>{newModel.model}</div>
+                          <div className="text-[11px] text-white/35">{t.ai_model}</div>
+                          <div className="mt-0.5 text-xs text-white/70">{newModel.model}</div>
                         </div>
                       </div>
                     </>
@@ -402,17 +397,15 @@ export function SettingsPanel({
 
                   {/* Action buttons */}
                   <div className="ap-divider" />
-                  <div className="ap-row" style={{ gap: 8 }}>
+                  <div className="ap-row gap-2">
                     <button
-                      className="ap-btn"
-                      style={{ flex: 1, padding: "6px 0", fontSize: 12 }}
+                      className="ap-btn flex-1 py-1.5 text-xs"
                       onClick={addModel}
                     >
                       {t.quota_confirm_add}
                     </button>
                     <button
-                      className="ap-btn"
-                      style={{ flex: 1, padding: "6px 0", fontSize: 12, opacity: 0.6 }}
+                      className="ap-btn flex-1 py-1.5 text-xs opacity-60"
                       onClick={() => { setShowAddForm(false); setNewModel({}); setSelectedProvider("openai"); }}
                     >
                       {t.quota_cancel}
@@ -423,8 +416,7 @@ export function SettingsPanel({
                 <>
                   <div className="ap-divider" />
                   <button
-                    className="ap-btn"
-                    style={{ width: "100%", padding: "8px 0", fontSize: 12 }}
+                    className="ap-btn w-full py-2 text-xs"
                     onClick={() => { setShowAddForm(true); selectProvider("openai"); }}
                   >
                     + {t.quota_add_model}

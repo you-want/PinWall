@@ -50,12 +50,6 @@ pub fn toggle_main_layer<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
 #[tauri::command]
 pub fn send_to_background(app: tauri::AppHandle) {
     set_main_default_layer(&app);
-    let _state = app
-        .state::<MainLayerState>()
-        .0
-        .lock()
-        .map(|v| *v)
-        .unwrap_or(false);
 }
 
 #[tauri::command]

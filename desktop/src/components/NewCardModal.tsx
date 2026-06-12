@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { useI18n, interpolate } from "../i18n";
+import { useLanguageStore } from "../stores/languageStore";
 import { getSettings } from "../services/storage";
 import { generateNoteContent } from "../services/aiService";
 import type { CardType } from "../types";
@@ -141,7 +142,8 @@ export function NewCardModal({ x: _x, y: _y, onConfirm, onCancel }: NewCardModal
         setAiError(t.ai_not_configured);
         return;
       }
-      const generated = await generateNoteContent(settings.ai, keyword, (navigator.language.startsWith("zh") ? "zh" : "en") as "zh" | "en");
+      const lang = useLanguageStore.getState().lang;
+      const generated = await generateNoteContent(settings.ai, keyword, lang);
       setContent(generated);
     } catch (err) {
       console.error("[NewCardModal] AI generate error:", err);

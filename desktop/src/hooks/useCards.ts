@@ -69,8 +69,8 @@ export function useCards() {
       y: number
     ) => {
       createCard(title, content, colorIndex, cardType, reminderEnabled, reminderTime, x, y);
-      // 下一帧解决碰撞，确保新卡片已加入 store
-      setTimeout(() => {
+      // 使用 requestAnimationFrame 等待 zustand store 同步完成后再执行碰撞检测
+      requestAnimationFrame(() => {
         const latest = useCardStore.getState().cards;
         const sorted = [...latest].sort((a, b) => b.updatedAt - a.updatedAt);
         const visible = sorted.slice(0, VISIBLE_LIMIT);
@@ -88,7 +88,7 @@ export function useCards() {
             useCardStore.getState().batchSetPositions(positions);
           }
         }
-      }, 50);
+      });
     },
     [createCard]
   );

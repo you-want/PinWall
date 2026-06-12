@@ -162,8 +162,12 @@ export function getTodayHoliday(): Holiday | null {
     // Check solar term holidays (e.g., 清明)
     if (h.isSolarTerm) {
       const currentJieQi = lunar.getCurrentJieQi();
-      if (currentJieQi && currentJieQi.getName() === h.name) {
-        return h;
+      if (currentJieQi) {
+        // Match by name prefix: "清明" matches "清明节"
+        const jieQiName = currentJieQi.getName();
+        if (h.name.startsWith(jieQiName) || jieQiName.startsWith(h.name.replace(/节$/, ""))) {
+          return h;
+        }
       }
     }
 

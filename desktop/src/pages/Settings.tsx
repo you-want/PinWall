@@ -102,10 +102,6 @@ function Settings() {
     <SettingsPanel
       settings={settings}
       onClose={handleClose}
-      onUpload={() => {}}
-      onSetDefault={() => {}}
-      onRemove={() => {}}
-      onClearBackground={() => {}}
       onOpacityChange={handleOpacityChange}
       onAutoChangeSettings={handleAutoChange}
       onAIConfigChange={handleAIConfigChange}

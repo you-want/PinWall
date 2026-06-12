@@ -151,10 +151,12 @@ export const useCardStore = create<CardState>((set, get) => ({
     }));
   },
 
+  // 将收纳区的卡片钉回桌面：更新 updatedAt 使其重新排到第一位（可见区）
+  // 注意：这会将原本第 5 位的卡片挤到收纳区，即“一进一出”行为
   unstashCard: (id) => {
     set((s) => ({
       cards: s.cards.map((card) =>
-        card.id === id ? { ...card, updatedAt: Date.now() } : card
+        card.id === id ? { ...card, collapsed: false, updatedAt: Date.now() } : card
       ),
     }));
   },

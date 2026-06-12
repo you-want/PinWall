@@ -28,10 +28,10 @@ export function QuotaCard({ results, models, loading, onRefresh }: QuotaCardProp
     return Math.min(100, (result.used / result.total) * 100);
   };
 
-  const getBarColor = (percent: number): string => {
-    if (percent >= 90) return "rgba(255,59,48,0.85)";
-    if (percent >= 70) return "rgba(255,159,10,0.85)";
-    return "rgba(48,209,88,0.85)";
+  const getBarColorClass = (percent: number): string => {
+    if (percent >= 90) return "bg-red-500/85";
+    if (percent >= 70) return "bg-orange-400/85";
+    return "bg-green-500/85";
   };
 
   const lastUpdate = results.length > 0
@@ -42,67 +42,33 @@ export function QuotaCard({ results, models, loading, onRefresh }: QuotaCardProp
 
   return (
     <div
-      className="quota-card"
+      className={`fixed top-4 right-4 z-[9999] overflow-hidden rounded-2xl border border-white/15 bg-[rgba(28,28,30,0.88)] shadow-[0_4px_24px_rgba(0,0,0,0.3)] backdrop-blur-[40px] transition-[width] duration-300 ease-in-out font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Text',sans-serif] pointer-events-auto ${collapsed ? "w-[200px]" : "w-[280px]"}`}
       data-interactive="true"
-      style={{
-        position: "fixed",
-        top: 16,
-        right: 16,
-        width: collapsed ? 200 : 280,
-        borderRadius: 16,
-        border: "1px solid rgba(255,255,255,0.15)",
-        background: "rgba(28,28,30,0.88)",
-        backdropFilter: "blur(40px)",
-        WebkitBackdropFilter: "blur(40px)",
-        overflow: "hidden",
-        pointerEvents: "auto",
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif",
-        zIndex: 9999,
-        transition: "width 0.3s ease",
-        boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
-      }}
     >
       {/* Header */}
       <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "10px 14px",
-          cursor: "pointer",
-          userSelect: "none",
-        }}
+        className="flex cursor-pointer items-center justify-between px-3.5 py-2.5 select-none"
         onClick={() => setCollapsed(!collapsed)}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 14, color: "rgba(255,255,255,0.9)", fontWeight: 600 }}>
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm font-semibold text-white/90">
             {t.quota_title}
           </span>
           {loading && (
-            <span
-              style={{
-                display: "inline-block",
-                width: 10,
-                height: 10,
-                border: "2px solid rgba(255,255,255,0.2)",
-                borderTopColor: "rgba(255,255,255,0.8)",
-                borderRadius: "50%",
-                animation: "spin 0.6s linear infinite",
-              }}
-            />
+            <span className="inline-block h-2.5 w-2.5 animate-spin rounded-full border-2 border-white/20 border-t-white/80" />
           )}
         </div>
-        <span style={{ fontSize: 16, color: "rgba(255,255,255,0.4)", transform: collapsed ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
+        <span className={`text-base text-white/40 transition-transform duration-200 ${collapsed ? "rotate-180" : ""}`}>
           ▾
         </span>
       </div>
 
       {/* Collapsed summary */}
       {collapsed && (
-        <div style={{ padding: "0 14px 10px", fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
+        <div className="px-3.5 pb-2.5 text-xs text-white/50">
           {models.length} {t.quota_models_monitoring}
           {errorCount > 0 && (
-            <span style={{ color: "rgba(255,59,48,0.8)", marginLeft: 6 }}>
+            <span className="ml-1.5 text-red-500/80">
               {errorCount} {t.quota_error}
             </span>
           )}
@@ -111,29 +77,29 @@ export function QuotaCard({ results, models, loading, onRefresh }: QuotaCardProp
 
       {/* Expanded content */}
       {!collapsed && (
-        <div style={{ padding: "0 14px 12px" }}>
+        <div className="px-3.5 pb-3">
           {results.length === 0 && !loading && (
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "8px 0" }}>
+            <div className="py-2 text-center text-xs text-white/40">
               {t.quota_no_models}
             </div>
           )}
 
           {results.map((result) => {
             const percent = getUsagePercent(result);
-            const barColor = getBarColor(percent);
+            const barColorClass = getBarColorClass(percent);
             const name = getModelName(result.modelId);
 
             return (
-              <div key={result.modelId} style={{ marginBottom: 10 }}>
+              <div key={result.modelId} className="mb-2.5 last:mb-0">
                 {/* Model name row */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                  <span style={{ fontSize: 12, fontWeight: 500, color: "rgba(255,255,255,0.85)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 160 }}>
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="max-w-[160px] truncate text-xs font-medium text-white/85">
                     {name}
                   </span>
                   {result.error ? (
-                    <span style={{ fontSize: 10, color: "rgba(255,59,48,0.8)" }}>{t.quota_error}</span>
+                    <span className="text-[10px] text-red-500/80">{t.quota_error}</span>
                   ) : (
-                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
+                    <span className="text-[11px] text-white/50">
                       {t.quota_remaining}: {formatMoney(result.remaining, result.currency)}
                       {result.total !== null && (
                         <> / {formatMoney(result.total, result.currency)}</>
@@ -144,29 +110,24 @@ export function QuotaCard({ results, models, loading, onRefresh }: QuotaCardProp
 
                 {/* Progress bar */}
                 {!result.error && result.total !== null && result.used !== null && (
-                  <div style={{ height: 4, borderRadius: 2, background: "rgba(255,255,255,0.1)" }}>
+                  <div className="h-1 rounded-sm bg-white/10">
                     <div
-                      style={{
-                        height: "100%",
-                        width: `${percent}%`,
-                        borderRadius: 2,
-                        background: barColor,
-                        transition: "width 0.5s ease",
-                      }}
+                      className={`h-full rounded-sm transition-[width] duration-500 ${barColorClass}`}
+                      style={{ width: `${percent}%` }}
                     />
                   </div>
                 )}
 
                 {/* Used label (only when we have usage data) */}
                 {!result.error && result.used !== null && (
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>
+                  <div className="mt-0.5 text-[10px] text-white/35">
                     {t.quota_used}: {formatMoney(result.used, result.currency)} ({percent.toFixed(1)}%)
                   </div>
                 )}
 
                 {/* Error message */}
                 {result.error && (
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>
+                  <div className="mt-0.5 text-[10px] text-white/35">
                     {result.error}
                   </div>
                 )}
@@ -175,31 +136,14 @@ export function QuotaCard({ results, models, loading, onRefresh }: QuotaCardProp
           })}
 
           {/* Footer: last update + refresh */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              borderTop: "1px solid rgba(255,255,255,0.08)",
-              paddingTop: 8,
-              marginTop: 4,
-            }}
-          >
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>
+          <div className="mt-1 flex items-center justify-between border-t border-white/[0.08] pt-2">
+            <span className="text-[10px] text-white/30">
               {t.quota_last_update}: {lastUpdate}
             </span>
             <button
               onClick={(e) => { e.stopPropagation(); onRefresh(); }}
               disabled={loading}
-              style={{
-                background: "none",
-                border: "none",
-                color: "rgba(10,132,255,0.9)",
-                fontSize: 11,
-                cursor: loading ? "not-allowed" : "pointer",
-                padding: "2px 4px",
-                opacity: loading ? 0.5 : 1,
-              }}
+              className="border-none bg-transparent p-0.5 text-[11px] text-[rgba(10,132,255,0.9)] transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
             >
               {t.quota_refresh}
             </button>

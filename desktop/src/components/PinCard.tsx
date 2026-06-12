@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from "react";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { useI18n } from "../i18n";
+import { useLanguageStore } from "../stores/languageStore";
 import { getSettings } from "../services/storage";
 import { polishContent, condenseContent } from "../services/aiService";
 import { useCardStore } from "../stores/cardStore";
@@ -176,7 +177,7 @@ export function PinCard({
     try {
       const settings = await getSettings();
       if (!settings.ai?.enabled || !settings.ai.apiKey) return;
-      const lang = (navigator.language.startsWith("zh") ? "zh" : "en") as "zh" | "en";
+      const lang = useLanguageStore.getState().lang;
       const polished = await polishContent(settings.ai, card.content, lang);
       useCardStore.getState().updateContent(card.id, polished);
     } catch (err) {
@@ -193,7 +194,7 @@ export function PinCard({
     try {
       const settings = await getSettings();
       if (!settings.ai?.enabled || !settings.ai.apiKey) return;
-      const lang = (navigator.language.startsWith("zh") ? "zh" : "en") as "zh" | "en";
+      const lang = useLanguageStore.getState().lang;
       const condensed = await condenseContent(settings.ai, card.content, lang);
       useCardStore.getState().updateContent(card.id, condensed);
     } catch (err) {

@@ -29,30 +29,41 @@ pub fn tray_translations(lang: Lang) -> TrayTranslations {
 }
 
 /// Convert a Tauri shortcut string to a human-readable display string.
-/// e.g. "CommandOrControl+Shift+Space" -> "Cmd+Shift+Space" (macOS) / "Ctrl+Shift+Space" (other)
+/// e.g. "CommandOrControl+Shift+Space" -> "⌘⇧Space" (macOS) / "Ctrl+Shift+Space" (other)
 pub fn format_shortcut(shortcut: &str) -> String {
-    shortcut
+    let parts: Vec<&str> = shortcut
         .split('+')
         .map(|part| {
             let p = part.trim();
-            match p {
-                "CommandOrControl" | "CmdOrCtrl" => {
-                    if cfg!(target_os = "macos") { "Cmd" } else { "Ctrl" }
+            if cfg!(target_os = "macos") {
+                match p {
+                    "CommandOrControl" | "CmdOrCtrl" | "Command" | "Cmd" => "⌘",
+                    "Control" | "Ctrl" => "⌃",
+                    "Alt" | "Option" => "⌥",
+                    "Shift" => "⇧",
+                    "Super" | "Meta" => "⌘",
+                    other => other,
                 }
-                "Command" | "Cmd" => "Cmd",
-                "Control" | "Ctrl" => {
-                    if cfg!(target_os = "macos") { "Ctrl" } else { "Ctrl" }
+            } else {
+                match p {
+                    "CommandOrControl" | "CmdOrCtrl" => "Ctrl",
+                    "Command" | "Cmd" => "Cmd",
+                    "Control" | "Ctrl" => "Ctrl",
+                    "Alt" | "Option" => "Alt",
+                    "Shift" => "Shift",
+                    "Super" | "Meta" => "Win",
+                    other => other,
                 }
-                "Alt" | "Option" => "Alt",
-                "Shift" => "Shift",
-                "Super" | "Meta" => {
-                    if cfg!(target_os = "macos") { "Cmd" } else { "Win" }
-                }
-                other => other,
             }
         })
-        .collect::<Vec<_>>()
-        .join("+")
+        .collect();
+
+    // macOS: concatenate without separator (⌘⇧Space), others: join with "+"
+    if cfg!(target_os = "macos") {
+        parts.join("")
+    } else {
+        parts.join("+")
+    }
 }
 
 /// Read the globalShortcut from pinwall-settings.json on disk.
@@ -107,17 +118,7 @@ struct LangState {
 }
 
 fn detect_system_lang() -> Lang {
-    #[cfg(target_os = "macos")]
-    {
-        std::env::var("LANG")
-            .map(|l| if l.starts_with("zh") { Lang::Zh } else { Lang::En })
-            .unwrap_or(Lang::En)
-    }
-
-    #[cfg(not(target_os = "macos"))]
-    {
-        std::env::var("LANG")
-            .map(|l| if l.starts_with("zh") { Lang::Zh } else { Lang::En })
-            .unwrap_or(Lang::En)
-    }
+    std::env::var("LANG")
+        .map(|l| if l.starts_with("zh") { Lang::Zh } else { Lang::En })
+        .unwrap_or(Lang::En)
 }
