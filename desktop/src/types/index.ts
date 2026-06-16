@@ -28,7 +28,8 @@ export interface Settings {
   autoChangeInterval: number; // in minutes
   ai?: AIConfig;
   quotaMonitor?: QuotaMonitorConfig;
-  holidayEnabled?: boolean; // 节日祝福开关，默认 true
+  holidayEnabledCn?: boolean;  // 中国节日祝福开关，默认 true
+  holidayEnabledIntl?: boolean; // 国际节日祝福开关，默认 true
   lastDailyCardDate?: string; // YYYY-MM-DD, tracks last daily card generation
   lastHolidayCardDate?: string; // YYYY-MM-DD, tracks last holiday card generation
   globalShortcut?: string; // 自定义全局快捷键，默认 CommandOrControl+Shift+Space

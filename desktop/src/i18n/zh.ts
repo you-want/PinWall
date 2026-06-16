@@ -101,8 +101,9 @@ export const zh = {
   quota_models_monitoring: "个模型监测中",
 
   // Holiday Greetings
-  holiday_enable: "节日祝福",
-  holiday_notification_title: "节日祝福",
+  holiday_title: "节日祝福",
+  holiday_cn: "中国节日",
+  holiday_intl: "国际节日",
 
   // Global Shortcut
   shortcut_title: "全局快捷键",

@@ -101,8 +101,9 @@ export const en = {
   quota_models_monitoring: "models monitored",
 
   // Holiday Greetings
-  holiday_enable: "Holiday Greetings",
-  holiday_notification_title: "Holiday Greeting",
+  holiday_title: "Holiday Greetings",
+  holiday_cn: "Chinese Holidays",
+  holiday_intl: "International Holidays",
 
   // Global Shortcut
   shortcut_title: "Global Shortcut",

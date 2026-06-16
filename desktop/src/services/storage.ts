@@ -13,7 +13,8 @@ const defaultSettings: Settings = {
   autoChangeInterval: 60,
   ai: { ...DEFAULT_AI_CONFIG },
   quotaMonitor: { ...DEFAULT_QUOTA_MONITOR },
-  holidayEnabled: true,
+  holidayEnabledCn: true,
+  holidayEnabledIntl: true,
   globalShortcut: DEFAULT_GLOBAL_SHORTCUT,
 };
 
@@ -25,8 +26,15 @@ export async function getSettings(): Promise<Settings> {
     if (!parsed.ai) parsed.ai = { ...DEFAULT_AI_CONFIG };
     // Ensure quotaMonitor config exists (backward compat)
     if (!parsed.quotaMonitor) parsed.quotaMonitor = { ...DEFAULT_QUOTA_MONITOR, models: [] };
-    // Ensure holidayEnabled defaults to true (backward compat)
-    if (parsed.holidayEnabled === undefined) parsed.holidayEnabled = true;
+    // Ensure holiday region toggles default to true (backward compat)
+    // Migrate old holidayEnabled → both new toggles
+    if (parsed.holidayEnabled !== undefined && parsed.holidayEnabledCn === undefined) {
+      parsed.holidayEnabledCn = parsed.holidayEnabled;
+      parsed.holidayEnabledIntl = parsed.holidayEnabled;
+      delete parsed.holidayEnabled;
+    }
+    if (parsed.holidayEnabledCn === undefined) parsed.holidayEnabledCn = true;
+    if (parsed.holidayEnabledIntl === undefined) parsed.holidayEnabledIntl = true;
     // Ensure globalShortcut defaults (backward compat)
     if (!parsed.globalShortcut) parsed.globalShortcut = DEFAULT_GLOBAL_SHORTCUT;
     return parsed;
@@ -135,9 +143,16 @@ export async function updateQuotaMonitorConfig(config: QuotaMonitorConfig): Prom
   return settings;
 }
 
-export async function updateHolidayEnabled(enabled: boolean): Promise<Settings> {
+export async function updateHolidayEnabledCn(enabled: boolean): Promise<Settings> {
   const settings = await getSettings();
-  settings.holidayEnabled = enabled;
+  settings.holidayEnabledCn = enabled;
+  await saveSettings(settings);
+  return settings;
+}
+
+export async function updateHolidayEnabledIntl(enabled: boolean): Promise<Settings> {
+  const settings = await getSettings();
+  settings.holidayEnabledIntl = enabled;
   await saveSettings(settings);
   return settings;
 }
