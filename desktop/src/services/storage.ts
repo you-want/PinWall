@@ -11,6 +11,7 @@ const defaultSettings: Settings = {
   opacity: 0.8,
   autoChangeEnabled: false,
   autoChangeInterval: 60,
+  launchOnStartup: true,
   ai: { ...DEFAULT_AI_CONFIG },
   quotaMonitor: { ...DEFAULT_QUOTA_MONITOR },
   holidayEnabledCn: true,
@@ -35,6 +36,7 @@ export async function getSettings(): Promise<Settings> {
     }
     if (parsed.holidayEnabledCn === undefined) parsed.holidayEnabledCn = true;
     if (parsed.holidayEnabledIntl === undefined) parsed.holidayEnabledIntl = true;
+    if (parsed.launchOnStartup === undefined) parsed.launchOnStartup = true;
     // Ensure globalShortcut defaults (backward compat)
     if (!parsed.globalShortcut) parsed.globalShortcut = DEFAULT_GLOBAL_SHORTCUT;
     return parsed;
@@ -167,6 +169,13 @@ export async function updateLastHolidayCardDate(date: string): Promise<Settings>
 export async function updateGlobalShortcut(shortcut: string): Promise<Settings> {
   const settings = await getSettings();
   settings.globalShortcut = shortcut;
+  await saveSettings(settings);
+  return settings;
+}
+
+export async function updateLaunchOnStartup(enabled: boolean): Promise<Settings> {
+  const settings = await getSettings();
+  settings.launchOnStartup = enabled;
   await saveSettings(settings);
   return settings;
 }

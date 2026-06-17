@@ -37,6 +37,7 @@ interface SettingsPanelProps {
   onHolidayEnabledCnChange?: (enabled: boolean) => void;
   onHolidayEnabledIntlChange?: (enabled: boolean) => void;
   onShortcutChange?: (shortcut: string) => void;
+  onLaunchOnStartupChange?: (enabled: boolean) => void;
 }
 
 export function SettingsPanel({
@@ -46,6 +47,7 @@ export function SettingsPanel({
   onHolidayEnabledCnChange,
   onHolidayEnabledIntlChange,
   onShortcutChange,
+  onLaunchOnStartupChange,
 }: SettingsPanelProps) {
   const { t, lang, setLang } = useI18n();
 
@@ -154,6 +156,31 @@ export function SettingsPanel({
                 onReset={() => onShortcutChange?.(DEFAULT_GLOBAL_SHORTCUT)}
                 t={t as unknown as Record<string, string>}
               />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Launch On Startup ── */}
+        <div className="ap-group">
+          <div className="ap-group-label">{t.launch_on_startup_title}</div>
+          <div className="ap-card">
+            <div className="ap-row ap-row-toggle">
+              <div className="min-w-0 pr-4">
+                <div className="ap-row-label">{t.launch_on_startup_label}</div>
+                <div className="mt-1 text-xs text-white/45">
+                  {t.launch_on_startup_desc}
+                </div>
+              </div>
+              <label className="ap-switch">
+                <input
+                  type="checkbox"
+                  checked={settings.launchOnStartup ?? true}
+                  onChange={(e) => onLaunchOnStartupChange?.(e.target.checked)}
+                />
+                <span className="ap-switch-track">
+                  <span className="ap-switch-thumb" />
+                </span>
+              </label>
             </div>
           </div>
         </div>

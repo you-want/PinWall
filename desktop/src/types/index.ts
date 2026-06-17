@@ -26,6 +26,7 @@ export interface Settings {
   opacity: number;
   autoChangeEnabled: boolean;
   autoChangeInterval: number; // in minutes
+  launchOnStartup?: boolean; // 开机自启动开关，默认 true
   ai?: AIConfig;
   quotaMonitor?: QuotaMonitorConfig;
   holidayEnabledCn?: boolean;  // 中国节日祝福开关，默认 true

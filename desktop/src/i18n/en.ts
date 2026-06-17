@@ -115,6 +115,11 @@ export const en = {
   shortcut_need_modifier: "At least one modifier key is required",
   shortcut_hint: "Tip: Press Esc to cancel recording",
 
+  // Launch On Startup
+  launch_on_startup_title: "Launch On Startup",
+  launch_on_startup_label: "Launch PinWall when the system starts",
+  launch_on_startup_desc: "Enabled by default and starts quietly after you log in",
+
   // Card Types
   card_type_note: "Note",
   card_type_reminder: "One-time Reminder",

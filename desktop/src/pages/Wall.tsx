@@ -11,6 +11,7 @@ import { QuotaCard } from "../components/QuotaCard";
 import { useI18n } from "../i18n";
 import type { Settings } from "../types";
 import { getSettings } from "../services/storage";
+import { syncLaunchOnStartupSetting } from "../services/autostart";
 import { useCards } from "../hooks/useCards";
 import { useReminders } from "../hooks/useReminders";
 import { useDailyReset } from "../hooks/useDailyReset";
@@ -59,7 +60,9 @@ function Wall() {
   }, []);
 
   useEffect(() => {
-    refresh();
+    syncLaunchOnStartupSetting()
+      .then(setSettings)
+      .catch(() => refresh());
 
     let unlisten: (() => void) | null = null;
     listen("settings:changed", () => refresh()).then((fn) => {

@@ -115,6 +115,11 @@ export const zh = {
   shortcut_need_modifier: "需要至少一个修饰键",
   shortcut_hint: "提示：按 Esc 取消录制",
 
+  // Launch On Startup
+  launch_on_startup_title: "开机启动",
+  launch_on_startup_label: "开机时自动启动 PinWall",
+  launch_on_startup_desc: "默认开启，登录系统后自动在后台启动",
+
   // Card Types
   card_type_note: "普通便签",
   card_type_reminder: "一次性提醒",

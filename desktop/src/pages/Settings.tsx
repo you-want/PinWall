@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { webviewWindow } from "@tauri-apps/api";
+import { emit } from "@tauri-apps/api/event";
 import { useI18n } from "../i18n";
 import { SettingsPanel } from "../components/SettingsPanel";
 import type { Settings as SettingsType, AIConfig, QuotaMonitorConfig } from "../types";
 import { DEFAULT_GLOBAL_SHORTCUT } from "../types";
 import { getSettings, saveSettings, updateAIConfig, updateQuotaMonitorConfig, updateHolidayEnabledCn, updateHolidayEnabledIntl, updateGlobalShortcut } from "../services/storage";
+import { setLaunchOnStartup, syncLaunchOnStartupSetting } from "../services/autostart";
 import { invoke } from "@tauri-apps/api/core";
 
 function Settings() {
@@ -12,7 +14,9 @@ function Settings() {
   const [settings, setSettings] = useState<SettingsType | null>(null);
 
   useEffect(() => {
-    getSettings().then(setSettings);
+    syncLaunchOnStartupSetting()
+      .then(setSettings)
+      .catch(() => getSettings().then(setSettings));
   }, []);
 
   const handleClose = useCallback(async () => {
@@ -79,6 +83,16 @@ function Settings() {
     }
   }, []);
 
+  const handleLaunchOnStartupChange = useCallback(async (enabled: boolean) => {
+    try {
+      const updated = await setLaunchOnStartup(enabled);
+      setSettings(updated);
+      await emit("settings:changed");
+    } catch (err) {
+      console.error("Failed to update launch on startup:", err);
+    }
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -114,6 +128,7 @@ function Settings() {
       onHolidayEnabledCnChange={handleHolidayEnabledCnChange}
       onHolidayEnabledIntlChange={handleHolidayEnabledIntlChange}
       onShortcutChange={handleShortcutChange}
+      onLaunchOnStartupChange={handleLaunchOnStartupChange}
     />
   );
 }
