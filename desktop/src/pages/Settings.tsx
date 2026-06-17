@@ -4,7 +4,7 @@ import { useI18n } from "../i18n";
 import { SettingsPanel } from "../components/SettingsPanel";
 import type { Settings as SettingsType, AIConfig, QuotaMonitorConfig } from "../types";
 import { DEFAULT_GLOBAL_SHORTCUT } from "../types";
-import { getSettings, saveSettings, updateAIConfig, updateQuotaMonitorConfig, updateHolidayEnabled, updateGlobalShortcut } from "../services/storage";
+import { getSettings, saveSettings, updateAIConfig, updateQuotaMonitorConfig, updateHolidayEnabledCn, updateHolidayEnabledIntl, updateGlobalShortcut } from "../services/storage";
 import { invoke } from "@tauri-apps/api/core";
 
 function Settings() {
@@ -49,8 +49,13 @@ function Settings() {
     setSettings(s);
   }, []);
 
-  const handleHolidayEnabledChange = useCallback(async (enabled: boolean) => {
-    const s = await updateHolidayEnabled(enabled);
+  const handleHolidayEnabledCnChange = useCallback(async (enabled: boolean) => {
+    const s = await updateHolidayEnabledCn(enabled);
+    setSettings(s);
+  }, []);
+
+  const handleHolidayEnabledIntlChange = useCallback(async (enabled: boolean) => {
+    const s = await updateHolidayEnabledIntl(enabled);
     setSettings(s);
   }, []);
 
@@ -106,7 +111,8 @@ function Settings() {
       onAutoChangeSettings={handleAutoChange}
       onAIConfigChange={handleAIConfigChange}
       onQuotaMonitorChange={handleQuotaMonitorChange}
-      onHolidayEnabledChange={handleHolidayEnabledChange}
+      onHolidayEnabledCnChange={handleHolidayEnabledCnChange}
+      onHolidayEnabledIntlChange={handleHolidayEnabledIntlChange}
       onShortcutChange={handleShortcutChange}
     />
   );

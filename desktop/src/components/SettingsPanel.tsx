@@ -34,7 +34,8 @@ interface SettingsPanelProps {
   onAutoChangeSettings: (enabled: boolean, interval: number) => void;
   onAIConfigChange?: (config: AIConfig) => void;
   onQuotaMonitorChange?: (config: QuotaMonitorConfig) => void;
-  onHolidayEnabledChange?: (enabled: boolean) => void;
+  onHolidayEnabledCnChange?: (enabled: boolean) => void;
+  onHolidayEnabledIntlChange?: (enabled: boolean) => void;
   onShortcutChange?: (shortcut: string) => void;
 }
 
@@ -42,7 +43,8 @@ export function SettingsPanel({
   settings,
   onAIConfigChange,
   onQuotaMonitorChange,
-  onHolidayEnabledChange,
+  onHolidayEnabledCnChange,
+  onHolidayEnabledIntlChange,
   onShortcutChange,
 }: SettingsPanelProps) {
   const { t, lang, setLang } = useI18n();
@@ -219,15 +221,29 @@ export function SettingsPanel({
 
         {/* ── Holiday Greetings ── */}
         <div className="ap-group">
-          <div className="ap-group-label">{t.holiday_enable}</div>
+          <div className="ap-group-label">{t.holiday_title}</div>
           <div className="ap-card">
             <div className="ap-row ap-row-toggle">
-              <span className="ap-row-label">{t.holiday_enable}</span>
+              <span className="ap-row-label">{t.holiday_cn}</span>
               <label className="ap-switch">
                 <input
                   type="checkbox"
-                  checked={settings.holidayEnabled ?? true}
-                  onChange={(e) => onHolidayEnabledChange?.(e.target.checked)}
+                  checked={settings.holidayEnabledCn ?? true}
+                  onChange={(e) => onHolidayEnabledCnChange?.(e.target.checked)}
+                />
+                <span className="ap-switch-track">
+                  <span className="ap-switch-thumb" />
+                </span>
+              </label>
+            </div>
+            <div className="ap-divider" />
+            <div className="ap-row ap-row-toggle">
+              <span className="ap-row-label">{t.holiday_intl}</span>
+              <label className="ap-switch">
+                <input
+                  type="checkbox"
+                  checked={settings.holidayEnabledIntl ?? true}
+                  onChange={(e) => onHolidayEnabledIntlChange?.(e.target.checked)}
                 />
                 <span className="ap-switch-track">
                   <span className="ap-switch-thumb" />

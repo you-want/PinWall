@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { useI18n } from "../i18n";
 import type { QuotaResult, QuotaMonitorModel } from "../types";
 
@@ -12,6 +12,15 @@ interface QuotaCardProps {
 export function QuotaCard({ results, models, loading, onRefresh }: QuotaCardProps) {
   const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
+  const cardStyle: CSSProperties = {
+    boxSizing: "border-box",
+    width: collapsed ? 220 : 360,
+    maxWidth: "calc(100vw - 3rem)",
+    background: "rgba(28,28,30,0.88)",
+    backdropFilter: "blur(40px)",
+    WebkitBackdropFilter: "blur(40px)",
+    fontFamily: "-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif",
+  };
 
   const getModelName = (modelId: string) => {
     return models.find((m) => m.id === modelId)?.name ?? modelId;
@@ -42,12 +51,14 @@ export function QuotaCard({ results, models, loading, onRefresh }: QuotaCardProp
 
   return (
     <div
-      className={`fixed top-4 right-4 z-[9999] overflow-hidden rounded-2xl border border-white/15 bg-[rgba(28,28,30,0.88)] shadow-[0_4px_24px_rgba(0,0,0,0.3)] backdrop-blur-[40px] transition-[width] duration-300 ease-in-out font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Text',sans-serif] pointer-events-auto ${collapsed ? "w-[200px]" : "w-[280px]"}`}
+      className="fixed top-4 right-6 z-[9999] overflow-hidden rounded-2xl border border-white/15 shadow-[0_4px_24px_rgba(0,0,0,0.3)] transition-[width] duration-300 ease-in-out pointer-events-auto"
+      style={cardStyle}
       data-interactive="true"
     >
       {/* Header */}
       <div
-        className="flex cursor-pointer items-center justify-between px-3.5 py-2.5 select-none"
+        className="flex cursor-pointer items-center justify-between select-none"
+        style={{ padding: "12px 16px" }}
         onClick={() => setCollapsed(!collapsed)}
       >
         <div className="flex items-center gap-1.5">
@@ -65,7 +76,7 @@ export function QuotaCard({ results, models, loading, onRefresh }: QuotaCardProp
 
       {/* Collapsed summary */}
       {collapsed && (
-        <div className="px-3.5 pb-2.5 text-xs text-white/50">
+        <div className="text-xs text-white/50" style={{ padding: "0 16px 12px" }}>
           {models.length} {t.quota_models_monitoring}
           {errorCount > 0 && (
             <span className="ml-1.5 text-red-500/80">
@@ -77,7 +88,7 @@ export function QuotaCard({ results, models, loading, onRefresh }: QuotaCardProp
 
       {/* Expanded content */}
       {!collapsed && (
-        <div className="px-3.5 pb-3">
+        <div style={{ padding: "0 16px 14px" }}>
           {results.length === 0 && !loading && (
             <div className="py-2 text-center text-xs text-white/40">
               {t.quota_no_models}
@@ -92,14 +103,14 @@ export function QuotaCard({ results, models, loading, onRefresh }: QuotaCardProp
             return (
               <div key={result.modelId} className="mb-2.5 last:mb-0">
                 {/* Model name row */}
-                <div className="mb-1 flex items-center justify-between">
-                  <span className="max-w-[160px] truncate text-xs font-medium text-white/85">
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <span className="min-w-0 flex-1 truncate text-xs font-medium text-white/85">
                     {name}
                   </span>
                   {result.error ? (
-                    <span className="text-[10px] text-red-500/80">{t.quota_error}</span>
+                    <span className="shrink-0 text-[10px] text-red-500/80">{t.quota_error}</span>
                   ) : (
-                    <span className="text-[11px] text-white/50">
+                    <span className="shrink-0 text-[11px] text-white/50">
                       {t.quota_remaining}: {formatMoney(result.remaining, result.currency)}
                       {result.total !== null && (
                         <> / {formatMoney(result.total, result.currency)}</>
@@ -136,14 +147,14 @@ export function QuotaCard({ results, models, loading, onRefresh }: QuotaCardProp
           })}
 
           {/* Footer: last update + refresh */}
-          <div className="mt-1 flex items-center justify-between border-t border-white/[0.08] pt-2">
-            <span className="text-[10px] text-white/30">
+          <div className="mt-1 flex items-center justify-between gap-2 border-t border-white/[0.08] pt-2">
+            <span className="min-w-0 truncate text-[10px] text-white/30">
               {t.quota_last_update}: {lastUpdate}
             </span>
             <button
               onClick={(e) => { e.stopPropagation(); onRefresh(); }}
               disabled={loading}
-              className="border-none bg-transparent p-0.5 text-[11px] text-[rgba(10,132,255,0.9)] transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+              className="shrink-0 border-none bg-transparent p-0.5 text-[11px] text-[rgba(10,132,255,0.9)] transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
             >
               {t.quota_refresh}
             </button>

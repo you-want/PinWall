@@ -22,11 +22,14 @@ export function useHolidayCard() {
       try {
         const settings = await getSettings();
 
-        // Check if holiday greetings are enabled
-        if (settings.holidayEnabled === false) return;
+        // Build enabled regions from the two independent toggles
+        const enabledRegions: ("cn" | "intl")[] = [];
+        if (settings.holidayEnabledCn !== false) enabledRegions.push("cn");
+        if (settings.holidayEnabledIntl !== false) enabledRegions.push("intl");
+        if (enabledRegions.length === 0) return;
 
-        // Check if today is a holiday
-        const holiday = getTodayHoliday();
+        // Check if today is a holiday (only within enabled regions)
+        const holiday = getTodayHoliday(enabledRegions);
         if (!holiday) return;
 
         // Check if we already showed today's holiday card
