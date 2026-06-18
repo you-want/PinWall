@@ -122,3 +122,89 @@ fn detect_system_lang() -> Lang {
         .map(|l| if l.starts_with("zh") { Lang::Zh } else { Lang::En })
         .unwrap_or(Lang::En)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_lang_from_str_zh() {
+        assert_eq!(lang_from_str("zh"), Lang::Zh);
+    }
+
+    #[test]
+    fn test_lang_from_str_en() {
+        assert_eq!(lang_from_str("en"), Lang::En);
+    }
+
+    #[test]
+    fn test_lang_from_str_unknown_defaults_to_en() {
+        assert_eq!(lang_from_str("ja"), Lang::En);
+    }
+
+    #[test]
+    fn test_tray_translations_zh() {
+        let t = tray_translations(Lang::Zh);
+        assert_eq!(t.open, "打开 PinWall");
+        assert_eq!(t.settings, "设置");
+        assert_eq!(t.quit, "退出");
+    }
+
+    #[test]
+    fn test_tray_translations_en() {
+        let t = tray_translations(Lang::En);
+        assert_eq!(t.open, "Open PinWall");
+        assert_eq!(t.settings, "Settings");
+        assert_eq!(t.quit, "Quit");
+    }
+
+    #[test]
+    fn test_format_shortcut_macos_style() {
+        // On macOS, parts are concatenated without separator
+        let result = format_shortcut("CommandOrControl+Shift+Space");
+        assert_eq!(result, "⌘⇧Space");
+    }
+
+    #[test]
+    fn test_format_shortcut_control() {
+        let result = format_shortcut("Control+Shift+Space");
+        // On macOS: "⌃⇧Space"
+        // On other: "Ctrl+Shift+Space"
+        assert!(result.contains("Space"));
+    }
+
+    #[test]
+    fn test_format_shortcut_single_key() {
+        let result = format_shortcut("Space");
+        assert_eq!(result, "Space");
+    }
+
+    #[test]
+    fn test_format_shortcut_option() {
+        let result = format_shortcut("Alt+Space");
+        // On macOS: "⌥Space"
+        assert!(result.contains("Space"));
+    }
+
+    #[test]
+    fn test_format_shortcut_super() {
+        let result = format_shortcut("Super+Space");
+        // On macOS: "⌘Space"
+        assert!(result.contains("Space"));
+    }
+
+    #[test]
+    fn test_format_shortcut_unknown_kept_as_is() {
+        let result = format_shortcut("F1");
+        assert_eq!(result, "F1");
+    }
+
+    #[test]
+    fn test_format_shortcut_cmd_or_ctrl_aliases() {
+        let result1 = format_shortcut("CmdOrCtrl+Space");
+        assert!(result1.contains("Space"));
+
+        let result2 = format_shortcut("Command+Space");
+        assert!(result2.contains("Space"));
+    }
+}

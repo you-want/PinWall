@@ -6,8 +6,8 @@ const CARD_WIDTH = 280;
 const CARD_HEIGHT_ESTIMATE = 180;
 const GAP_X = 20;
 const GAP_Y = 20;
-const PADDING_LEFT = 40;
-const PADDING_TOP = 40;
+export const PADDING_LEFT = 40;
+export const PADDING_TOP = 40;
 export const PADDING_RIGHT = 180; // 右侧预留：浮动按钮(52px) + 边距 + 缓冲空间
 
 // QuotaCard 固定在右上角，需预留其占用区域

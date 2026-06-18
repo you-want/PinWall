@@ -99,3 +99,27 @@ pub fn chrono_like_timestamp() -> String {
         .unwrap_or(0);
     ms.to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_chrono_like_timestamp_returns_non_empty() {
+        let ts = chrono_like_timestamp();
+        assert!(!ts.is_empty());
+    }
+
+    #[test]
+    fn test_chrono_like_timestamp_is_numeric() {
+        let ts = chrono_like_timestamp();
+        assert!(ts.chars().all(|c| c.is_ascii_digit()), "timestamp '{}' should be numeric", ts);
+    }
+
+    #[test]
+    fn test_chrono_like_timestamp_is_large() {
+        // Millisecond timestamps should be > 1 trillion
+        let ts: u128 = chrono_like_timestamp().parse().unwrap();
+        assert!(ts > 1_000_000_000_000);
+    }
+}

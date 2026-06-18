@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PinWall 手动测试报告</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f5; padding: 20px; }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { text-align: center; margin-bottom: 8px; color: #333; }
+    .meta { text-align: center; color: #666; margin-bottom: 20px; font-size: 14px; }
+    .toolbar { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
+    .toolbar button { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+    .btn-save { background: #4CAF50; color: white; }
+    .btn-export { background: #2196F3; color: white; }
+    .btn-reset { background: #f44336; color: white; }
+    .progress-bar { background: #e0e0e0; border-radius: 8px; height: 12px; margin-bottom: 20px; overflow: hidden; }
+    .progress-fill { background: linear-gradient(90deg, #4CAF50, #8BC34A); height: 100%; transition: width 0.3s; }
+    .progress-text { text-align: center; margin-bottom: 8px; font-size: 14px; color: #666; }
+    .section { background: white; border-radius: 8px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .section h2 { font-size: 16px; color: #333; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
+    .item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f5f5f5; }
+    .item:last-child { border-bottom: none; }
+    .item input[type="checkbox"] { margin-top: 3px; width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; }
+    .item-content { flex: 1; }
+    .item-id { font-weight: 600; color: #666; font-size: 12px; margin-right: 6px; }
+    .item-name { font-weight: 500; color: #333; }
+    .item-steps { color: #666; font-size: 13px; margin-top: 2px; }
+    .item-expected { color: #888; font-size: 12px; margin-top: 2px; font-style: italic; }
+    .item.passed .item-name { color: #4CAF50; }
+    .item.failed .item-name { color: #f44336; text-decoration: line-through; }
+    .summary { text-align: center; padding: 16px; background: white; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .summary .pass-rate { font-size: 36px; font-weight: bold; color: #4CAF50; }
+    .summary .pass-rate.fail { color: #f44336; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📋 PinWall 手动测试报告</h1>
+    <p class="meta">版本 0.1.0 | 生成时间: 2026-06-18</p>
+
+    <div class="summary">
+      <div class="pass-rate" id="passRate">--</div>
+      <div id="passCount">点击复选框开始测试</div>
+    </div>
+
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width: 0%"></div></div>
+    <div class="progress-text" id="progressText">0 / 0 通过</div>
+
+    <div class="toolbar">
+      <button class="btn-save" onclick="saveResults()">💾 保存结果</button>
+      <button class="btn-export" onclick="exportMarkdown()">📄 导出 Markdown</button>
+      <button class="btn-reset" onclick="resetResults()">🔄 重置</button>
+    </div>
+
+    <div id="sections"></div>
+  </div>
+
+  <script>
+    const testData = [
+  {
+    "name": "1. 应用启动与窗口管理",
+    "items": [
+      {
+        "id": "1.1",
+        "name": "首次启动",
+        "steps": "双击 PinWall.app 启动",
+        "expected": "应用正常启动，主窗口最大化铺满屏幕，透明背景，无系统标题栏",
+        "passed": true
+      },
+      {
+        "id": "1.2",
+        "name": "默认桌面底层模式",
+        "steps": "启动后观察主窗口行为",
+        "expected": "主窗口置于桌面最底层（always on bottom），鼠标可穿透空白区域点击桌面其他应用",
+        "passed": true
+      },
+      {
+        "id": "1.3",
+        "name": "系统托盘图标",
+        "steps": "查看 macOS 菜单栏",
+        "expected": "出现 PinWall 托盘图标",
+        "passed": true
+      },
+      {
+        "id": "1.4",
+        "name": "托盘菜单 — 打开",
+        "steps": "点击托盘 → \"打开 PinWall\"",
+        "expected": "主窗口被唤醒到前台（always on top），可交互",
+        "passed": true
+      },
+      {
+        "id": "1.5",
+        "name": "托盘菜单 — 设置",
+        "steps": "点击托盘 → \"设置\"",
+        "expected": "设置窗口弹出，有系统标题栏",
+        "passed": true
+      },
+      {
+        "id": "1.6",
+        "name": "托盘菜单 — 退出",
+        "steps": "点击托盘 → \"退出\"",
+        "expected": "应用完全退出",
+        "passed": true
+      },
+      {
+        "id": "1.7",
+        "name": "关闭窗口行为",
+        "steps": "点击主窗口的关闭按钮（如果有）",
+        "expected": "应用退出（而非隐藏）",
+        "passed": true
+      }
+    ]
+  },
+  {
+    "name": "2. 全局快捷键与窗口切换",
+    "items": [
+      {
+        "id": "2.1",
+        "name": "唤起主窗口",
+        "steps": "按 `Cmd+Shift+Space`",
+        "expected": "主窗口从底层切换到前台（可交互），可看到便签和按钮",
+        "passed": true
+      },
+      {
+        "id": "2.2",
+        "name": "退回底层",
+        "steps": "再次按 `Cmd+Shift+Space`",
+        "expected": "主窗口回到底层（鼠标穿透，不可交互）",
+        "passed": true
+      },
+      {
+        "id": "2.3",
+        "name": "空白区域点击退回",
+        "steps": "唤起后点击窗口空白区域（非卡片/按钮区域）",
+        "expected": "主窗口退回底层模式",
+        "passed": true
+      },
+      {
+        "id": "2.4",
+        "name": "重复切换稳定性",
+        "steps": "快速连续按 `Cmd+Shift+Space` 10 次",
+        "expected": "窗口状态正确切换，无崩溃或卡顿",
+        "passed": true
+      }
+    ]
+  },
+  {
+    "name": "3. 新建便签",
+    "items": [
+      {
+        "id": "3.1",
+        "name": "打开新建弹窗 — 按钮",
+        "steps": "点击右下角 \"+\" 浮动按钮",
+        "expected": "弹出新建便签模态框，位于屏幕中央",
+        "passed": true
+      },
+      {
+        "id": "3.2",
+        "name": "打开新建弹窗 — 快捷键",
+        "steps": "按 `Cmd+Shift+N`",
+        "expected": "弹出新建便签模态框",
+        "passed": true
+      },
+      {
+        "id": "3.3",
+        "name": "默认标题",
+        "steps": "观察标题输入框",
+        "expected": "默认值为 \"新建便签\"，且自动聚焦",
+        "passed": true
+      },
+      {
+        "id": "3.4",
+        "name": "使用时间标题",
+        "steps": "点击标题栏旁的 🕐 按钮",
+        "expected": "标题变为当前时间格式（如 `2026-06-06 14:30:00`）",
+        "passed": true
+      },
+      {
+        "id": "3.5",
+        "name": "输入内容",
+        "steps": "在内容文本框输入文字",
+        "expected": "内容正确显示，支持多行",
+        "passed": true
+      },
+      {
+        "id": "3.6",
+        "name": "选择颜色",
+        "steps": "点击颜色选择器中的某个颜色",
+        "expected": "该颜色被选中，显示蓝色边框高亮",
+        "passed": true
+      },
+      {
+        "id": "3.7",
+        "name": "不选颜色（随机）",
+        "steps": "不点击任何颜色，直接创建",
+        "expected": "提示\"未选择的颜色，将随机分配\"，卡片创建后为随机颜色",
+        "passed": true
+      },
+      {
+        "id": "3.8",
+        "name": "确认创建",
+        "steps": "填写标题和内容后点击 \"创建\"",
+        "expected": "新卡片出现在桌面上，弹窗关闭",
+        "passed": true
+      },
+      {
+        "id": "3.9",
+        "name": "Cmd+Enter 快捷创建",
+        "steps": "在弹窗内按 `Cmd+Enter`",
+        "expected": "等同于点击\"创建\"按钮",
+        "passed": true
+      },
+      {
+        "id": "3.10",
+        "name": "取消创建 — 按钮",
+        "steps": "点击 \"取消\" 按钮",
+        "expected": "弹窗关闭，不创建卡片",
+        "passed": true
+      },
+      {
+        "id": "3.11",
+        "name": "取消创建 — Escape",
+        "steps": "按 `Escape` 键",
+        "expected": "弹窗关闭，不创建卡片",
+        "passed": true
+      },
+      {
+        "id": "3.12",
+        "name": "取消创建 — 点击遮罩",
+        "steps": "点击弹窗外部半透明区域",
+        "expected": "弹窗关闭，不创建卡片",
+        "passed": true
+      },
+      {
+        "id": "3.13",
+        "name": "弹窗全屏",
+        "steps": "点击弹窗标题栏绿色按钮",
+        "expected": "弹窗扩展为全屏模式",
+        "passed": true
+      },
+      {
+        "id": "3.14",
+        "name": "弹窗最小化",
+        "steps": "点击弹窗标题栏黄色按钮",
+        "expected": "弹窗收缩为只显示标题栏",
+        "passed": true
+      },
+      {
+        "id": "3.15",
+        "name": "空标题创建",
+        "steps": "清空标题后点击创建",
+        "expected": "标题使用默认值 \"新建便签\"",
+        "passed": true
+      },
+      {
+        "id": "3.16",
+        "name": "空内容创建",
+        "steps": "不填内容直接创建",
+        "expected": "卡片内容显示随机鼓励语（如\"保持好心情\"）",
+        "passed": true
+      },
+      {
+        "id": "3.17",
+        "name": "防重复点击",
+        "steps": "快速双击\"创建\"按钮",
+        "expected": "只创建一张卡片，按钮有 loading 状态",
+        "passed": true
+      }
+    ]
+  },
+  {
+    "name": "4. 便签提醒功能",
+    "items": [
+      {
+        "id": "4.1",
+        "name": "开启提醒",
+        "steps": "新建弹窗中勾选\"提醒\"复选框",
+        "expected": "显示日期和时间输入框，默认时间为当前 +5 分钟",
+        "passed": true
+      },
+      {
+        "id": "4.2",
+        "name": "设置提醒时间",
+        "steps": "修改日期和时间",
+        "expected": "时间正确显示",
+        "passed": true
+      },
+      {
+        "id": "4.3",
+        "name": "过去时间提醒",
+        "steps": "设置一个过去的时间",
+        "expected": "创建成功但提醒不触发（reminderTime 为 null）",
+        "passed": true
+      },
+      {
+        "id": "4.4",
+        "name": "提醒触发",
+        "steps": "创建一个 1 分钟后的提醒，等待",
+        "expected": "到期时右上角弹出通知窗口，播放\"叮\"提示音",
+        "passed": true
+      },
+      {
+        "id": "4.5",
+        "name": "通知窗口内容",
+        "steps": "观察通知窗口",
+        "expected": "显示卡片标题、内容（>80字截断）、🔔 标记、颜色与卡片一致",
+        "passed": true
+      },
+      {
+        "id": "4.6",
+        "name": "通知自动消失",
+        "steps": "等待 15 秒",
+        "expected": "通知窗口自动消失",
+        "passed": true
+      },
+      {
+        "id": "4.7",
+        "name": "手动关闭通知",
+        "steps": "点击通知窗口的红色关闭按钮",
+        "expected": "通知窗口消失",
+        "passed": true
+      },
+      {
+        "id": "4.8",
+        "name": "全屏查看",
+        "steps": "点击通知中的\"全屏查看\"按钮",
+        "expected": "主窗口被唤起，对应卡片进入全屏模式",
+        "passed": true
+      },
+      {
+        "id": "4.9",
+        "name": "提醒只触发一次",
+        "steps": "提醒触发后继续等待",
+        "expected": "同一卡片的提醒不会重复触发",
+        "passed": true
+      }
+    ]
+  },
+  {
+    "name": "5. 卡片交互",
+    "items": [
+      {
+        "id": "5.1",
+        "name": "拖拽移动",
+        "steps": "按住卡片标题栏拖动",
+        "expected": "卡片跟随鼠标移动，标题栏光标为 grabbing",
+        "passed": true
+      },
+      {
+        "id": "5.2",
+        "name": "拖拽边界",
+        "steps": "将卡片拖到屏幕边缘",
+        "expected": "卡片不会超出屏幕左/上边界（x,y >= 0）",
+        "passed": true
+      },
+      {
+        "id": "5.3",
+        "name": "层级置顶",
+        "steps": "点击一张被遮挡的卡片",
+        "expected": "该卡片移到最前面（z-index 最大）",
+        "passed": true
+      },
+      {
+        "id": "5.4",
+        "name": "最大化",
+        "steps": "点击卡片绿色按钮",
+        "expected": "卡片全屏显示，内容可见",
+        "passed": true
+      },
+      {
+        "id": "5.5",
+        "name": "最小化（从全屏）",
+        "steps": "在全屏模式下点击黄色按钮",
+        "expected": "卡片恢复原始大小",
+        "passed": true
+      },
+      {
+        "id": "5.6",
+        "name": "关闭卡片",
+        "steps": "点击卡片红色关闭按钮",
+        "expected": "弹出确认对话框\"确定要删除这个便签吗？\"",
+        "passed": true
+      },
+      {
+        "id": "5.7",
+        "name": "确认删除",
+        "steps": "在确认对话框点击\"删除\"",
+        "expected": "卡片从桌面消失",
+        "passed": true
+      },
+      {
+        "id": "5.8",
+        "name": "取消删除",
+        "steps": "在确认对话框点击\"取消\"",
+        "expected": "卡片保留不变",
+        "passed": true
+      },
+      {
+        "id": "5.9",
+        "name": "卡片光标行为",
+        "steps": "观察标题栏光标",
+        "expected": "悬停时为 grab，拖拽时为 grabbing",
+        "passed": true
+      },
+      {
+        "id": "5.10",
+        "name": "内容区域不触发拖拽",
+        "steps": "在卡片内容区域按下鼠标",
+        "expected": "不触发拖拽，可正常选择文本",
+        "passed": true
+      }
+    ]
+  },
+  {
+    "name": "6. 卡片堆叠收纳",
+    "items": [
+      {
+        "id": "6.1",
+        "name": "触发收纳",
+        "steps": "创建超过 5 张卡片",
+        "expected": "第 6 张及之后的卡片被收纳，左下角出现堆叠预览",
+        "passed": true
+      },
+      {
+        "id": "6.2",
+        "name": "堆叠预览显示",
+        "steps": "观察左下角",
+        "expected": "最多显示 3 张堆叠卡片预览，带旋转堆叠效果和数量角标",
+        "passed": true
+      },
+      {
+        "id": "6.3",
+        "name": "展开堆叠面板",
+        "steps": "点击堆叠预览",
+        "expected": "弹出收纳面板，显示所有被收纳的卡片列表",
+        "passed": true
+      },
+      {
+        "id": "6.4",
+        "name": "收纳面板信息",
+        "steps": "观察面板内容",
+        "expected": "标题显示\"收纳的便签 (N)\"，每张卡片显示颜色、标题、内容摘要",
+        "passed": true
+      },
+      {
+        "id": "6.5",
+        "name": "钉回桌面",
+        "steps": "点击某张收纳卡片的 📌 按钮",
+        "expected": "该卡片更新 updatedAt，重新进入可见列表",
+        "passed": true
+      },
+      {
+        "id": "6.6",
+        "name": "关闭面板",
+        "steps": "点击面板 × 按钮或点击面板外部",
+        "expected": "面板关闭",
+        "passed": true
+      },
+      {
+        "id": "6.7",
+        "name": "收纳消失",
+        "steps": "当卡片 <= 5 张时",
+        "expected": "堆叠预览自动隐藏",
+        "passed": true
+      }
+    ]
+  },
+  {
+    "name": "7. 数据持久化",
+    "items": [
+      {
+        "id": "7.1",
+        "name": "创建后持久化",
+        "steps": "创建一张卡片",
+        "expected": "文件 `tauri-plugin-zustand/cards.dev.json` 中新增该卡片数据",
+        "passed": true
+      },
+      {
+        "id": "7.2",
+        "name": "移动后持久化",
+        "steps": "拖拽卡片到新位置",
+        "expected": "文件中该卡片的 x, y 坐标更新",
+        "passed": true
+      },
+      {
+        "id": "7.3",
+        "name": "删除后持久化",
+        "steps": "删除一张卡片",
+        "expected": "文件中该卡片被移除",
+        "passed": true
+      },
+      {
+        "id": "7.4",
+        "name": "重启后恢复",
+        "steps": "创建几张卡片 → 退出应用 → 重新启动",
+        "expected": "所有之前创建的卡片恢复到正确位置",
+        "passed": true
+      },
+      {
+        "id": "7.5",
+        "name": "提醒状态持久化",
+        "steps": "创建带提醒的卡片 → 重启",
+        "expected": "提醒设置（时间、启用状态）保留",
+        "passed": true
+      },
+      {
+        "id": "7.6",
+        "name": "大量数据",
+        "steps": "创建 20 张卡片 → 重启",
+        "expected": "所有卡片正确恢复，无数据丢失",
+        "passed": true
+      }
+    ]
+  },
+  {
+    "name": "8. 跨窗口状态同步",
+    "items": [
+      {
+        "id": "8.1",
+        "name": "通知窗口接收数据",
+        "steps": "触发一个提醒",
+        "expected": "通知窗口正确显示对应卡片信息",
+        "passed": true
+      },
+      {
+        "id": "8.2",
+        "name": "通知→主窗口联动",
+        "steps": "在通知中点击\"全屏查看\"",
+        "expected": "主窗口被唤起，对应卡片全屏显示",
+        "passed": true
+      },
+      {
+        "id": "8.3",
+        "name": "zustand store 同步",
+        "steps": "在主窗口修改卡片状态",
+        "expected": "store 数据通过 Tauri 事件系统同步",
+        "passed": true
+      }
+    ]
+  },
+  {
+    "name": "9. 设置窗口",
+    "items": [
+      {
+        "id": "9.1",
+        "name": "打开设置",
+        "steps": "点击右下角 ⚙️ 按钮",
+        "expected": "设置窗口弹出",
+        "passed": true
+      },
+      {
+        "id": "9.2",
+        "name": "设置窗口内容",
+        "steps": "观察设置窗口",
+        "expected": "显示\"开发中...\"（当前版本）",
+        "passed": true
+      },
+      {
+        "id": "9.3",
+        "name": "Escape 关闭",
+        "steps": "在设置窗口按 `Escape`",
+        "expected": "设置窗口关闭",
+        "passed": true
+      },
+      {
+        "id": "9.4",
+        "name": "重复打开",
+        "steps": "关闭后再次打开",
+        "expected": "窗口正常弹出，无重复实例",
+        "passed": true
+      }
+    ]
+  },
+  {
+    "name": "10. 浮动按钮",
+    "items": [
+      {
+        "id": "10.1",
+        "name": "按钮可见性",
+        "steps": "在唤起模式下观察右下角",
+        "expected": "显示 \"+\" 和 \"⚙️\" 两个浮动按钮",
+        "passed": true
+      },
+      {
+        "id": "10.2",
+        "name": "悬停效果",
+        "steps": "鼠标悬停在按钮上",
+        "expected": "按钮放大 1.15 倍，阴影增强",
+        "passed": true
+      },
+      {
+        "id": "10.3",
+        "name": "点击效果",
+        "steps": "点击按钮",
+        "expected": "按钮缩小 0.95 倍（按压反馈）",
+        "passed": true
+      },
+      {
+        "id": "10.4",
+        "name": "底层模式隐藏",
+        "steps": "退回桌面底层模式",
+        "expected": "浮动按钮不可点击（鼠标穿透）",
+        "passed": true
+      }
+    ]
+  },
+  {
+    "name": "11. 空状态",
+    "items": [
+      {
+        "id": "11.1",
+        "name": "首次使用",
+        "steps": "清空所有数据后启动",
+        "expected": "屏幕中央显示彩虹渐变标题\"欢迎来到 PinWall\"和副标题",
+        "passed": true
+      },
+      {
+        "id": "11.2",
+        "name": "创建后隐藏",
+        "steps": "创建第一张卡片",
+        "expected": "欢迎提示消失",
+        "passed": true
+      },
+      {
+        "id": "11.3",
+        "name": "全部删除后恢复",
+        "steps": "删除所有卡片",
+        "expected": "欢迎提示重新出现",
+        "passed": true
+      }
+    ]
+  },
+  {
+    "name": "12. 视觉与动画",
+    "items": [
+      {
+        "id": "12.1",
+        "name": "卡片渐入动画",
+        "steps": "新建卡片",
+        "expected": "卡片有平滑的出现动画",
+        "passed": true
+      },
+      {
+        "id": "12.2",
+        "name": "拖拽无动画延迟",
+        "steps": "拖拽卡片",
+        "expected": "拖拽时 transition 关闭，无延迟感",
+        "passed": true
+      },
+      {
+        "id": "12.3",
+        "name": "卡片颜色",
+        "steps": "创建 8 张卡片，分别选不同颜色",
+        "expected": "8 种渐变色正确显示",
+        "passed": true
+      },
+      {
+        "id": "12.4",
+        "name": "通知滑入动画",
+        "steps": "触发提醒通知",
+        "expected": "通知从右侧滑入，有弹性效果",
+        "passed": true
+      },
+      {
+        "id": "12.5",
+        "name": "收纳面板动画",
+        "steps": "展开收纳面板",
+        "expected": "面板有淡入+上移动画",
+        "passed": true
+      },
+      {
+        "id": "12.6",
+        "name": "新建弹窗动画",
+        "steps": "打开新建弹窗",
+        "expected": "弹窗有缩放+淡入动画",
+        "passed": true
+      },
+      {
+        "id": "12.7",
+        "name": "macOS 红绿灯按钮",
+        "steps": "观察卡片和弹窗标题栏",
+        "expected": "显示 macOS 风格三色圆形按钮（红/黄/绿）",
+        "passed": true
+      }
+    ]
+  },
+  {
+    "name": "13. 背景图片",
+    "items": [
+      {
+        "id": "13.1",
+        "name": "无背景图",
+        "steps": "首次启动（未设置背景）",
+        "expected": "显示透明背景，可看到桌面",
+        "passed": true
+      },
+      {
+        "id": "13.2",
+        "name": "有背景图",
+        "steps": "如果之前设置了背景图",
+        "expected": "背景图正确显示，object-fit: cover",
+        "passed": true
+      },
+      {
+        "id": "13.3",
+        "name": "背景持久化",
+        "steps": "设置背景 → 重启",
+        "expected": "背景图保持不变",
+        "passed": true
+      }
+    ]
+  },
+  {
+    "name": "14. 稳定性与边界情况",
+    "items": [
+      {
+        "id": "14.1",
+        "name": "快速创建",
+        "steps": "快速连续创建 10 张卡片",
+        "expected": "所有卡片正确显示，无重复 ID",
+        "passed": true
+      },
+      {
+        "id": "14.2",
+        "name": "快速删除",
+        "steps": "快速连续删除多张卡片",
+        "expected": "每张都弹出确认框，操作正确",
+        "passed": true
+      },
+      {
+        "id": "14.3",
+        "name": "超长标题",
+        "steps": "创建标题为 200 字符的卡片",
+        "expected": "标题正确保存和显示（可能被截断显示）",
+        "passed": true
+      },
+      {
+        "id": "14.4",
+        "name": "超长内容",
+        "steps": "创建内容为 1000 字符的卡片",
+        "expected": "内容正确保存，卡片内自动换行/滚动",
+        "passed": true
+      },
+      {
+        "id": "14.5",
+        "name": "特殊字符",
+        "steps": "标题和内容输入 emoji、HTML 标签、中文特殊字符",
+        "expected": "正确显示，无 XSS 注入",
+        "passed": true
+      },
+      {
+        "id": "14.6",
+        "name": "长时间运行",
+        "steps": "应用运行 2 小时以上",
+        "expected": "无内存泄漏，提醒检查不卡顿",
+        "passed": true
+      },
+      {
+        "id": "14.7",
+        "name": "多显示器",
+        "steps": "在有外接显示器的情况下使用",
+        "expected": "窗口位置正确，通知出现在正确屏幕",
+        "passed": true
+      }
+    ]
+  },
+  {
+    "name": "15. 性能",
+    "items": [
+      {
+        "id": "15.1",
+        "name": "启动速度",
+        "steps": "测量从启动到窗口可见的时间",
+        "expected": "< 3 秒（debug build）",
+        "passed": true
+      },
+      {
+        "id": "15.2",
+        "name": "内存占用",
+        "steps": "创建 10 张卡片后查看 Activity Monitor",
+        "expected": "内存 < 200MB",
+        "passed": true
+      },
+      {
+        "id": "15.3",
+        "name": "CPU 空闲",
+        "steps": "应用静止状态下查看 CPU",
+        "expected": "CPU 占用 < 1%（无提醒触发时）",
+        "passed": true
+      },
+      {
+        "id": "15.4",
+        "name": "大量卡片性能",
+        "steps": "创建 50 张卡片",
+        "expected": "拖拽和交互无明显卡顿",
+        "passed": true
+      }
+    ]
+  }
+];
+
+    function render() {
+      const container = document.getElementById('sections');
+      container.innerHTML = testData.map((section, si) => `
+        <div class="section">
+          <h2>Section ${si + 1}: ${section.name}</h2>
+          ${section.items.map((item, ii) => {
+            const key = `${si}-${ii}`;
+            const checked = localStorage.getItem('pw-${key}') === 'true';
+            return `
+              <div class="item ${checked ? 'passed' : ''}" id="item-${key}">
+                <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggle('${key}', this.checked)">
+                <div class="item-content">
+                  <span class="item-id">${item.id}</span>
+                  <span class="item-name">${item.name}</span>
+                  <div class="item-steps">步骤: ${item.steps}</div>
+                  <div class="item-expected">预期: ${item.expected}</div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `).join('');
+      updateProgress();
+    }
+
+    function toggle(key, checked) {
+      localStorage.setItem('pw-${key}', checked);
+      const el = document.getElementById('item-${key}');
+      el.className = 'item ' + (checked ? 'passed' : '');
+      updateProgress();
+    }
+
+    function updateProgress() {
+      let total = 0, passed = 0;
+      testData.forEach((section, si) => {
+        section.items.forEach((item, ii) => {
+          total++;
+          if (localStorage.getItem(`${si}-${ii}`) === 'true') passed++;
+        });
+      });
+      const pct = total > 0 ? Math.round(passed / total * 100) : 0;
+      document.getElementById('passRate').textContent = pct + '%';
+      document.getElementById('passRate').className = 'pass-rate' + (pct < 100 ? ' fail' : '');
+      document.getElementById('passCount').textContent = `${passed} / ${total} 通过`;
+      document.getElementById('progressFill').style.width = pct + '%';
+      document.getElementById('progressText').textContent = `${passed} / ${total} 通过`;
+    }
+
+    function saveResults() {
+      const results = {};
+      testData.forEach((section, si) => {
+        section.items.forEach((item, ii) => {
+          results[`${si}-${ii}`] = localStorage.getItem(`${si}-${ii}`) === 'true';
+        });
+      });
+      const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'pinwall-test-results.json';
+      a.click();
+    }
+
+    function exportMarkdown() {
+      let md = '# PinWall 手动测试报告\n\n';
+      let total = 0, passed = 0;
+      testData.forEach(section => {
+        md += '## ' + section.name + '\n\n';
+        section.items.forEach(item => {
+          total++;
+          const key = testData.indexOf(section) + '-' + section.items.indexOf(item);
+          const isPassed = localStorage.getItem(key) === 'true';
+          if (isPassed) passed++;
+          md += '- [' + (isPassed ? 'x' : ' ') + '] ' + item.id + ' ' + item.name + '\n';
+        });
+      });
+      md += '\n通过率: ' + Math.round(passed / total * 100) + '% (' + passed + '/' + total + ')\n';
+      const blob = new Blob([md], { type: 'text/markdown' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'pinwall-test-report.md';
+      a.click();
+    }
+
+    function resetResults() {
+      if (confirm('确定要重置所有测试结果吗？')) {
+        localStorage.clear();
+        render();
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>
