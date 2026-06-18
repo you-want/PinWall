@@ -17,6 +17,19 @@ const defaultSettings: Settings = {
   holidayEnabledCn: true,
   holidayEnabledIntl: true,
   globalShortcut: DEFAULT_GLOBAL_SHORTCUT,
+  // ── Care / Companion defaults ──
+  careTone: "warm",
+  hydrationGoal: 8,
+  moodCheckinEnabled: true,
+  moodCheckinTimes: ["10:00", "18:00"],
+  restReminderEnabled: true,
+  restInterval: 90,
+  offWorkTime: "18:00",
+  offWorkReminderEnabled: true,
+  eyeCareEnabled: true,
+  eyeCareInterval: 20,
+  weatherCareEnabled: true,
+  weatherCity: "",
 };
 
 export async function getSettings(): Promise<Settings> {
@@ -39,6 +52,19 @@ export async function getSettings(): Promise<Settings> {
     if (parsed.launchOnStartup === undefined) parsed.launchOnStartup = true;
     // Ensure globalShortcut defaults (backward compat)
     if (!parsed.globalShortcut) parsed.globalShortcut = DEFAULT_GLOBAL_SHORTCUT;
+    // Ensure care settings defaults (backward compat)
+    if (!parsed.careTone) parsed.careTone = "warm";
+    if (parsed.hydrationGoal === undefined) parsed.hydrationGoal = 8;
+    if (parsed.moodCheckinEnabled === undefined) parsed.moodCheckinEnabled = true;
+    if (!parsed.moodCheckinTimes) parsed.moodCheckinTimes = ["10:00", "18:00"];
+    if (parsed.restReminderEnabled === undefined) parsed.restReminderEnabled = true;
+    if (parsed.restInterval === undefined) parsed.restInterval = 90;
+    if (!parsed.offWorkTime) parsed.offWorkTime = "18:00";
+    if (parsed.offWorkReminderEnabled === undefined) parsed.offWorkReminderEnabled = true;
+    if (parsed.eyeCareEnabled === undefined) parsed.eyeCareEnabled = true;
+    if (parsed.eyeCareInterval === undefined) parsed.eyeCareInterval = 20;
+    if (parsed.weatherCareEnabled === undefined) parsed.weatherCareEnabled = true;
+    if (parsed.weatherCity === undefined) parsed.weatherCity = "";
     return parsed;
   } catch {
     return { ...defaultSettings };
@@ -176,6 +202,22 @@ export async function updateGlobalShortcut(shortcut: string): Promise<Settings> 
 export async function updateLaunchOnStartup(enabled: boolean): Promise<Settings> {
   const settings = await getSettings();
   settings.launchOnStartup = enabled;
+  await saveSettings(settings);
+  return settings;
+}
+
+// ── Care / Companion settings ─────────────────────────────
+
+export async function updateCareTone(tone: import("../types").CareTone): Promise<Settings> {
+  const settings = await getSettings();
+  settings.careTone = tone;
+  await saveSettings(settings);
+  return settings;
+}
+
+export async function updateCareSettings(partial: Partial<Settings>): Promise<Settings> {
+  const settings = await getSettings();
+  Object.assign(settings, partial);
   await saveSettings(settings);
   return settings;
 }

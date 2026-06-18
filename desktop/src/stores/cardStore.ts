@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { createTauriStore } from "@tauri-store/zustand";
 import { getTranslations } from "../i18n";
 import { useLanguageStore } from "./languageStore";
+import { getNextGridPosition } from "../utils/gridLayout";
 import type { PinCardData, CardType } from "../types";
 
 function getDefaultMessages(): string[] {
@@ -48,7 +49,9 @@ type CardState = {
   reminderFired: (id: string) => void;
   unstashCard: (id: string) => void;
   checkinCard: (id: string) => void;
+  checkinHydration: (id: string) => void;
   resetDailyCheckins: () => void;
+  resetDailyHydration: () => void;
 };
 
 export const useCardStore = create<CardState>((set, get) => ({
@@ -96,14 +99,17 @@ export const useCardStore = create<CardState>((set, get) => ({
     set((s) => ({ cards: s.cards.filter((card) => card.id !== id) }));
   },
 
-  createCard: (title, content, colorIndex, cardType, reminderEnabled, reminderTime, x, y) => {
+  createCard: (title, content, colorIndex, cardType, reminderEnabled, reminderTime, _x, _y) => {
     const now = Date.now();
+    // 始终使用网格位置，确保卡片整齐排列
+    const existingPositions = get().cards.map((c) => ({ x: c.x, y: c.y }));
+    const gridPos = getNextGridPosition(existingPositions);
     const newCard: PinCardData = {
       id: `card-${now}`,
       title,
       content: content || getDefaultMessages()[Math.floor(Math.random() * 16)],
-      x: x + 190 - 110,
-      y: y + 160 - 70,
+      x: gridPos.x,
+      y: gridPos.y,
       collapsed: false,
       colorIndex,
       createdAt: now,
@@ -114,6 +120,12 @@ export const useCardStore = create<CardState>((set, get) => ({
       reminderFired: false,
       checkinDone: false,
       lastCheckinDate: null,
+      // Hydration card defaults
+      ...(cardType === "hydration" ? {
+        hydrationCount: 0,
+        hydrationGoal: 8,
+        hydrationDate: new Date().toISOString().slice(0, 10),
+      } : {}),
     };
     const { zIndexMap, _zIndexCounter } = get();
     const maxInMap = Math.max(0, ...Object.values(zIndexMap));
@@ -178,6 +190,36 @@ export const useCardStore = create<CardState>((set, get) => ({
       cards: s.cards.map((card) =>
         card.cardType === "daily-checkin" && card.lastCheckinDate !== today
           ? { ...card, checkinDone: false, reminderFired: false, updatedAt: Date.now() }
+          : card
+      ),
+    }));
+  },
+
+  checkinHydration: (id) => {
+    const today = new Date().toISOString().slice(0, 10);
+    set((s) => ({
+      cards: s.cards.map((card) => {
+        if (card.id !== id || card.cardType !== "hydration") return card;
+        // Reset count if it's a new day
+        const count = card.hydrationDate === today
+          ? (card.hydrationCount ?? 0) + 1
+          : 1;
+        return {
+          ...card,
+          hydrationCount: count,
+          hydrationDate: today,
+          updatedAt: Date.now(),
+        };
+      }),
+    }));
+  },
+
+  resetDailyHydration: () => {
+    const today = new Date().toISOString().slice(0, 10);
+    set((s) => ({
+      cards: s.cards.map((card) =>
+        card.cardType === "hydration" && card.hydrationDate !== today
+          ? { ...card, hydrationCount: 0, hydrationDate: today, updatedAt: Date.now() }
           : card
       ),
     }));

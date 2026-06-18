@@ -20,6 +20,9 @@ export const DEFAULT_AI_CONFIG: AIConfig = {
   model: "gpt-4o-mini",
 };
 
+// ─── Care Tone ────────────────────────────────────────────
+export type CareTone = "warm" | "rational" | "playful";
+
 export interface Settings {
   backgroundImages: BackgroundImage[];
   currentImageId: string | null;
@@ -34,11 +37,25 @@ export interface Settings {
   lastDailyCardDate?: string; // YYYY-MM-DD, tracks last daily card generation
   lastHolidayCardDate?: string; // YYYY-MM-DD, tracks last holiday card generation
   globalShortcut?: string; // 自定义全局快捷键，默认 CommandOrControl+Shift+Space
+  // ── Care / Companion features ──
+  careTone?: CareTone; // 关怀语气风格，默认 "warm"
+  hydrationGoal?: number; // 每日喝水目标（杯），默认 8
+  moodCheckinEnabled?: boolean; // 心情打卡开关，默认 true
+  moodCheckinTimes?: string[]; // 心情打卡时间 ["10:00","18:00"]
+  restReminderEnabled?: boolean; // 休息提醒开关，默认 true
+  restInterval?: number; // 休息间隔（分钟），默认 90
+  offWorkTime?: string; // 下班时间 HH:MM，默认 "18:00"
+  offWorkReminderEnabled?: boolean; // 下班关怀开关，默认 true
+  eyeCareEnabled?: boolean; // 护眼提醒开关，默认 true
+  eyeCareInterval?: number; // 护眼间隔（分钟），默认 20
+  weatherCareEnabled?: boolean; // 天气关怀开关，默认 true
+  weatherCity?: string; // 天气城市
+  lastWeatherCardDate?: string; // YYYY-MM-DD, tracks last weather card generation
 }
 
 export const DEFAULT_GLOBAL_SHORTCUT = "CommandOrControl+Shift+Space";
 
-export type CardType = "note" | "reminder" | "daily-checkin";
+export type CardType = "note" | "reminder" | "daily-checkin" | "hydration" | "mood";
 
 export interface PinCardData {
   id: string;
@@ -56,6 +73,10 @@ export interface PinCardData {
   reminderFired: boolean;
   checkinDone: boolean;
   lastCheckinDate: string | null;
+  // ── Hydration card fields ──
+  hydrationCount?: number;   // 今日已喝杯数
+  hydrationGoal?: number;    // 目标杯数
+  hydrationDate?: string;    // YYYY-MM-DD，用于每日重置
 }
 
 export const AUTO_CHANGE_INTERVALS = [

@@ -8,6 +8,7 @@ import { NewCardModal } from "../components/NewCardModal";
 import { FloatingButtons } from "../components/FloatingButtons";
 import { CardStack } from "../components/CardStack";
 import { QuotaCard } from "../components/QuotaCard";
+import { BreathingGuide } from "../components/BreathingGuide";
 import { useI18n } from "../i18n";
 import type { Settings } from "../types";
 import { getSettings } from "../services/storage";
@@ -18,6 +19,12 @@ import { useDailyReset } from "../hooks/useDailyReset";
 import { useDailyCard } from "../hooks/useDailyCard";
 import { useHolidayCard } from "../hooks/useHolidayCard";
 import { useQuotaMonitor } from "../hooks/useQuotaMonitor";
+import { useHydrationReminder } from "../hooks/useHydrationReminder";
+import { useRestReminder } from "../hooks/useRestReminder";
+import { useOffWorkReminder } from "../hooks/useOffWorkReminder";
+import { useEyeCareReminder } from "../hooks/useEyeCareReminder";
+import { useMoodCheckin } from "../hooks/useMoodCheckin";
+import { useWeatherCare } from "../hooks/useWeatherCare";
 import type { CardType } from "../types";
 
 type NewCardState =
@@ -28,6 +35,7 @@ function Wall() {
   const { t } = useI18n();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [newCardModal, setNewCardModal] = useState<NewCardState>({ open: false });
+  const [showBreathing, setShowBreathing] = useState(false);
   const newCardPositionRef = useRef({ x: 0, y: 0 });
 
   const {
@@ -43,6 +51,7 @@ function Wall() {
     handleCreateCard,
     handleUnstashCard,
     handleDragEnd,
+    handleArrangeCards,
     handleReminderFired,
   } = useCards();
 
@@ -50,6 +59,13 @@ function Wall() {
   useDailyReset();
   useDailyCard();
   useHolidayCard();
+  // ── Care / Companion hooks ──
+  useHydrationReminder();
+  useRestReminder();
+  useOffWorkReminder();
+  useEyeCareReminder();
+  useMoodCheckin();
+  useWeatherCare();
 
   const { results: quotaResults, loading: quotaLoading, refresh: quotaRefresh } =
     useQuotaMonitor(settings?.quotaMonitor);
@@ -113,7 +129,17 @@ function Wall() {
       e.preventDefault();
       openNewCardModal();
     }
-  }, [openNewCardModal]);
+    // Breathing guide shortcut: Cmd+Shift+B
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "b") {
+      e.preventDefault();
+      setShowBreathing(true);
+    }
+    // Arrange cards shortcut: Cmd+Shift+A
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "a") {
+      e.preventDefault();
+      handleArrangeCards();
+    }
+  }, [openNewCardModal, handleArrangeCards]);
 
   useEffect(() => {
     window.addEventListener("keydown", handleCreateCardShortcut);
@@ -168,7 +194,7 @@ function Wall() {
             </div>
           )}
 
-          <FloatingButtons onNewCard={openNewCardModal} onSettings={openSettingsWindow} />
+          <FloatingButtons onNewCard={openNewCardModal} onSettings={openSettingsWindow} onArrange={handleArrangeCards} />
 
           {settings?.quotaMonitor?.enabled && settings.quotaMonitor.models.length > 0 && (
             <QuotaCard
@@ -186,6 +212,10 @@ function Wall() {
               onConfirm={onCreateCard}
               onCancel={handleCancelCreate}
             />
+          )}
+
+          {showBreathing && (
+            <BreathingGuide onClose={() => setShowBreathing(false)} />
           )}
         </>
       )}

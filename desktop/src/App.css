@@ -315,6 +315,30 @@ html, body, #root {
     0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* Arrange button */
+.floating-arrange-btn {
+  background: linear-gradient(135deg, #34c759 0%, #30b350 100%);
+  color: #ffffff;
+  box-shadow:
+    0 4px 15px rgba(52, 199, 89, 0.4),
+    0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.floating-arrange-btn:hover {
+  opacity: 1;
+  transform: scale(1.15);
+  box-shadow:
+    0 6px 20px rgba(52, 199, 89, 0.5),
+    0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.floating-arrange-btn:active {
+  transform: scale(0.95);
+  box-shadow:
+    0 2px 8px rgba(52, 199, 89, 0.3),
+    0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
 /* ══════════════════════════════════════════════════
    Apple-style Settings Panel
    ══════════════════════════════════════════════════ */
@@ -1507,6 +1531,39 @@ html, body, #root {
   cursor: default;
 }
 
+/* Hydration widget */
+.hydration-widget {
+  margin-top: 12px;
+}
+
+.hydration-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hydration-bar {
+  flex: 1;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.hydration-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #64d2ff, #007aff);
+  border-radius: 5px;
+  transition: width 0.4s ease;
+}
+
+.hydration-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.55);
+  white-space: nowrap;
+}
+
 /* Reminder notification */
 .reminder-notification {
   width: 100%;
@@ -2520,4 +2577,204 @@ html, body, #root {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.3);
   margin-left: auto;
+}
+
+/* ── Breathing Guide ── */
+.breathing-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+}
+
+.breathing-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.breathing-bubble {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, rgba(100, 210, 255, 0.6), rgba(0, 122, 255, 0.3));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 60px rgba(100, 210, 255, 0.3);
+}
+
+.breathing-bubble.idle {
+  background: radial-gradient(circle at 40% 40%, rgba(200, 200, 220, 0.4), rgba(150, 150, 170, 0.2));
+  box-shadow: 0 0 40px rgba(200, 200, 220, 0.2);
+}
+
+.breathing-bubble.done {
+  background: radial-gradient(circle at 40% 40%, rgba(52, 199, 89, 0.5), rgba(48, 176, 80, 0.3));
+  box-shadow: 0 0 60px rgba(52, 199, 89, 0.3);
+}
+
+.breathing-seconds {
+  font-size: 36px;
+  font-weight: 200;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.breathing-message {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+  max-width: 300px;
+}
+
+.breathing-round {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.breathing-controls {
+  display: flex;
+  gap: 12px;
+}
+
+.breathing-btn {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.breathing-btn-start {
+  background: rgba(0, 122, 255, 0.8);
+  color: white;
+}
+
+.breathing-btn-start:hover {
+  background: rgba(0, 122, 255, 1);
+}
+
+.breathing-btn-stop {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.breathing-btn-stop:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ── Mood Card ── */
+.mood-card-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: -4px 0;
+}
+
+.mood-card-inner {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.mood-card-subtitle {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.42);
+  letter-spacing: 0.2px;
+}
+
+.mood-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.78);
+}
+
+.mood-emoji-row {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.mood-emoji-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 5px 0;
+  flex: 1;
+  min-width: 0;
+  border: 1.5px solid transparent;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mood-emoji-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.mood-emoji-btn.selected {
+  border-color: rgba(0, 122, 255, 0.5);
+  background: rgba(0, 122, 255, 0.1);
+}
+
+.mood-emoji-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.mood-emoji {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.mood-label {
+  font-size: 10px;
+  color: rgba(0, 0, 0, 0.55);
+  font-weight: 500;
+}
+
+.mood-loading {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.45);
+  padding: 2px 0;
+}
+
+.mood-response {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.68);
+  text-align: center;
+  line-height: 1.55;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 8px;
+  max-width: 100%;
+}
+
+.mood-done-btn {
+  padding: 6px 24px;
+  border: none;
+  border-radius: 16px;
+  background: rgba(52, 199, 89, 0.85);
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mood-done-btn:hover {
+  background: rgba(52, 199, 89, 1);
 }

@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from "react";
 import { useCardStore } from "../stores/cardStore";
 import { resolveCollisions } from "../utils/collision";
+import { calculateGridPositions } from "../utils/gridLayout";
 import type { CardType } from "../types";
 
 const VISIBLE_LIMIT = 5;
@@ -56,7 +57,7 @@ export function useCards() {
     [resolveOverlaps]
   );
 
-  // 包装 createCard，创建后解决碰撞
+  // 包装 createCard（cardStore.createCard 已自动使用网格位置）
   const handleCreateCard = useCallback(
     (
       title: string,
@@ -65,33 +66,22 @@ export function useCards() {
       cardType: CardType,
       reminderEnabled: boolean,
       reminderTime: number | null,
-      x: number,
-      y: number
+      _x: number,
+      _y: number
     ) => {
-      createCard(title, content, colorIndex, cardType, reminderEnabled, reminderTime, x, y);
-      // 使用 requestAnimationFrame 等待 zustand store 同步完成后再执行碰撞检测
-      requestAnimationFrame(() => {
-        const latest = useCardStore.getState().cards;
-        const sorted = [...latest].sort((a, b) => b.updatedAt - a.updatedAt);
-        const visible = sorted.slice(0, VISIBLE_LIMIT);
-        const newCard = visible[0];
-        if (newCard && visible.length > 1) {
-          const positions = resolveCollisions(
-            visible.map((c) => ({ id: c.id, x: c.x, y: c.y, content: c.content })),
-            newCard.id
-          );
-          const hasChange = positions.some((p) => {
-            const card = visible.find((c) => c.id === p.id);
-            return card && (Math.abs(card.x - p.x) > 1 || Math.abs(card.y - p.y) > 1);
-          });
-          if (hasChange) {
-            useCardStore.getState().batchSetPositions(positions);
-          }
-        }
-      });
+      createCard(title, content, colorIndex, cardType, reminderEnabled, reminderTime, 0, 0);
     },
     [createCard]
   );
+
+  // 整齐排列所有可见卡片到网格
+  const handleArrangeCards = useCallback(() => {
+    const sorted = [...useCardStore.getState().cards].sort((a, b) => b.updatedAt - a.updatedAt);
+    const visible = sorted.slice(0, VISIBLE_LIMIT);
+    if (visible.length === 0) return;
+    const positions = calculateGridPositions(visible.map((c) => c.id));
+    batchSetPositions(positions);
+  }, [batchSetPositions]);
 
   return {
     cards,
@@ -106,6 +96,7 @@ export function useCards() {
     handleCreateCard,
     handleUnstashCard: unstashCard,
     handleDragEnd,
+    handleArrangeCards,
     updateCardReminder: updateReminder,
     handleReminderFired: reminderFired,
   };

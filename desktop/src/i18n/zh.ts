@@ -45,6 +45,7 @@ export const zh = {
   // Floating Buttons
   floating_settings: "设置",
   floating_new_card: "新建卡片 (⌘⇧N)",
+  floating_arrange: "整齐排列 (⌘⇧A)",
 
   // Card Stack
   stashed_notes: "收纳的便签 ({{n}})",
@@ -120,10 +121,64 @@ export const zh = {
   launch_on_startup_label: "开机时自动启动 PinWall",
   launch_on_startup_desc: "默认开启，登录系统后自动在后台启动",
 
+  // Care Tone
+  care_tone_title: "关怀语气",
+  care_tone_desc: "选择 PinWall 关心你的方式",
+  care_tone_warm: "温暖治愈",
+  care_tone_rational: "理性陪伴",
+  care_tone_playful: "萌趣幽默",
+
+  // Hydration
+  hydration_title: "喝水提醒",
+  hydration_goal_label: "每日目标（杯）",
+  hydration_cup: "杯",
+  hydration_checkin: "喝了一杯",
+  hydration_checked: "已记录",
+
+  // Mood
+  mood_title: "心情打卡",
+  mood_enabled: "开启心情打卡",
+  mood_prompt: "今天心情怎么样？",
+  mood_subtitle: "嘿，想知道你今天过得如何",
+  mood_5: "很棒",
+  mood_4: "还不错",
+  mood_3: "一般",
+  mood_2: "有点累",
+  mood_1: "不太好",
+
+  // Rest Reminder
+  rest_title: "休息提醒",
+  rest_enabled: "开启休息提醒",
+  rest_interval_label: "每隔多久提醒休息",
+  rest_minutes: "分钟",
+
+  // Off-work
+  offwork_title: "下班关怀",
+  offwork_enabled: "开启下班提醒",
+  offwork_time_label: "期望下班时间",
+
+  // Eye Care
+  eyecare_title: "护眼提醒",
+  eyecare_enabled: "开启 20-20-20 护眼提醒",
+  eyecare_interval_label: "提醒间隔",
+
+  // Weather Care
+  weather_title: "天气关怀",
+  weather_enabled: "开启天气关怀",
+  weather_city_label: "所在城市",
+  weather_city_placeholder: "如：北京、Shanghai",
+
+  // Breathing
+  breathing_title: "深呼吸",
+  breathing_start: "开始呼吸",
+  breathing_stop: "结束",
+  breathing_round: "第 {{n}} 轮",
+
   // Card Types
   card_type_note: "普通便签",
   card_type_reminder: "一次性提醒",
   card_type_daily_checkin: "每日打卡",
+  card_type_hydration: "喝水打卡",
   card_type_label: "类型",
   checkin_time_label: "提醒时间",
   btn_checkin: "打卡",

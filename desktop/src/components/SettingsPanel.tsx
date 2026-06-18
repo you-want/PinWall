@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useI18n } from "../i18n";
-import type { Settings, AIConfig, QuotaMonitorConfig, QuotaMonitorModel } from "../types";
+import type { Settings, AIConfig, QuotaMonitorConfig, QuotaMonitorModel, CareTone } from "../types";
 import { DEFAULT_QUOTA_MONITOR, QUOTA_REFRESH_INTERVALS, DEFAULT_GLOBAL_SHORTCUT } from "../types";
 import { ShortcutRecorder } from "./ShortcutRecorder";
 
@@ -38,6 +38,8 @@ interface SettingsPanelProps {
   onHolidayEnabledIntlChange?: (enabled: boolean) => void;
   onShortcutChange?: (shortcut: string) => void;
   onLaunchOnStartupChange?: (enabled: boolean) => void;
+  onCareToneChange?: (tone: CareTone) => void;
+  onCareSettingsChange?: (partial: Partial<Settings>) => void;
 }
 
 export function SettingsPanel({
@@ -48,6 +50,8 @@ export function SettingsPanel({
   onHolidayEnabledIntlChange,
   onShortcutChange,
   onLaunchOnStartupChange,
+  onCareToneChange,
+  onCareSettingsChange,
 }: SettingsPanelProps) {
   const { t, lang, setLang } = useI18n();
 
@@ -181,6 +185,29 @@ export function SettingsPanel({
                   <span className="ap-switch-thumb" />
                 </span>
               </label>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Care Tone ── */}
+        <div className="ap-group">
+          <div className="ap-group-label">{t.care_tone_title}</div>
+          <div className="ap-card">
+            <div className="ap-row flex-col! items-start! gap-2">
+              <div className="text-xs text-white/45">{t.care_tone_desc}</div>
+              <div className="ap-segmented w-full">
+                {(["warm", "rational", "playful"] as const).map((tone) => (
+                  <button
+                    key={tone}
+                    className={`ap-segment flex-1 ${settings.careTone === tone ? "active" : ""}`}
+                    onClick={() => onCareToneChange?.(tone)}
+                  >
+                    {tone === "warm" && "🌸 "}{t.care_tone_warm}
+                    {tone === "rational" && " 🧭 "}{t.care_tone_rational}
+                    {tone === "playful" && " 🎈 "}{t.care_tone_playful}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -466,6 +493,132 @@ export function SettingsPanel({
                   </button>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Rest Reminder ── */}
+        <div className="ap-group">
+          <div className="ap-group-label">{t.rest_title}</div>
+          <div className="ap-card">
+            <div className="ap-row ap-row-toggle">
+              <span className="ap-row-label">{t.rest_enabled}</span>
+              <label className="ap-switch">
+                <input
+                  type="checkbox"
+                  checked={settings.restReminderEnabled ?? true}
+                  onChange={(e) => onCareSettingsChange?.({ restReminderEnabled: e.target.checked })}
+                />
+                <span className="ap-switch-track"><span className="ap-switch-thumb" /></span>
+              </label>
+            </div>
+            <div className="ap-divider" />
+            <div className="ap-field px-4 py-2">
+              <label className="ap-field-label">{t.rest_interval_label}</label>
+              <div className="ap-segmented mt-1.5">
+                {[30, 45, 60, 90, 120].map((min) => (
+                  <button
+                    key={min}
+                    className={`ap-segment ${(settings.restInterval ?? 90) === min ? "active" : ""}`}
+                    onClick={() => onCareSettingsChange?.({ restInterval: min })}
+                  >
+                    {min}{t.rest_minutes}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Off-work Care ── */}
+        <div className="ap-group">
+          <div className="ap-group-label">{t.offwork_title}</div>
+          <div className="ap-card">
+            <div className="ap-row ap-row-toggle">
+              <span className="ap-row-label">{t.offwork_enabled}</span>
+              <label className="ap-switch">
+                <input
+                  type="checkbox"
+                  checked={settings.offWorkReminderEnabled ?? true}
+                  onChange={(e) => onCareSettingsChange?.({ offWorkReminderEnabled: e.target.checked })}
+                />
+                <span className="ap-switch-track"><span className="ap-switch-thumb" /></span>
+              </label>
+            </div>
+            <div className="ap-divider" />
+            <div className="ap-field px-4 py-2">
+              <label className="ap-field-label">{t.offwork_time_label}</label>
+              <input
+                className="ap-input mt-1.5"
+                type="time"
+                value={settings.offWorkTime ?? "18:00"}
+                onChange={(e) => onCareSettingsChange?.({ offWorkTime: e.target.value })}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Eye Care ── */}
+        <div className="ap-group">
+          <div className="ap-group-label">{t.eyecare_title}</div>
+          <div className="ap-card">
+            <div className="ap-row ap-row-toggle">
+              <span className="ap-row-label">{t.eyecare_enabled}</span>
+              <label className="ap-switch">
+                <input
+                  type="checkbox"
+                  checked={settings.eyeCareEnabled ?? true}
+                  onChange={(e) => onCareSettingsChange?.({ eyeCareEnabled: e.target.checked })}
+                />
+                <span className="ap-switch-track"><span className="ap-switch-thumb" /></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Mood Check-in ── */}
+        <div className="ap-group">
+          <div className="ap-group-label">{t.mood_title}</div>
+          <div className="ap-card">
+            <div className="ap-row ap-row-toggle">
+              <span className="ap-row-label">{t.mood_enabled}</span>
+              <label className="ap-switch">
+                <input
+                  type="checkbox"
+                  checked={settings.moodCheckinEnabled ?? true}
+                  onChange={(e) => onCareSettingsChange?.({ moodCheckinEnabled: e.target.checked })}
+                />
+                <span className="ap-switch-track"><span className="ap-switch-thumb" /></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Weather Care ── */}
+        <div className="ap-group">
+          <div className="ap-group-label">{t.weather_title}</div>
+          <div className="ap-card">
+            <div className="ap-row ap-row-toggle">
+              <span className="ap-row-label">{t.weather_enabled}</span>
+              <label className="ap-switch">
+                <input
+                  type="checkbox"
+                  checked={settings.weatherCareEnabled ?? true}
+                  onChange={(e) => onCareSettingsChange?.({ weatherCareEnabled: e.target.checked })}
+                />
+                <span className="ap-switch-track"><span className="ap-switch-thumb" /></span>
+              </label>
+            </div>
+            <div className="ap-divider" />
+            <div className="ap-field px-4 py-2">
+              <label className="ap-field-label">{t.weather_city_label}</label>
+              <input
+                className="ap-input mt-1.5"
+                type="text"
+                value={settings.weatherCity ?? ""}
+                onChange={(e) => onCareSettingsChange?.({ weatherCity: e.target.value })}
+                placeholder={t.weather_city_placeholder}
+              />
             </div>
           </div>
         </div>

@@ -169,6 +169,7 @@ export function NewCardModal({ x: _x, y: _y, onConfirm, onCancel }: NewCardModal
     { value: "note", label: t.card_type_note, icon: "📝" },
     { value: "reminder", label: t.card_type_reminder, icon: "⏰" },
     { value: "daily-checkin", label: t.card_type_daily_checkin, icon: "✅" },
+    { value: "hydration", label: t.card_type_hydration, icon: "💧" },
   ];
 
   const previewColor = selectedColorIndex !== null ? colors[selectedColorIndex] : null;

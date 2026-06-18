@@ -45,6 +45,7 @@ export const en = {
   // Floating Buttons
   floating_settings: "Settings",
   floating_new_card: "New Card (⌘⇧N)",
+  floating_arrange: "Arrange All (⌘⇧A)",
 
   // Card Stack
   stashed_notes: "Stashed Notes ({{n}})",
@@ -120,10 +121,64 @@ export const en = {
   launch_on_startup_label: "Launch PinWall when the system starts",
   launch_on_startup_desc: "Enabled by default and starts quietly after you log in",
 
+  // Care Tone
+  care_tone_title: "Care Tone",
+  care_tone_desc: "Choose how PinWall cares about you",
+  care_tone_warm: "Warm & Caring",
+  care_tone_rational: "Calm & Rational",
+  care_tone_playful: "Fun & Playful",
+
+  // Hydration
+  hydration_title: "Hydration Reminder",
+  hydration_goal_label: "Daily Goal (cups)",
+  hydration_cup: "cups",
+  hydration_checkin: "Had a cup",
+  hydration_checked: "Recorded",
+
+  // Mood
+  mood_title: "Mood Check-in",
+  mood_enabled: "Enable mood check-in",
+  mood_prompt: "How are you feeling today?",
+  mood_subtitle: "Hey, let's check in on how you're doing",
+  mood_5: "Great",
+  mood_4: "Good",
+  mood_3: "Okay",
+  mood_2: "Tired",
+  mood_1: "Not well",
+
+  // Rest Reminder
+  rest_title: "Rest Reminder",
+  rest_enabled: "Enable rest reminder",
+  rest_interval_label: "Remind me to rest every",
+  rest_minutes: "min",
+
+  // Off-work
+  offwork_title: "Off-work Care",
+  offwork_enabled: "Enable off-work reminder",
+  offwork_time_label: "Expected off-work time",
+
+  // Eye Care
+  eyecare_title: "Eye Care",
+  eyecare_enabled: "Enable 20-20-20 eye care reminder",
+  eyecare_interval_label: "Reminder interval",
+
+  // Weather Care
+  weather_title: "Weather Care",
+  weather_enabled: "Enable weather care",
+  weather_city_label: "City",
+  weather_city_placeholder: "e.g. Beijing, Shanghai",
+
+  // Breathing
+  breathing_title: "Deep Breathing",
+  breathing_start: "Start",
+  breathing_stop: "Stop",
+  breathing_round: "Round {{n}}",
+
   // Card Types
   card_type_note: "Note",
   card_type_reminder: "One-time Reminder",
   card_type_daily_checkin: "Daily Check-in",
+  card_type_hydration: "Hydration",
   card_type_label: "Type",
   checkin_time_label: "Reminder Time",
   btn_checkin: "Check in",

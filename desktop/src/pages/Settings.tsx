@@ -3,9 +3,9 @@ import { webviewWindow } from "@tauri-apps/api";
 import { emit } from "@tauri-apps/api/event";
 import { useI18n } from "../i18n";
 import { SettingsPanel } from "../components/SettingsPanel";
-import type { Settings as SettingsType, AIConfig, QuotaMonitorConfig } from "../types";
+import type { Settings as SettingsType, AIConfig, QuotaMonitorConfig, CareTone } from "../types";
 import { DEFAULT_GLOBAL_SHORTCUT } from "../types";
-import { getSettings, saveSettings, updateAIConfig, updateQuotaMonitorConfig, updateHolidayEnabledCn, updateHolidayEnabledIntl, updateGlobalShortcut } from "../services/storage";
+import { getSettings, saveSettings, updateAIConfig, updateQuotaMonitorConfig, updateHolidayEnabledCn, updateHolidayEnabledIntl, updateGlobalShortcut, updateCareTone, updateCareSettings } from "../services/storage";
 import { setLaunchOnStartup, syncLaunchOnStartupSetting } from "../services/autostart";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -93,6 +93,26 @@ function Settings() {
     }
   }, []);
 
+  const handleCareToneChange = useCallback(async (tone: CareTone) => {
+    try {
+      const updated = await updateCareTone(tone);
+      setSettings(updated);
+      await emit("settings:changed");
+    } catch (err) {
+      console.error("Failed to update care tone:", err);
+    }
+  }, []);
+
+  const handleCareSettingsChange = useCallback(async (partial: Partial<SettingsType>) => {
+    try {
+      const updated = await updateCareSettings(partial);
+      setSettings(updated);
+      await emit("settings:changed");
+    } catch (err) {
+      console.error("Failed to update care settings:", err);
+    }
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -129,6 +149,8 @@ function Settings() {
       onHolidayEnabledIntlChange={handleHolidayEnabledIntlChange}
       onShortcutChange={handleShortcutChange}
       onLaunchOnStartupChange={handleLaunchOnStartupChange}
+      onCareToneChange={handleCareToneChange}
+      onCareSettingsChange={handleCareSettingsChange}
     />
   );
 }

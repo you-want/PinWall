@@ -5,6 +5,7 @@ import { useLanguageStore } from "../stores/languageStore";
 import { getSettings } from "../services/storage";
 import { polishContent, condenseContent } from "../services/aiService";
 import { useCardStore } from "../stores/cardStore";
+import { MoodCard } from "./MoodCard";
 import type { PinCardData } from "../types";
 
 interface PinCardProps {
@@ -209,6 +210,10 @@ export function PinCard({
     useCardStore.getState().checkinCard(card.id);
   }, [card.id, card.checkinDone]);
 
+  const handleHydrationDrink = useCallback(() => {
+    useCardStore.getState().checkinHydration(card.id);
+  }, [card.id]);
+
   return (
     <div
       ref={cardRef}
@@ -255,7 +260,10 @@ export function PinCard({
               <span className="btn-spinner" />
               {aiLoading === "polish" ? t.ai_polishing : t.ai_condensing}
             </span>
-          ) : card.content}
+          ) : card.cardType !== "mood" ? card.content : null}
+          {card.cardType === "mood" && (
+            <MoodCard cardId={card.id} onDone={() => onClose(card.id)} />
+          )}
           {card.cardType === "daily-checkin" && (
             <button
               className={`btn-checkin ${card.checkinDone ? "checked" : ""}`}
@@ -264,6 +272,29 @@ export function PinCard({
             >
               {card.checkinDone ? "✓ " + t.btn_checked_in : t.btn_checkin}
             </button>
+          )}
+          {card.cardType === "hydration" && (
+            <div className="hydration-widget">
+              <div className="hydration-progress">
+                <div className="hydration-bar">
+                  <div
+                    className="hydration-bar-fill"
+                    style={{ width: `${Math.min(100, ((card.hydrationCount ?? 0) / (card.hydrationGoal ?? 8)) * 100)}%` }}
+                  />
+                </div>
+                <span className="hydration-count">
+                  💧 {card.hydrationCount ?? 0} / {card.hydrationGoal ?? 8} {t.hydration_cup}
+                </span>
+              </div>
+              <button
+                className={`btn-checkin ${(card.hydrationCount ?? 0) >= (card.hydrationGoal ?? 8) ? "checked" : ""}`}
+                onClick={handleHydrationDrink}
+              >
+                {(card.hydrationCount ?? 0) >= (card.hydrationGoal ?? 8)
+                  ? "✓ " + t.hydration_checked
+                  : "🥤 " + t.hydration_checkin}
+              </button>
+            </div>
           )}
         </div>
       )}

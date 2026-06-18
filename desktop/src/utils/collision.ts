@@ -1,3 +1,5 @@
+import { PADDING_RIGHT } from "./gridLayout";
+
 /**
  * 卡片碰撞检测与分离算法
  * 当卡片重叠时，沿最短轴将它们推开
@@ -117,11 +119,12 @@ export function resolveCollisions(
     if (!hasOverlap) break;
   }
 
-  // 确保不超出屏幕边界
+  // 确保不超出屏幕边界（右侧预留空间给浮动按钮）
   const screenW = window.innerWidth;
   const screenH = window.innerHeight;
+  const rightLimit = screenW - PADDING_RIGHT;
   for (const rect of rects) {
-    rect.x = Math.max(0, Math.min(rect.x, screenW - rect.width));
+    rect.x = Math.max(0, Math.min(rect.x, rightLimit - rect.width));
     rect.y = Math.max(0, Math.min(rect.y, screenH - rect.height));
   }
 

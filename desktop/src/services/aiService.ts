@@ -1,4 +1,5 @@
-import type { AIConfig } from "../types";
+import type { AIConfig, CareTone } from "../types";
+import { getTonePromptModifier } from "../data/careTones";
 
 interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -137,6 +138,58 @@ export async function generateHolidayGreeting(
 
   const lines = result.split("\n").filter((l) => l.trim());
   const title = lines[0]?.replace(/^[#\-*"']+\s*/, "").trim() || holidayName;
+  const content = lines.slice(1).join("\n").replace(/^["']|["']$/g, "").trim() || result;
+  return { title, content };
+}
+
+/** Generate a caring response based on user's mood */
+export async function generateMoodResponse(
+  mood: number,
+  config: AIConfig,
+  lang: "zh" | "en",
+  tone: CareTone,
+): Promise<string> {
+  const toneModifier = getTonePromptModifier(tone);
+  const moodLabels: Record<number, string> = {
+    5: lang === "zh" ? "很棒" : "great",
+    4: lang === "zh" ? "还不错" : "good",
+    3: lang === "zh" ? "一般" : "okay",
+    2: lang === "zh" ? "有点累" : "tired",
+    1: lang === "zh" ? "不太好" : "not well",
+  };
+  const moodLabel = moodLabels[mood] || moodLabels[3];
+
+  const systemPrompt = lang === "zh"
+    ? `你是一个关心用户的桌面伙伴。${toneModifier} 用户今天心情是「${moodLabel}」。请用一句话（20-40字）关心/回应用户。`
+    : `You are a caring desktop companion. ${toneModifier} The user's mood today is "${moodLabel}". Respond with one caring sentence (15-30 words).`;
+
+  return chatCompletion(config, [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: lang === "zh" ? `我今天心情${moodLabel}` : `I'm feeling ${moodLabel} today` },
+  ], 100);
+}
+
+/** Generate a weather-based caring message */
+export async function generateWeatherCare(
+  weatherDesc: string,
+  temperature: number,
+  config: AIConfig,
+  lang: "zh" | "en",
+  tone: CareTone,
+): Promise<{ title: string; content: string }> {
+  const toneModifier = getTonePromptModifier(tone);
+
+  const systemPrompt = lang === "zh"
+    ? `你是一个关心用户的天气助手。${toneModifier} 根据天气信息生成一条关怀卡片。格式：第一行标题（4-8字），换行后正文（20-50字）。只输出标题和正文。`
+    : `You are a caring weather assistant. ${toneModifier} Generate a caring card based on weather info. Format: first line title (3-6 words), then content (15-40 words). Only output title and content.`;
+
+  const result = await chatCompletion(config, [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: lang === "zh" ? `今天天气：${weatherDesc}，温度${temperature}°C` : `Today's weather: ${weatherDesc}, ${temperature}°C` },
+  ], 150);
+
+  const lines = result.split("\n").filter((l) => l.trim());
+  const title = lines[0]?.replace(/^[#\-*"']+\s*/, "").trim() || (lang === "zh" ? "天气关怀" : "Weather Care");
   const content = lines.slice(1).join("\n").replace(/^["']|["']$/g, "").trim() || result;
   return { title, content };
 }

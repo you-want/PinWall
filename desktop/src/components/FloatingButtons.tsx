@@ -3,12 +3,21 @@ import { useI18n } from "../i18n";
 interface FloatingButtonsProps {
   onNewCard: () => void;
   onSettings: () => void;
+  onArrange: () => void;
 }
 
-export function FloatingButtons({ onNewCard, onSettings }: FloatingButtonsProps) {
+export function FloatingButtons({ onNewCard, onSettings, onArrange }: FloatingButtonsProps) {
   const { t } = useI18n();
   return (
     <div className="floating-buttons">
+      <button
+        data-interactive="true"
+        className="floating-btn floating-arrange-btn"
+        onClick={onArrange}
+        title={t.floating_arrange}
+      >
+        <span style={{ fontSize: '18px', fontWeight: 'bold' }}>⊞</span>
+      </button>
       <button
         data-interactive="true"
         className="floating-btn floating-settings-btn"
