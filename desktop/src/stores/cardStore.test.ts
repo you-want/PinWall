@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { createMockCard, createMockCards, createReminderCard, createDailyCheckinCard, createHydrationCard } from '@/__tests__';
 
 function delay(ms: number) {
   return new Promise(r => setTimeout(r, ms));
@@ -185,6 +186,49 @@ describe('useCardStore', () => {
       expect(useCardStore.getState().cards.find(c => c.id === id)!.collapsed).toBe(true);
       useCardStore.getState().unstashCard(id);
       expect(useCardStore.getState().cards.find(c => c.id === id)!.collapsed).toBe(false);
+    });
+  });
+
+  describe('fixture helpers', () => {
+    it('createMockCard produces valid card data', () => {
+      const card = createMockCard();
+      expect(card.id).toBe('card-1700000000000');
+      expect(card.title).toBe('测试卡片');
+      expect(card.cardType).toBe('note');
+      expect(card.reminderEnabled).toBe(false);
+    });
+
+    it('createMockCard with overrides', () => {
+      const card = createMockCard({ title: 'Custom', colorIndex: 3 });
+      expect(card.title).toBe('Custom');
+      expect(card.colorIndex).toBe(3);
+    });
+
+    it('createMockCards generates multiple cards', () => {
+      const cards = createMockCards(3);
+      expect(cards).toHaveLength(3);
+      expect(cards[0].id).toBe('card-0');
+      expect(cards[1].id).toBe('card-1');
+    });
+
+    it('createReminderCard sets reminder fields', () => {
+      const card = createReminderCard();
+      expect(card.cardType).toBe('reminder');
+      expect(card.reminderEnabled).toBe(true);
+      expect(card.reminderTime).toBeGreaterThan(Date.now() - 1000);
+    });
+
+    it('createDailyCheckinCard sets checkin fields', () => {
+      const card = createDailyCheckinCard();
+      expect(card.cardType).toBe('daily-checkin');
+      expect(card.reminderEnabled).toBe(true);
+    });
+
+    it('createHydrationCard sets hydration fields', () => {
+      const card = createHydrationCard();
+      expect(card.cardType).toBe('hydration');
+      expect(card.hydrationCount).toBe(3);
+      expect(card.hydrationGoal).toBe(8);
     });
   });
 
