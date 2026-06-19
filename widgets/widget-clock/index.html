@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clock Widget</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+      color: #1a1a1a;
+    }
+
+    .clock-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px;
+    }
+
+    /* Analog clock */
+    .analog-clock {
+      position: relative;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.7);
+      border: 2px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .analog-clock .center-dot {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent, #6366f1);
+      transform: translate(-50%, -50%);
+      z-index: 10;
+    }
+
+    .analog-clock .hand {
+      position: absolute;
+      bottom: 50%;
+      left: 50%;
+      transform-origin: bottom center;
+      border-radius: 4px;
+    }
+
+    .hand-hour {
+      width: 3.5px;
+      height: 35%;
+      background: #374151;
+      margin-left: -1.75px;
+    }
+
+    .hand-minute {
+      width: 2.5px;
+      height: 45%;
+      background: #6b7280;
+      margin-left: -1.25px;
+    }
+
+    .hand-second {
+      width: 1.5px;
+      height: 48%;
+      background: var(--accent, #6366f1);
+      margin-left: -0.75px;
+    }
+
+    .analog-clock .tick {
+      position: absolute;
+      top: 6px;
+      left: 50%;
+      width: 1.5px;
+      height: 8px;
+      background: rgba(0,0,0,0.15);
+      transform-origin: center 64px;
+      margin-left: -0.75px;
+    }
+    .analog-clock .tick.major {
+      width: 2px;
+      height: 12px;
+      background: rgba(0,0,0,0.3);
+      margin-left: -1px;
+    }
+
+    /* Digital clock */
+    .digital-time {
+      font-size: 42px;
+      font-weight: 200;
+      letter-spacing: -1px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .digital-time .seconds {
+      font-size: 18px;
+      color: #9ca3af;
+      margin-left: 2px;
+    }
+
+    .date-display {
+      font-size: 12px;
+      color: #6b7280;
+      font-weight: 500;
+    }
+
+    /* Labels under analog */
+    .analog-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #4b5563;
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body>
+  <div class="clock-container" id="clock"></div>
+
+  <script>
+    // Widget config (will be set by host via postMessage)
+    let config = {
+      mode: 'analog',
+      showSeconds: true,
+      showDate: true,
+      accentColor: '#6366f1',
+    };
+
+    // Listen for host messages
+    window.addEventListener('message', (e) => {
+      const msg = e.data;
+      if (msg?.type === 'event' && msg.event === 'pinwall:ready') {
+        if (msg.payload?.settings) {
+          config = { ...config, ...msg.payload.settings };
+        }
+        document.documentElement.style.setProperty('--accent', config.accentColor);
+        render();
+      }
+    });
+
+    const DAYS_ZH = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    const MONTHS_ZH = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+
+    function pad(n) { return n.toString().padStart(2, '0'); }
+
+    function formatDate(d) {
+      return `${d.getFullYear()}年${MONTHS_ZH[d.getMonth()]}${d.getDate()}日 ${DAYS_ZH[d.getDay()]}`;
+    }
+
+    function renderAnalog(d) {
+      const h = d.getHours() % 12;
+      const m = d.getMinutes();
+      const s = d.getSeconds();
+
+      const hourDeg = (h + m / 60) * 30;
+      const minDeg = (m + s / 60) * 6;
+      const secDeg = s * 6;
+
+      let ticks = '';
+      for (let i = 0; i < 12; i++) {
+        const cls = i % 3 === 0 ? 'tick major' : 'tick';
+        ticks += `<div class="${cls}" style="transform: rotate(${i * 30}deg)"></div>`;
+      }
+
+      const secondsHand = config.showSeconds
+        ? `<div class="hand hand-second" style="transform: rotate(${secDeg}deg)"></div>`
+        : '';
+
+      const dateStr = config.showDate ? `<div class="date-display">${formatDate(d)}</div>` : '';
+      const timeStr = `<div class="analog-label">${pad(d.getHours())}:${pad(m)}${config.showSeconds ? ':' + pad(s) : ''}</div>`;
+
+      return `
+        <div class="analog-clock">
+          ${ticks}
+          <div class="hand hand-hour" style="transform: rotate(${hourDeg}deg)"></div>
+          <div class="hand hand-minute" style="transform: rotate(${minDeg}deg)"></div>
+          ${secondsHand}
+          <div class="center-dot"></div>
+        </div>
+        ${timeStr}
+        ${dateStr}
+      `;
+    }
+
+    function renderDigital(d) {
+      const h = pad(d.getHours());
+      const m = pad(d.getMinutes());
+      const s = config.showSeconds ? `<span class="seconds">${pad(d.getSeconds())}</span>` : '';
+      const dateStr = config.showDate ? `<div class="date-display">${formatDate(d)}</div>` : '';
+
+      return `
+        <div class="digital-time">${h}:${m}${s}</div>
+        ${dateStr}
+      `;
+    }
+
+    function render() {
+      const d = new Date();
+      const container = document.getElementById('clock');
+      container.innerHTML = config.mode === 'digital' ? renderDigital(d) : renderAnalog(d);
+    }
+
+    // Initial render
+    render();
+
+    // Update every second
+    setInterval(render, 1000);
+  </script>
+</body>
+</html>

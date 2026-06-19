@@ -1,0 +1,42 @@
+{
+  "id": "com.pinwall.clock",
+  "name": "时钟小组件",
+  "description": "美观的桌面时钟，支持模拟/数字模式",
+  "version": "1.0.0",
+  "author": "PinWall Team",
+  "entry": "index.html",
+  "icon": "icon.png",
+  "type": "official",
+  "category": "utility",
+  "permissions": ["storage", "theme", "i18n"],
+  "defaultSize": { "width": 200, "height": 200 },
+  "minSize": { "width": 140, "height": 140 },
+  "maxSize": { "width": 400, "height": 400 },
+  "settings": [
+    {
+      "key": "mode",
+      "label": "显示模式",
+      "type": "select",
+      "options": ["analog", "digital"],
+      "default": "analog"
+    },
+    {
+      "key": "showSeconds",
+      "label": "显示秒",
+      "type": "boolean",
+      "default": true
+    },
+    {
+      "key": "showDate",
+      "label": "显示日期",
+      "type": "boolean",
+      "default": true
+    },
+    {
+      "key": "accentColor",
+      "label": "强调色",
+      "type": "color",
+      "default": "#6366f1"
+    }
+  ]
+}

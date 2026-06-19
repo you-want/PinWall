@@ -1,0 +1,19 @@
+{
+  "id": "com.pinwall.pomodoro",
+  "name": "番茄钟",
+  "description": "专注工作番茄钟，提升效率",
+  "version": "1.0.0",
+  "author": "PinWall Team",
+  "entry": "index.html",
+  "icon": "icon.png",
+  "type": "official",
+  "category": "productivity",
+  "permissions": ["storage", "theme", "i18n", "notify"],
+  "defaultSize": { "width": 220, "height": 260 },
+  "minSize": { "width": 180, "height": 220 },
+  "maxSize": { "width": 350, "height": 400 },
+  "settings": [
+    { "key": "workMinutes", "label": "工作时长(分钟)", "type": "number", "default": 25, "min": 5, "max": 60 },
+    { "key": "breakMinutes", "label": "休息时长(分钟)", "type": "number", "default": 5, "min": 1, "max": 30 }
+  ]
+}

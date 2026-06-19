@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useI18n } from "../i18n";
 import type { Settings, AIConfig, QuotaMonitorConfig, QuotaMonitorModel, CareTone } from "../types";
 import { DEFAULT_QUOTA_MONITOR, QUOTA_REFRESH_INTERVALS, DEFAULT_GLOBAL_SHORTCUT } from "../types";
 import { ShortcutRecorder } from "./ShortcutRecorder";
+import { useWidgetStore } from "../stores/widgetStore";
+import { installWidgetFromPath, uninstallWidget } from "../services/widgetLoader";
+import { MarketplacePanel } from "./MarketplacePanel";
 
 // ── Provider presets ──────────────────────────────────────
 const PROVIDER_PRESETS = [
@@ -623,7 +627,107 @@ export function SettingsPanel({
           </div>
         </div>
 
+        {/* ── Widget Extensions ── */}
+        <WidgetExtensionsSection />
+
       </div>
+    </div>
+  );
+}
+
+function WidgetExtensionsSection() {
+  const { widgets, toggleWidget } = useWidgetStore();
+  const [showMarketplace, setShowMarketplace] = useState(false);
+  const lang = useI18n().lang;
+
+  const handleInstall = async () => {
+    const selected = await open({
+      directory: true,
+      title: lang === "zh" ? "选择 Widget 目录" : "Select Widget Directory",
+    });
+    if (selected) {
+      const manifest = await installWidgetFromPath(selected as string);
+      if (manifest) {
+        useWidgetStore.getState().installWidget(manifest);
+      }
+    }
+  };
+
+  const handleUninstall = async (id: string) => {
+    const ok = await uninstallWidget(id);
+    if (ok) {
+      useWidgetStore.getState().uninstallWidget(id);
+    }
+  };
+
+  return (
+    <div className="ap-group">
+      <div className="ap-group-label">{lang === "zh" ? "小组件扩展" : "Widget Extensions"}</div>
+      <div className="ap-card">
+        {widgets.length === 0 ? (
+          <div className="px-4 py-3 text-sm text-white/45">
+            {lang === "zh" ? "尚未安装任何小组件" : "No widgets installed"}
+          </div>
+        ) : (
+          widgets.map((w) => (
+            <div key={w.manifest.id}>
+              <div className="ap-row ap-row-toggle">
+                <div className="min-w-0 pr-4">
+                  <div className="ap-row-label flex items-center gap-2">
+                    <span>{w.manifest.name}</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-white/50">
+                      v{w.manifest.version}
+                    </span>
+                    {w.manifest.type === "official" && (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-indigo-500/30 text-indigo-300">
+                        {lang === "zh" ? "官方" : "Official"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1 text-xs text-white/45">
+                    {w.manifest.description}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    className="text-xs text-red-400/70 hover:text-red-400 transition-colors cursor-pointer"
+                    onClick={() => handleUninstall(w.manifest.id)}
+                  >
+                    {lang === "zh" ? "移除" : "Remove"}
+                  </button>
+                  <label className="ap-switch">
+                    <input
+                      type="checkbox"
+                      checked={w.enabled}
+                      onChange={(e) => toggleWidget(w.manifest.id, e.target.checked)}
+                    />
+                    <span className="ap-switch-track"><span className="ap-switch-thumb" /></span>
+                  </label>
+                </div>
+              </div>
+              {w !== widgets[widgets.length - 1] && <div className="ap-divider" />}
+            </div>
+          ))
+        )}
+        <div className="ap-divider" />
+        <div className="px-4 py-3 flex gap-2">
+          <button
+            className="flex-1 py-2 rounded-lg text-sm font-medium bg-indigo-500/80 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
+            onClick={() => setShowMarketplace(true)}
+          >
+            🧩 {lang === "zh" ? "浏览市场" : "Browse Marketplace"}
+          </button>
+          <button
+            className="flex-1 py-2 rounded-lg text-sm font-medium bg-white/10 hover:bg-white/15 text-white/80 transition-colors cursor-pointer"
+            onClick={handleInstall}
+          >
+            + {lang === "zh" ? "本地安装" : "Local Install"}
+          </button>
+        </div>
+      </div>
+      {showMarketplace && (
+        <MarketplacePanel onClose={() => setShowMarketplace(false)} lang={lang} />
+      )}
     </div>
   );
 }

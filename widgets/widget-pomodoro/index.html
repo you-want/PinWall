@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pomodoro Widget</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter Variable', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: transparent;
+      height: 100vh;
+      overflow: hidden;
+      color: #1a1a1a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pomo {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      width: 100%;
+    }
+    .timer {
+      font-size: 52px;
+      font-weight: 200;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -2px;
+    }
+    .status {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .status.work { color: #ef4444; }
+    .status.break { color: #10b981; }
+    .controls {
+      display: flex;
+      gap: 8px;
+    }
+    .btn {
+      padding: 8px 20px;
+      border-radius: 20px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #6366f1;
+      color: white;
+    }
+    .btn-primary:hover { background: #4f46e5; }
+    .btn-secondary {
+      background: rgba(0,0,0,0.06);
+      color: #4b5563;
+    }
+    .btn-secondary:hover { background: rgba(0,0,0,0.1); }
+    .progress {
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(0,0,0,0.06);
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 1s linear;
+    }
+    .progress-bar.work { background: #ef4444; }
+    .progress-bar.break { background: #10b981; }
+    .count {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+  </style>
+</head>
+<body>
+  <div class="pomo">
+    <div class="status work" id="status">专注</div>
+    <div class="timer" id="timer">25:00</div>
+    <div class="progress">
+      <div class="progress-bar work" id="progressBar" style="width: 0%"></div>
+    </div>
+    <div class="controls">
+      <button class="btn btn-primary" id="startBtn" onclick="toggleTimer()">开始</button>
+      <button class="btn btn-secondary" onclick="resetTimer()">重置</button>
+    </div>
+    <div class="count" id="count">今日完成: 0 🍅</div>
+  </div>
+
+  <script>
+    let config = { workMinutes: 25, breakMinutes: 5 };
+    let isRunning = false;
+    let isWorkPhase = true;
+    let remaining = config.workMinutes * 60;
+    let total = config.workMinutes * 60;
+    let completedCount = 0;
+    let interval = null;
+
+    window.addEventListener('message', (e) => {
+      const msg = e.data;
+      if (msg?.type === 'event' && msg.event === 'pinwall:ready') {
+        if (msg.payload?.settings) {
+          config = { ...config, ...msg.payload.settings };
+          remaining = config.workMinutes * 60;
+          total = config.workMinutes * 60;
+          updateDisplay();
+        }
+      }
+    });
+
+    function toggleTimer() {
+      if (isRunning) {
+        clearInterval(interval);
+        isRunning = false;
+        document.getElementById('startBtn').textContent = '继续';
+      } else {
+        isRunning = true;
+        document.getElementById('startBtn').textContent = '暂停';
+        interval = setInterval(tick, 1000);
+      }
+    }
+
+    function tick() {
+      remaining--;
+      if (remaining <= 0) {
+        clearInterval(interval);
+        isRunning = false;
+        
+        if (isWorkPhase) {
+          completedCount++;
+          document.getElementById('count').textContent = `今日完成: ${completedCount} 🍅`;
+          // Notify
+          window.parent.postMessage({
+            type: 'request', id: 'notify_' + Date.now(),
+            module: 'notify', method: 'send',
+            args: [{ title: '🍅 番茄完成！', body: '休息一下吧～' }]
+          }, '*');
+          // Switch to break
+          isWorkPhase = false;
+          remaining = config.breakMinutes * 60;
+          total = config.breakMinutes * 60;
+        } else {
+          // Switch to work
+          isWorkPhase = true;
+          remaining = config.workMinutes * 60;
+          total = config.workMinutes * 60;
+          window.parent.postMessage({
+            type: 'request', id: 'notify_' + Date.now(),
+            module: 'notify', method: 'send',
+            args: [{ title: '⏰ 休息结束！', body: '开始下一个番茄吧' }]
+          }, '*');
+        }
+        
+        document.getElementById('startBtn').textContent = '开始';
+        updateStatus();
+      }
+      updateDisplay();
+    }
+
+    function resetTimer() {
+      clearInterval(interval);
+      isRunning = false;
+      isWorkPhase = true;
+      remaining = config.workMinutes * 60;
+      total = config.workMinutes * 60;
+      document.getElementById('startBtn').textContent = '开始';
+      updateStatus();
+      updateDisplay();
+    }
+
+    function updateStatus() {
+      const statusEl = document.getElementById('status');
+      const barEl = document.getElementById('progressBar');
+      statusEl.textContent = isWorkPhase ? '专注' : '休息';
+      statusEl.className = 'status ' + (isWorkPhase ? 'work' : 'break');
+      barEl.className = 'progress-bar ' + (isWorkPhase ? 'work' : 'break');
+    }
+
+    function updateDisplay() {
+      const m = Math.floor(remaining / 60);
+      const s = remaining % 60;
+      document.getElementById('timer').textContent =
+        `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+      const pct = total > 0 ? ((total - remaining) / total * 100) : 0;
+      document.getElementById('progressBar').style.width = pct + '%';
+    }
+
+    updateDisplay();
+  </script>
+</body>
+</html>

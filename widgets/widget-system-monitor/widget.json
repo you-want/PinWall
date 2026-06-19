@@ -1,0 +1,18 @@
+{
+  "id": "com.pinwall.system-monitor",
+  "name": "系统监控",
+  "description": "实时 CPU/内存/电池状态监控",
+  "version": "1.0.0",
+  "author": "PinWall Team",
+  "entry": "index.html",
+  "icon": "icon.png",
+  "type": "official",
+  "category": "utility",
+  "permissions": ["storage", "theme", "i18n", "system"],
+  "defaultSize": { "width": 200, "height": 240 },
+  "minSize": { "width": 160, "height": 200 },
+  "maxSize": { "width": 350, "height": 400 },
+  "settings": [
+    { "key": "refreshInterval", "label": "刷新间隔(秒)", "type": "number", "default": 3, "min": 1, "max": 30 }
+  ]
+}

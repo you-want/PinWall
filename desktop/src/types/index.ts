@@ -128,3 +128,114 @@ export const QUOTA_REFRESH_INTERVALS = [
   { label: "30分钟", value: 30 },
   { label: "1小时", value: 60 },
 ];
+
+// ─── Widget Extension System ────────────────────────────────
+
+/** Widget 权限标识 */
+export type WidgetPermission =
+  | "storage"
+  | "theme"
+  | "notify"
+  | "cards"
+  | "events"
+  | "app"
+  | "ai"
+  | "system"
+  | "network"
+  | "i18n";
+
+/** Widget 分类 */
+export type WidgetCategory =
+  | "utility"
+  | "productivity"
+  | "beautify"
+  | "social"
+  | "developer"
+  | "entertainment";
+
+/** Widget 类型标识 */
+export type WidgetType = "official" | "community";
+
+/** Widget Manifest 中的设置项定义 */
+export interface WidgetSettingDefinition {
+  key: string;
+  label: string;
+  type: "text" | "number" | "boolean" | "select" | "color";
+  default?: any;
+  options?: string[];       // type="select" 时使用
+  min?: number;             // type="number" 时使用
+  max?: number;             // type="number" 时使用
+  description?: string;
+}
+
+/** Widget 尺寸 */
+export interface WidgetSize {
+  width: number;
+  height: number;
+}
+
+/** Widget Manifest（widget.json 结构） */
+export interface WidgetManifest {
+  id: string;
+  name: string;
+  description: string;
+  version: string;
+  author: string;
+  entry: string;             // 入口 HTML 文件路径，如 "index.html"
+  icon: string;              // 图标文件路径
+  type: WidgetType;
+  category: WidgetCategory;
+  permissions: WidgetPermission[];
+  defaultSize: WidgetSize;
+  minSize?: WidgetSize;
+  maxSize?: WidgetSize;
+  settings?: WidgetSettingDefinition[];
+}
+
+/** Widget 预设尺寸档位 */
+export type WidgetSizePreset = "S" | "M" | "L";
+
+/** Widget 实例（已安装 + 运行时的状态） */
+export interface WidgetInstance {
+  manifest: WidgetManifest;
+  enabled: boolean;
+  x: number;
+  y: number;
+  size: WidgetSize;
+  zIndex: number;
+  settings: Record<string, any>;  // 用户自定义设置值
+  installedAt: number;
+  updatedAt: number;
+}
+
+/** Widget Bridge 消息协议 */
+export interface WidgetBridgeRequest {
+  type: "request";
+  id: string;                // 请求唯一 ID
+  module: string;            // API 模块名（storage/cards/theme...）
+  method: string;            // 方法名
+  args?: any[];              // 参数
+}
+
+export interface WidgetBridgeResponse {
+  type: "response";
+  id: string;                // 对应请求 ID
+  success: boolean;
+  data?: any;
+  error?: string;
+}
+
+export interface WidgetBridgeEvent {
+  type: "event";
+  event: string;             // 事件名
+  payload?: any;
+}
+
+export type WidgetBridgeMessage = WidgetBridgeRequest | WidgetBridgeResponse | WidgetBridgeEvent;
+
+/** Widget 尺寸预设值 */
+export const WIDGET_SIZE_PRESETS: Record<WidgetSizePreset, WidgetSize> = {
+  S: { width: 160, height: 160 },
+  M: { width: 260, height: 260 },
+  L: { width: 380, height: 380 },
+};

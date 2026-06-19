@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://pinwall.dev/schemas/widget-manifest.json",
+  "title": "PinWall Widget Manifest",
+  "description": "PinWall 小组件 manifest 规范 (widget.json)",
+  "type": "object",
+  "required": ["id", "name", "version", "entry", "permissions", "defaultSize"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$",
+      "description": "Widget 唯一标识，如 com.pinwall.clock"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 50,
+      "description": "Widget 显示名称"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 200,
+      "default": "",
+      "description": "Widget 描述"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+",
+      "description": "语义化版本号"
+    },
+    "author": {
+      "type": "string",
+      "default": "",
+      "description": "作者名称"
+    },
+    "entry": {
+      "type": "string",
+      "default": "index.html",
+      "description": "入口 HTML 文件路径"
+    },
+    "icon": {
+      "type": "string",
+      "default": "icon.png",
+      "description": "图标文件路径"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["official", "community"],
+      "default": "community",
+      "description": "Widget 类型"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["utility", "productivity", "beautify", "social", "developer", "entertainment"],
+      "default": "utility",
+      "description": "Widget 分类"
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["storage", "theme", "notify", "cards", "events", "app", "ai", "system", "network", "i18n"]
+      },
+      "uniqueItems": true,
+      "description": "所需权限列表"
+    },
+    "defaultSize": {
+      "$ref": "#/definitions/size"
+    },
+    "minSize": {
+      "$ref": "#/definitions/size"
+    },
+    "maxSize": {
+      "$ref": "#/definitions/size"
+    },
+    "settings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/settingDefinition"
+      },
+      "description": "Widget 可配置的设置项"
+    }
+  },
+  "definitions": {
+    "size": {
+      "type": "object",
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "number", "minimum": 100, "maximum": 800 },
+        "height": { "type": "number", "minimum": 100, "maximum": 800 }
+      },
+      "additionalProperties": false
+    },
+    "settingDefinition": {
+      "type": "object",
+      "required": ["key", "label", "type"],
+      "properties": {
+        "key": { "type": "string" },
+        "label": { "type": "string" },
+        "type": { "type": "string", "enum": ["text", "number", "boolean", "select", "color"] },
+        "default": {},
+        "options": { "type": "array", "items": { "type": "string" } },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "description": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

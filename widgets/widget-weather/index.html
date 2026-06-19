@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weather Widget</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter Variable', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: transparent;
+      height: 100vh;
+      overflow: hidden;
+      color: #1a1a1a;
+    }
+    .weather-widget {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      height: 100%;
+    }
+    .current {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .current .icon {
+      font-size: 40px;
+      line-height: 1;
+    }
+    .current .temp {
+      font-size: 36px;
+      font-weight: 200;
+      letter-spacing: -1px;
+    }
+    .current .info {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 2px;
+    }
+    .forecast {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .forecast-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: #6b7280;
+      background: rgba(0,0,0,0.04);
+      border-radius: 8px;
+      padding: 6px 10px;
+      flex: 1;
+      min-width: 60px;
+    }
+    .forecast-item .ficon { font-size: 18px; }
+    .forecast-item .ftemp { font-weight: 600; color: #374151; }
+    .loading { text-align: center; color: #9ca3af; font-size: 13px; padding: 40px 0; }
+    .error { text-align: center; color: #ef4444; font-size: 13px; padding: 20px 0; }
+    .city-name { font-size: 12px; font-weight: 600; color: #4b5563; }
+  </style>
+</head>
+<body>
+  <div class="weather-widget" id="weather">
+    <div class="loading">加载中...</div>
+  </div>
+
+  <script>
+    let config = { city: '', unit: 'celsius' };
+    let locale = 'zh';
+
+    window.addEventListener('message', (e) => {
+      const msg = e.data;
+      if (msg?.type === 'event' && msg.event === 'pinwall:ready') {
+        if (msg.payload?.settings) config = { ...config, ...msg.payload.settings };
+        if (msg.payload?.locale) locale = msg.payload.locale;
+        fetchWeather();
+      }
+    });
+
+    const WEATHER_ICONS = {
+      '01d': '☀️', '01n': '🌙', '02d': '⛅', '02n': '☁️',
+      '03d': '☁️', '03n': '☁️', '04d': '☁️', '04n': '☁️',
+      '09d': '🌧️', '09n': '🌧️', '10d': '🌦️', '10n': '🌧️',
+      '11d': '⛈️', '11n': '⛈️', '13d': '❄️', '13n': '❄️',
+      '50d': '🌫️', '50n': '🌫️',
+    };
+
+    async function fetchWeather() {
+      const container = document.getElementById('weather');
+      try {
+        // Using wttr.in as a free weather API (no key needed)
+        const city = config.city || 'auto';
+        const url = `https://wttr.in/${encodeURIComponent(city)}?format=j1`;
+        
+        // Use PinWall network bridge if available
+        let data;
+        try {
+          const response = await sendBridgeRequest('network', 'get', [url]);
+          data = response?.data;
+        } catch {
+          // Fallback to direct fetch
+          const res = await fetch(url);
+          data = await res.json();
+        }
+
+        if (!data?.current_condition) {
+          container.innerHTML = '<div class="error">无法获取天气数据</div>';
+          return;
+        }
+
+        const current = data.current_condition[0];
+        const area = data.nearest_area?.[0];
+        const cityName = area?.areaName?.[0]?.value || config.city || '当前位置';
+        
+        const tempC = current.temp_C;
+        const tempF = current.temp_F;
+        const temp = config.unit === 'fahrenheit' ? tempF : tempC;
+        const unitSymbol = config.unit === 'fahrenheit' ? '°F' : '°C';
+        
+        const desc = current.weatherDesc?.[0]?.value || '';
+        const code = current.weatherCode || '01d';
+        const icon = WEATHER_ICONS[code] || '🌤️';
+        const humidity = current.humidity;
+        const wind = current.windspeedKmph;
+
+        // Forecast (next 3 days)
+        const forecasts = (data.weather || []).slice(1, 4).map(day => {
+          const dayCode = day.hourly?.[4]?.weatherCode || '01d';
+          return {
+            day: new Date(day.date).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en', { weekday: 'short' }),
+            icon: WEATHER_ICONS[dayCode] || '🌤️',
+            high: config.unit === 'fahrenheit' ? day.maxtempF : day.maxtempC,
+            low: config.unit === 'fahrenheit' ? day.mintempF : day.mintempC,
+          };
+        });
+
+        container.innerHTML = `
+          <div class="city-name">${cityName}</div>
+          <div class="current">
+            <div class="icon">${icon}</div>
+            <div>
+              <div class="temp">${temp}${unitSymbol}</div>
+              <div class="info">${desc} · 湿度 ${humidity}% · 风速 ${wind}km/h</div>
+            </div>
+          </div>
+          ${forecasts.length > 0 ? `
+          <div class="forecast">
+            ${forecasts.map(f => `
+              <div class="forecast-item">
+                <span>${f.day}</span>
+                <span class="ficon">${f.icon}</span>
+                <span class="ftemp">${f.high}° / ${f.low}°</span>
+              </div>
+            `).join('')}
+          </div>` : ''}
+        `;
+      } catch (err) {
+        container.innerHTML = `<div class="error">天气获取失败: ${err.message || err}</div>`;
+      }
+    }
+
+    // Bridge request helper
+    let _bridgeId = 0;
+    const _pending = new Map();
+    
+    function sendBridgeRequest(module, method, args) {
+      return new Promise((resolve, reject) => {
+        const id = `w_${++_bridgeId}`;
+        _pending.set(id, { resolve, reject });
+        window.parent.postMessage({ type: 'request', id, module, method, args }, '*');
+        setTimeout(() => {
+          if (_pending.has(id)) { _pending.delete(id); reject(new Error('timeout')); }
+        }, 8000);
+      });
+    }
+
+    window.addEventListener('message', (e) => {
+      const msg = e.data;
+      if (msg?.type === 'response' && _pending.has(msg.id)) {
+        const p = _pending.get(msg.id);
+        _pending.delete(msg.id);
+        msg.success ? p.resolve(msg) : p.reject(new Error(msg.error));
+      }
+    });
+  </script>
+</body>
+</html>

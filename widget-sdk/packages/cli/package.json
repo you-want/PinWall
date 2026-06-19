@@ -1,0 +1,24 @@
+{
+  "name": "@pinwall/widget-cli",
+  "version": "0.1.0",
+  "description": "PinWall Widget CLI - Create, validate and build widgets",
+  "bin": {
+    "pinwall-widget": "./dist/index.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs --banner.js '#!/usr/bin/env node'",
+    "dev": "tsup src/index.ts --format cjs --watch"
+  },
+  "keywords": ["pinwall", "widget", "cli"],
+  "license": "MIT",
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "~5.8.0"
+  },
+  "dependencies": {
+    "commander": "^12.0.0",
+    "archiver": "^7.0.0",
+    "ajv": "^8.12.0"
+  }
+}

@@ -2,6 +2,7 @@ mod background;
 mod commands;
 mod i18n;
 mod tray;
+mod widgets;
 mod window_layer;
 
 use tauri::Manager;
@@ -52,7 +53,13 @@ pub fn run() {
             background::import_background_images,
             background::delete_background_image_file,
             tray::update_tray_menu,
-            tray::update_shortcut_display
+            tray::update_shortcut_display,
+            widgets::list_installed_widgets,
+            widgets::install_widget,
+            widgets::uninstall_widget,
+            widgets::read_widget_storage,
+            widgets::write_widget_storage,
+            widgets::get_system_info,
         ])
         .on_window_event(|window, event| match event {
             tauri::WindowEvent::CloseRequested { api, .. } => {

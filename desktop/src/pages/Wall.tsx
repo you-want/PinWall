@@ -9,6 +9,7 @@ import { FloatingButtons } from "../components/FloatingButtons";
 import { CardStack } from "../components/CardStack";
 import { QuotaCard } from "../components/QuotaCard";
 import { BreathingGuide } from "../components/BreathingGuide";
+import { WidgetManager } from "../components/WidgetManager";
 import { useI18n } from "../i18n";
 import type { Settings } from "../types";
 import { getSettings } from "../services/storage";
@@ -186,6 +187,8 @@ function Wall() {
             stashedCards={stashedCards}
             onUnstash={handleUnstashCard}
           />
+
+          <WidgetManager />
 
           {cards.length === 0 && (
             <div className="empty-hint">

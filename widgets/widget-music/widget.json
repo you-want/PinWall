@@ -1,0 +1,16 @@
+{
+  "id": "com.pinwall.music",
+  "name": "音乐控制",
+  "description": "控制当前播放的音乐",
+  "version": "1.0.0",
+  "author": "PinWall Team",
+  "entry": "index.html",
+  "icon": "icon.png",
+  "type": "official",
+  "category": "entertainment",
+  "permissions": ["theme", "i18n", "system"],
+  "defaultSize": { "width": 240, "height": 160 },
+  "minSize": { "width": 200, "height": 120 },
+  "maxSize": { "width": 380, "height": 250 },
+  "settings": []
+}
