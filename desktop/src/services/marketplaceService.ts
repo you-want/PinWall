@@ -172,3 +172,53 @@ export async function submitWidget(
     body: JSON.stringify(data),
   });
 }
+
+/** 检查 Widget 更新 */
+export async function checkForUpdates(
+  installed: Array<{ id: string; version: string }>,
+): Promise<
+  Array<{
+    id: string;
+    currentVersion: string;
+    latestVersion: string;
+    hasUpdate: boolean;
+  }>
+> {
+  if (installed.length === 0) return [];
+  return apiFetch('/api/widgets/check-updates', {
+    method: 'POST',
+    body: JSON.stringify(installed),
+  });
+}
+
+/** 开发者注册 */
+export async function developerRegister(
+  email: string,
+  name: string,
+  password: string,
+): Promise<{ id: string; email: string; name: string; apiKey: string }> {
+  return apiFetch('/api/developers/register', {
+    method: 'POST',
+    body: JSON.stringify({ email, name, password }),
+  });
+}
+
+/** 发布新版本 */
+export async function publishVersion(
+  token: string,
+  widgetId: string,
+  data: {
+    version: string;
+    packageUrl: string;
+    changelog?: string;
+  },
+): Promise<MarketplaceVersion> {
+  return apiFetch<MarketplaceVersion>(
+    `/api/widgets/${widgetId}/versions`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    },
+  );
+}

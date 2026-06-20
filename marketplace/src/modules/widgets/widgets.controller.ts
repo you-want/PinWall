@@ -22,7 +22,7 @@ import {
   CreateReviewDto,
 } from './widgets.dto';
 import { JwtAuthGuard } from '../auth/jwt.guard';
-import { Developer } from '../../entities';
+import { Developer, WidgetStatus } from '../../entities';
 
 @ApiTags('Widgets')
 @Controller('api/widgets')
@@ -42,6 +42,46 @@ export class WidgetsController {
     return this.widgetsService.findAll(query);
   }
 
+  @Post('check-updates')
+  @ApiOperation({
+    summary: 'Check for widget updates',
+    description:
+      'Pass an array of {id, version} pairs, returns widgets with newer versions available',
+  })
+  async checkUpdates(
+    @Body()
+    body: Array<{ id: string; version: string }>,
+  ) {
+    const updates: Array<{
+      id: string;
+      currentVersion: string;
+      latestVersion: string;
+      hasUpdate: boolean;
+    }> = [];
+
+    for (const item of body) {
+      try {
+        const widget = await this.widgetsService.findOne(item.id);
+        if (widget.status !== WidgetStatus.APPROVED) continue;
+
+        const latest = widget.versions?.[0];
+        const latestVersion = latest?.version ?? item.version;
+        const hasUpdate = latestVersion !== item.version;
+
+        updates.push({
+          id: item.id,
+          currentVersion: item.version,
+          latestVersion,
+          hasUpdate,
+        });
+      } catch {
+        // Widget not found, skip
+      }
+    }
+
+    return updates.filter((u) => u.hasUpdate);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get widget details' })
   async findOne(@Param('id') id: string) {
@@ -58,7 +98,6 @@ export class WidgetsController {
   @ApiOperation({ summary: 'Download widget package' })
   async download(@Param('id') id: string) {
     await this.widgetsService.incrementDownload(id);
-    // Return package URL (in production, redirect to signed S3 URL)
     const widget = await this.widgetsService.findOne(id);
     return { downloadUrl: widget.iconUrl ?? '' };
   }

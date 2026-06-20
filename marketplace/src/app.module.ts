@@ -4,6 +4,9 @@ import { ConfigModule } from '@nestjs/config';
 import { Widget, WidgetVersion, Review, Developer } from './entities';
 import { AuthModule } from './modules/auth/auth.module';
 import { WidgetsModule } from './modules/widgets/widgets.module';
+import { AuditModule } from './modules/audit/audit.module';
+import { StorageModule } from './modules/storage/storage.module';
+import { AdminModule } from './modules/admin/admin.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -25,6 +28,9 @@ import configuration from './config/configuration';
     }),
     AuthModule,
     WidgetsModule,
+    AuditModule,
+    StorageModule,
+    AdminModule,
   ],
 })
 export class AppModule {}

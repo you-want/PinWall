@@ -8,6 +8,7 @@ import { ShortcutRecorder } from "./ShortcutRecorder";
 import { useWidgetStore } from "../stores/widgetStore";
 import { installWidgetFromPath, uninstallWidget } from "../services/widgetLoader";
 import { MarketplacePanel } from "./MarketplacePanel";
+import { DeveloperPortalPanel } from "./DeveloperPortalPanel";
 
 // ── Provider presets ──────────────────────────────────────
 const PROVIDER_PRESETS = [
@@ -638,6 +639,7 @@ export function SettingsPanel({
 function WidgetExtensionsSection() {
   const { widgets, toggleWidget } = useWidgetStore();
   const [showMarketplace, setShowMarketplace] = useState(false);
+  const [showDevPortal, setShowDevPortal] = useState(false);
   const lang = useI18n().lang;
 
   const handleInstall = async () => {
@@ -724,9 +726,24 @@ function WidgetExtensionsSection() {
             + {lang === "zh" ? "本地安装" : "Local Install"}
           </button>
         </div>
+        <div className="ap-divider" />
+        <div className="px-4 py-3">
+          <button
+            className="w-full py-2 rounded-lg text-sm font-medium bg-white/5 hover:bg-white/10 text-white/60 transition-colors cursor-pointer"
+            onClick={() => setShowDevPortal(true)}
+          >
+            🛠 {lang === "zh" ? "开发者中心" : "Developer Portal"}
+          </button>
+        </div>
       </div>
       {showMarketplace && (
         <MarketplacePanel onClose={() => setShowMarketplace(false)} lang={lang} />
+      )}
+      {showDevPortal && (
+        <DeveloperPortalPanel
+          onClose={() => setShowDevPortal(false)}
+          lang={lang}
+        />
       )}
     </div>
   );
