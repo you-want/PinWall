@@ -361,7 +361,7 @@ describe('widgetBridge', () => {
       const res = await handleBridgeRequest(req, manifest);
 
       expect(res.success).toBe(true);
-      expect(res.data).toBe('0.1.0');
+      expect(res.data).toBe('0.1.1');
     });
 
     it('returns app locale', async () => {

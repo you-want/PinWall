@@ -135,17 +135,20 @@ PinWall/
 
 ## 下载
 
-- **macOS**: [GitHub Releases](https://github.com/you-want/PinWall/releases)
-- **Web 版**: 访问在线地址（见部署配置）
+- **macOS 桌面端**: [GitHub Releases](https://github.com/you-want/PinWall/releases)
+- 推荐下载：`PinWall-universal.dmg`
+- **Web 版**: 历史 demo / 辅助入口
 
 ## 部署
 
 完整部署流程见 [DEPLOY.md](./DEPLOY.md)。
 
-- **桌面端**: GitHub Actions 自动构建 → Releases
+- **桌面端**: 推送版本 tag（例如 `v0.1.1`）→ GitHub Actions 自动构建 DMG → GitHub Releases
 - **Web 端**: Vercel 自动部署
 - **后端**: Render / 自建服务器 + Gunicorn
 - **官网**: Vercel
+
+桌面端发布流程见 [desktop/RELEASE_PROCESS.md](./desktop/RELEASE_PROCESS.md)。
 
 ## License
 

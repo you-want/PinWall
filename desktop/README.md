@@ -30,6 +30,18 @@ pnpm tauri:build:app
 
 发布前检查见 [RELEASE_QA.md](./RELEASE_QA.md)。
 
+## 发布
+
+当前桌面端通过 GitHub Actions 自动打包并发布到 GitHub Releases。
+
+```bash
+# 发布 0.1.1
+git tag v0.1.1
+git push origin v0.1.1
+```
+
+发布流程见 [RELEASE_PROCESS.md](./RELEASE_PROCESS.md)，发布说明保存在 [releases/v0.1.1.md](./releases/v0.1.1.md)。
+
 ## 技术栈
 
 - **前端**: React 19 + TypeScript + Vite

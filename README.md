@@ -135,17 +135,20 @@ PinWall/
 
 ## Download
 
-- **macOS**: [GitHub Releases](https://github.com/you-want/PinWall/releases)
-- **Web App**: Visit the live site (see deployment config)
+- **macOS Desktop**: [GitHub Releases](https://github.com/you-want/PinWall/releases)
+- Recommended file: `PinWall-universal.dmg`
+- **Web App**: historical demo/supporting surface
 
 ## Deployment
 
 See [DEPLOY.md](./DEPLOY.md) for the full deployment workflow.
 
-- **Desktop App**: GitHub Actions auto-build → Releases
+- **Desktop App**: push a version tag such as `v0.1.1` → GitHub Actions builds DMGs → GitHub Releases
 - **Web App**: Auto-deployed on Vercel
 - **Backend**: Render / self-hosted + Gunicorn
 - **Website**: Vercel
+
+Desktop release process: [desktop/RELEASE_PROCESS.md](./desktop/RELEASE_PROCESS.md).
 
 ## License
 

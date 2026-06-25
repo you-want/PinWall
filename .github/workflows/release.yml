@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag, for example v0.1.1'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -12,7 +18,55 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  preflight:
+    name: Preflight
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: desktop
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: desktop/pnpm-lock.yaml
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify release version
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          fi
+          VERSION="${TAG#v}"
+          node -e "const fs=require('fs'); const pkg=require('./package.json'); const tauri=require('./src-tauri/tauri.conf.json'); if (pkg.version !== '$VERSION') throw new Error('package.json version mismatch: '+pkg.version+' !== $VERSION'); if (tauri.version !== '$VERSION') throw new Error('tauri.conf.json version mismatch: '+tauri.version+' !== $VERSION');"
+          grep -q '^version = "'$VERSION'"' src-tauri/Cargo.toml
+          test -f "releases/${TAG}.md"
+
+      - name: Run frontend unit tests
+        run: pnpm test:run
+
+      - name: Build frontend bundle
+        run: pnpm build
+
+      - name: Run Rust tests
+        run: cargo test
+        working-directory: desktop/src-tauri
+
   build-macos:
+    needs: preflight
     strategy:
       fail-fast: false
       matrix:
@@ -48,8 +102,6 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: --target ${{ matrix.target }}
           projectPath: desktop
@@ -157,6 +209,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -165,21 +219,26 @@ jobs:
       - name: List artifacts
         run: find artifacts -type f
 
+      - name: Resolve release tag
+        id: release
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.release.outputs.tag }}
           files: |
             artifacts/macos-universal/*.dmg
             artifacts/macos-aarch64/*.dmg
             artifacts/macos-x86_64/*.dmg
-          draft: true
+          draft: false
           prerelease: false
           generate_release_notes: true
-          body: |
-            ## 下载
-
-            | 文件 | 说明 |
-            |---|---|
-            | `PinWall-universal.dmg` | macOS 通用版（Apple Silicon + Intel 均可运行） |
+          body_path: desktop/releases/${{ steps.release.outputs.tag }}.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

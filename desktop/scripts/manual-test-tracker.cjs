@@ -13,9 +13,11 @@ const path = require('path');
 
 const CASES_FILE = path.join(__dirname, '..', 'TEST_CASES.md');
 const OUTPUT_FILE = path.join(__dirname, '..', 'test-results', 'manual-test-report.html');
+const PACKAGE_FILE = path.join(__dirname, '..', 'package.json');
 
 // Read test cases
 const md = fs.readFileSync(CASES_FILE, 'utf-8');
+const version = JSON.parse(fs.readFileSync(PACKAGE_FILE, 'utf-8')).version;
 
 // Parse sections and items
 const sections = [];
@@ -82,7 +84,7 @@ const html = `<!DOCTYPE html>
 <body>
   <div class="container">
     <h1>📋 PinWall 手动测试报告</h1>
-    <p class="meta">版本 0.1.0 | 生成时间: ${new Date().toISOString().slice(0, 10)}</p>
+    <p class="meta">版本 ${version} | 生成时间: ${new Date().toISOString().slice(0, 10)}</p>
 
     <div class="summary">
       <div class="pass-rate" id="passRate">--</div>

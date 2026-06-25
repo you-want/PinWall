@@ -277,7 +277,7 @@ export async function handleBridgeRequest(
     }
     switch (method) {
       case "getVersion":
-        return successResponse(id, "0.1.0"); // TODO: 从 package.json 读取
+        return successResponse(id, "0.1.1"); // TODO: 从 package.json 读取
       case "getLocale":
         return successResponse(id, useLanguageStore.getState().lang);
       default:
