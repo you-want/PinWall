@@ -1,4 +1,5 @@
 use tauri::{
+    image::Image,
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
     Manager,
@@ -12,6 +13,12 @@ const TRAY_ID: &str = "main-tray";
 
 /// Managed state holding the current global shortcut string.
 pub struct CurrentShortcut(pub std::sync::Mutex<String>);
+
+/// Load the tray icon as a macOS template image.
+/// macOS automatically inverts template icons for dark/light appearance.
+fn tray_icon() -> Image<'static> {
+    Image::from_bytes(include_bytes!("../icons/tray/icon_template_32.png")).unwrap()
+}
 
 fn build_tray_menu(app: &tauri::AppHandle, lang: Lang) -> tauri::Result<Menu<tauri::Wry>> {
     let t = i18n::tray_translations(lang);
@@ -39,11 +46,12 @@ pub fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     let lang = i18n::detect_lang_from_disk(&app.handle());
     let menu = build_tray_menu(&app.handle(), lang)?;
 
+    let icon = tray_icon();
+
     let _tray = TrayIconBuilder::with_id(TRAY_ID)
         .menu(&menu)
-        .icon(tauri::image::Image::from_bytes(include_bytes!(
-            "../icons/tray/icon_32.png"
-        )).unwrap())
+        .icon(icon)
+        .icon_as_template(true)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "tray.open" => {
                 summon_main_window(app);
