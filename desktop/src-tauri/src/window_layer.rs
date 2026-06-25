@@ -9,7 +9,7 @@ pub fn set_main_default_layer<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.set_always_on_top(false);
         let _ = window.set_always_on_bottom(true);
-        let _ = window.set_ignore_cursor_events(true);
+        let _ = window.set_ignore_cursor_events(false);
         let _ = window.set_visible_on_all_workspaces(true);
         let _ = window.set_shadow(false);
         let _ = window.show();

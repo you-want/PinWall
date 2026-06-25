@@ -34,7 +34,14 @@ export function useEyeCareReminder() {
           // Create at a corner position, less intrusive
           const x = window.innerWidth - 300;
           const y = 60;
-          useCardStore.getState().createCard(title, msg, 5, "note", false, null, x, y);
+          useCardStore.getState().upsertSystemCard({
+            kind: "eye-care",
+            title,
+            content: msg,
+            colorIndex: 5,
+            x,
+            y,
+          });
         }
       } catch (err) {
         console.error("[useEyeCareReminder] error:", err);

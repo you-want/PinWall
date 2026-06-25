@@ -3,7 +3,7 @@ import { createTauriStore } from "@tauri-store/zustand";
 import { getTranslations } from "../i18n";
 import { useLanguageStore } from "./languageStore";
 import { getNextGridPosition } from "../utils/gridLayout";
-import type { PinCardData, CardType } from "../types";
+import type { PinCardData, CardType, SystemCardKind } from "../types";
 
 function getDefaultMessages(): string[] {
   const lang = useLanguageStore.getState().lang;
@@ -12,6 +12,14 @@ function getDefaultMessages(): string[] {
     t.msg_1, t.msg_2, t.msg_3, t.msg_4, t.msg_5, t.msg_6, t.msg_7, t.msg_8,
     t.msg_9, t.msg_10, t.msg_11, t.msg_12, t.msg_13, t.msg_14, t.msg_15, t.msg_16,
   ];
+}
+
+function createCardId(): string {
+  const randomId = globalThis.crypto?.randomUUID?.();
+  if (randomId) {
+    return `card-${randomId}`;
+  }
+  return `card-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 // 向后兼容迁移：旧卡片推断类型
@@ -46,6 +54,15 @@ type CardState = {
   ) => void;
   updateReminder: (id: string, reminderEnabled: boolean, reminderTime: number | null) => void;
   updateContent: (id: string, content: string) => void;
+  upsertSystemCard: (input: {
+    kind: SystemCardKind;
+    title: string;
+    content: string;
+    colorIndex: number;
+    cardType?: CardType;
+    x: number;
+    y: number;
+  }) => void;
   reminderFired: (id: string) => void;
   unstashCard: (id: string) => void;
   checkinCard: (id: string) => void;
@@ -105,7 +122,7 @@ export const useCardStore = create<CardState>((set, get) => ({
     const existingPositions = get().cards.map((c) => ({ x: c.x, y: c.y }));
     const gridPos = getNextGridPosition(existingPositions);
     const newCard: PinCardData = {
-      id: `card-${now}`,
+      id: createCardId(),
       title,
       content: content || getDefaultMessages()[Math.floor(Math.random() * 16)],
       x: gridPos.x,
@@ -153,6 +170,41 @@ export const useCardStore = create<CardState>((set, get) => ({
         card.id === id ? { ...card, content, updatedAt: Date.now() } : card
       ),
     }));
+  },
+
+  upsertSystemCard: ({ kind, title, content, colorIndex, cardType = "note", x, y }) => {
+    const existing = get().cards.find((card) => card.systemKind === kind);
+    if (existing) {
+      const now = Date.now();
+      set((s) => ({
+        cards: s.cards.map((card) =>
+          card.id === existing.id
+            ? {
+                ...card,
+                title,
+                content,
+                colorIndex,
+                cardType,
+                collapsed: false,
+                updatedAt: now,
+              }
+            : card
+        ),
+      }));
+      get().bringToFront(existing.id);
+      return;
+    }
+
+    get().createCard(title, content, colorIndex, cardType, false, null, x, y);
+    const cards = get().cards;
+    const created = cards[cards.length - 1];
+    if (created) {
+      set((s) => ({
+        cards: s.cards.map((card) =>
+          card.id === created.id ? { ...card, systemKind: kind } : card
+        ),
+      }));
+    }
   },
 
   reminderFired: (id) => {

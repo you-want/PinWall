@@ -62,7 +62,14 @@ export function useWeatherCare() {
 
         const x = 80 + Math.floor(Math.random() * 100);
         const y = 80 + Math.floor(Math.random() * 80);
-        useCardStore.getState().createCard(title, content, 2, "note", false, null, x, y);
+        useCardStore.getState().upsertSystemCard({
+          kind: "weather",
+          title,
+          content,
+          colorIndex: 2,
+          x,
+          y,
+        });
 
         // Save last date
         const s = await getSettings();

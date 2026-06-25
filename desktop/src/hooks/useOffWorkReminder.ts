@@ -50,7 +50,14 @@ export function useOffWorkReminder() {
             const title = lang === "zh" ? "🌙 加班关怀" : "🌙 Overtime Care";
             const x = 120 + Math.floor(Math.random() * 150);
             const y = 120 + Math.floor(Math.random() * 100);
-            useCardStore.getState().createCard(title, msg, 5, "note", false, null, x, y);
+            useCardStore.getState().upsertSystemCard({
+              kind: "overtime",
+              title,
+              content: msg,
+              colorIndex: 5,
+              x,
+              y,
+            });
           }
           return;
         }
@@ -62,7 +69,14 @@ export function useOffWorkReminder() {
         const lang = useLanguageStore.getState().lang;
         const msg = getToneMessage(offWorkReminder, tone);
         const title = lang === "zh" ? "🏠 下班啦" : "🏠 Time to Go Home";
-        useCardStore.getState().createCard(title, msg, 4, "note", false, null, 150, 150);
+        useCardStore.getState().upsertSystemCard({
+          kind: "off-work",
+          title,
+          content: msg,
+          colorIndex: 4,
+          x: 150,
+          y: 150,
+        });
       } catch (err) {
         console.error("[useOffWorkReminder] error:", err);
       }

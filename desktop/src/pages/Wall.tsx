@@ -101,7 +101,7 @@ function Wall() {
     const handleMouseDown = async (e: MouseEvent) => {
       if (e.button !== 0) return;
       const el = document.elementFromPoint(e.clientX, e.clientY);
-      const isBlankArea = !el || !el.closest('[data-interactive]');
+      const isBlankArea = !el || !el.closest("[data-interactive]");
       if (isBlankArea) {
         await invoke('send_to_background');
       }

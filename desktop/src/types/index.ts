@@ -57,6 +57,14 @@ export const DEFAULT_GLOBAL_SHORTCUT = "CommandOrControl+Shift+Space";
 
 export type CardType = "note" | "reminder" | "daily-checkin" | "hydration" | "mood";
 
+export type SystemCardKind =
+  | "eye-care"
+  | "rest"
+  | "off-work"
+  | "overtime"
+  | "weather"
+  | "mood-checkin";
+
 export interface PinCardData {
   id: string;
   title: string;
@@ -73,6 +81,7 @@ export interface PinCardData {
   reminderFired: boolean;
   checkinDone: boolean;
   lastCheckinDate: string | null;
+  systemKind?: SystemCardKind;
   // ── Hydration card fields ──
   hydrationCount?: number;   // 今日已喝杯数
   hydrationGoal?: number;    // 目标杯数

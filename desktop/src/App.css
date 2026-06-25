@@ -2107,8 +2107,8 @@ html, body, #root {
 }
 
 .modal-v2 {
-  width: 440px;
-  max-height: 85vh;
+  width: min(480px, calc(100vw - 32px));
+  max-height: min(720px, calc(100vh - 32px));
   background: rgba(255, 255, 255, 0.97);
   border-radius: 20px;
   box-shadow:
@@ -2167,13 +2167,15 @@ html, body, #root {
 
 /* Card Type Tabs */
 .modal-v2-type-tabs {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
   padding: 16px 24px 0 24px;
+  flex-shrink: 0;
 }
 
 .type-tab {
-  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2209,6 +2211,8 @@ html, body, #root {
 
 .type-tab-label {
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Body */
@@ -2217,6 +2221,7 @@ html, body, #root {
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+  overscroll-behavior: contain;
 }
 
 .field-v2 {
@@ -2391,20 +2396,23 @@ html, body, #root {
 /* Footer */
 .modal-v2-footer {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   padding: 16px 24px 20px 24px;
   border-top: 1px solid rgba(0, 0, 0, 0.06);
   margin-top: 4px;
   gap: 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .footer-left {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   flex: 1;
-  min-width: 0;
+  min-width: 220px;
+  flex-wrap: wrap;
 }
 
 .color-label-v2 {
@@ -2418,8 +2426,10 @@ html, body, #root {
 
 .color-strip-v2 {
   display: flex;
+  flex-wrap: wrap;
   gap: 5px;
   align-items: center;
+  max-width: 220px;
 }
 
 .color-dot-v2 {
@@ -2448,7 +2458,9 @@ html, body, #root {
 .color-hint-v2 {
   font-size: 11px;
   color: rgba(0, 0, 0, 0.35);
-  white-space: nowrap;
+  flex-basis: 100%;
+  line-height: 1.35;
+  white-space: normal;
 }
 
 /* Footer Actions */
@@ -2456,6 +2468,7 @@ html, body, #root {
   display: flex;
   gap: 8px;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .btn-v2 {

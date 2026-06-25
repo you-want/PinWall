@@ -151,6 +151,65 @@ describe('useCardStore', () => {
     });
   });
 
+  describe('upsertSystemCard', () => {
+    it('updates an existing system card instead of creating duplicates', async () => {
+      useCardStore.getState().upsertSystemCard({
+        kind: 'eye-care',
+        title: 'Eye Break',
+        content: 'Look away',
+        colorIndex: 5,
+        x: 100,
+        y: 100,
+      });
+      const first = useCardStore.getState().cards[0];
+      await delay(10);
+      useCardStore.getState().upsertSystemCard({
+        kind: 'eye-care',
+        title: 'Eye Break Again',
+        content: 'Look away again',
+        colorIndex: 6,
+        x: 200,
+        y: 200,
+      });
+
+      const cards = useCardStore.getState().cards;
+      expect(cards).toHaveLength(1);
+      expect(cards[0].id).toBe(first.id);
+      expect(cards[0].systemKind).toBe('eye-care');
+      expect(cards[0].title).toBe('Eye Break Again');
+      expect(cards[0].content).toBe('Look away again');
+      expect(cards[0].colorIndex).toBe(6);
+      expect(cards[0].x).toBe(first.x);
+      expect(cards[0].y).toBe(first.y);
+      expect(cards[0].updatedAt).toBeGreaterThan(first.updatedAt);
+    });
+
+    it('keeps different system card kinds separate', () => {
+      useCardStore.getState().upsertSystemCard({
+        kind: 'eye-care',
+        title: 'Eye Break',
+        content: 'Look away',
+        colorIndex: 5,
+        x: 100,
+        y: 100,
+      });
+      useCardStore.getState().upsertSystemCard({
+        kind: 'rest',
+        title: 'Rest',
+        content: 'Stand up',
+        colorIndex: 3,
+        x: 160,
+        y: 160,
+      });
+
+      expect(useCardStore.getState().cards).toHaveLength(2);
+      expect(useCardStore.getState().cards.map((card) => card.systemKind).sort()).toEqual([
+        'eye-care',
+        'rest',
+      ]);
+    });
+  });
+
   describe('reminderFired', () => {
     it('marks reminder as fired', () => {
       useCardStore.getState().createCard('Fired Card', 'C', 0, 'reminder', true, Date.now(), 0, 0);

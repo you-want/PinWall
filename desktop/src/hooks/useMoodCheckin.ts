@@ -51,7 +51,15 @@ export function useMoodCheckin() {
 
             const x = window.innerWidth / 2 - 110;
             const y = window.innerHeight / 2 - 70;
-            useCardStore.getState().createCard(title, msg, 6, "mood", false, null, x, y);
+            useCardStore.getState().upsertSystemCard({
+              kind: "mood-checkin",
+              title,
+              content: msg,
+              colorIndex: 6,
+              cardType: "mood",
+              x,
+              y,
+            });
           }
         }
       } catch (err) {

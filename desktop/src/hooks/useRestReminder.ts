@@ -37,7 +37,14 @@ export function useRestReminder() {
           const y = 100 + Math.floor(Math.random() * 150);
           const colorIndex = Math.floor(Math.random() * 8);
 
-          useCardStore.getState().createCard(title, msg, colorIndex, "note", false, null, x, y);
+          useCardStore.getState().upsertSystemCard({
+            kind: "rest",
+            title,
+            content: msg,
+            colorIndex,
+            x,
+            y,
+          });
         }
       } catch (err) {
         console.error("[useRestReminder] error:", err);

@@ -4,7 +4,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { useI18n } from "../i18n";
 import type { Settings, AIConfig, QuotaMonitorConfig, QuotaMonitorModel, CareTone, WidgetPermission } from "../types";
 import {
-  AUTO_CHANGE_INTERVALS,
+  // AUTO_CHANGE_INTERVALS,
   DEFAULT_QUOTA_MONITOR,
   QUOTA_REFRESH_INTERVALS,
   DEFAULT_GLOBAL_SHORTCUT,
@@ -209,8 +209,8 @@ export function SettingsPanel({
           description={lang === "zh" ? "透明度、背景轮换和节日卡片。" : "Opacity, background rotation, and holiday cards."}
         />
 
-        {/* ── Desktop Appearance ── */}
-        <div className="ap-group">
+        {/* ── Desktop Appearance 暂时去掉这个功能── */}
+        {/* <div className="ap-group">
           <div className="ap-group-label">{lang === "zh" ? "桌面外观" : "Desktop Appearance"}</div>
           <div className="ap-card">
             <div className="ap-field">
@@ -269,7 +269,7 @@ export function SettingsPanel({
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* ── Holiday Greetings ── */}
         <div className="ap-group">

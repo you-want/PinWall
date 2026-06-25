@@ -174,8 +174,15 @@ export function NewCardModal({ x: _x, y: _y, onConfirm, onCancel }: NewCardModal
 
   const previewColor = selectedColorIndex !== null ? colors[selectedColorIndex] : null;
 
+  const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    if (e.target === e.currentTarget) {
+      onCancel();
+    }
+  };
+
   return (
-    <div data-interactive="true" className="modal-overlay-v2" onClick={onCancel}>
+    <div data-interactive="true" className="modal-overlay-v2" onClick={handleOverlayClick}>
       <div
         className="modal-v2"
         onClick={(e) => e.stopPropagation()}
