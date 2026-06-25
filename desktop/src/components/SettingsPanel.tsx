@@ -52,8 +52,6 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({
   settings,
-  onOpacityChange,
-  onAutoChangeSettings,
   onAIConfigChange,
   onQuotaMonitorChange,
   onHolidayEnabledCnChange,

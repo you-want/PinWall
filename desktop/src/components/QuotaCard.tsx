@@ -88,21 +88,22 @@ export function QuotaCard({ results, models, loading, onRefresh }: QuotaCardProp
 
       {/* Expanded content */}
       {!collapsed && (
-        <div style={{ padding: "0 16px 14px" }}>
+        <div style={{ padding: "12px 16px" }}>
           {results.length === 0 && !loading && (
             <div className="py-2 text-center text-xs text-white/40">
               {t.quota_no_models}
             </div>
           )}
 
-          {results.map((result) => {
-            const percent = getUsagePercent(result);
-            const barColorClass = getBarColorClass(percent);
-            const name = getModelName(result.modelId);
+          <div className="flex flex-col gap-3">
+            {results.map((result) => {
+              const percent = getUsagePercent(result);
+              const barColorClass = getBarColorClass(percent);
+              const name = getModelName(result.modelId);
 
-            return (
-              <div key={result.modelId} className="mb-2.5 last:mb-0">
-                {/* Model name row */}
+              return (
+                <div key={result.modelId}>
+                  {/* Model name row */}
                 <div className="mb-1 flex items-center justify-between gap-2">
                   <span className="min-w-0 flex-1 truncate text-xs font-medium text-white/85">
                     {name}
@@ -145,9 +146,10 @@ export function QuotaCard({ results, models, loading, onRefresh }: QuotaCardProp
               </div>
             );
           })}
+          </div>
 
           {/* Footer: last update + refresh */}
-          <div className="mt-1 flex items-center justify-between gap-2 border-t border-white/[0.08] pt-2">
+          <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/[0.08] pt-2">
             <span className="min-w-0 truncate text-[10px] text-white/30">
               {t.quota_last_update}: {lastUpdate}
             </span>

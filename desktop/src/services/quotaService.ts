@@ -63,42 +63,60 @@ async function fetchOpenAIQuota(
 ): Promise<QuotaResult | null> {
   let total: number | null = null;
   let used: number | null = null;
+  let remaining: number | null = null;
   let currency = "USD";
 
-  // 1. Subscription endpoint
+  // 1. Try credit_grants (Standard for many proxies like OneAPI)
   try {
-    const subRes = await fetch(`${base}/dashboard/billing/subscription`, { headers });
-    if (subRes.ok) {
-      const subData = await subRes.json();
-      if (typeof subData.hard_limit_usd === "number") total = subData.hard_limit_usd;
-      else if (typeof subData.soft_limit_usd === "number") total = subData.soft_limit_usd;
-      if (subData.currency) currency = subData.currency;
+    const cgRes = await fetch(`${base}/dashboard/billing/credit_grants`, { headers });
+    if (cgRes.ok) {
+      const cgData = await cgRes.json();
+      if (typeof cgData.total_granted === "number") total = cgData.total_granted;
+      if (typeof cgData.total_used === "number") used = cgData.total_used;
+      if (typeof cgData.total_available === "number") remaining = cgData.total_available;
     }
   } catch { /* not available */ }
 
-  // 2. Usage endpoint
-  try {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const usageRes = await fetch(
-      `${base}/dashboard/billing/usage?start_date=${formatYYYYMMDD(start)}&end_date=${formatYYYYMMDD(now)}`,
-      { headers },
-    );
-    if (usageRes.ok) {
-      const usageData = await usageRes.json();
-      if (typeof usageData.total_usage === "number") {
-        used = usageData.total_usage / 100; // cents → dollars
+  // 2. Subscription endpoint
+  if (total === null || used === null || remaining === null) {
+    try {
+      const subRes = await fetch(`${base}/dashboard/billing/subscription`, { headers });
+      if (subRes.ok) {
+        const subData = await subRes.json();
+        if (typeof subData.hard_limit_usd === "number") total = subData.hard_limit_usd;
+        else if (typeof subData.soft_limit_usd === "number") total = subData.soft_limit_usd;
+        if (subData.currency) currency = subData.currency;
       }
-    }
-  } catch { /* not available */ }
+    } catch { /* not available */ }
 
-  // 3. Fallback: /usage endpoint
+    // 3. Usage endpoint
+    try {
+      const now = new Date();
+      const endDate = new Date(now);
+      endDate.setDate(endDate.getDate() + 1); // add 1 day to ensure start < end
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const usageRes = await fetch(
+        `${base}/dashboard/billing/usage?start_date=${formatYYYYMMDD(start)}&end_date=${formatYYYYMMDD(endDate)}`,
+        { headers },
+      );
+      if (usageRes.ok) {
+        const usageData = await usageRes.json();
+        if (typeof usageData.total_usage === "number") {
+          used = usageData.total_usage / 100; // cents → dollars
+        }
+      }
+    } catch { /* not available */ }
+  }
+
+  // 4. Fallback: /usage endpoint
   if (total === null && used === null) {
     try {
       const now = new Date();
+      const endDate = new Date(now);
+      endDate.setDate(endDate.getDate() + 1);
       const start = new Date(now.getFullYear(), now.getMonth(), 1);
       const altRes = await fetch(
-        `${base}/usage?start_date=${formatYYYYMMDD(start)}&end_date=${formatYYYYMMDD(now)}`,
+        `${base}/usage?start_date=${formatYYYYMMDD(start)}&end_date=${formatYYYYMMDD(endDate)}`,
         { headers },
       );
       if (altRes.ok) {
@@ -109,9 +127,11 @@ async function fetchOpenAIQuota(
     } catch { /* not available */ }
   }
 
-  if (total === null && used === null) return null;
+  if (total === null && used === null && remaining === null) return null;
 
-  const remaining = total !== null && used !== null ? Math.max(0, total - used) : null;
+  if (remaining === null && total !== null && used !== null) {
+    remaining = Math.max(0, total - used);
+  }
 
   return {
     modelId,
