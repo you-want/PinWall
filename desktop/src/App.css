@@ -416,6 +416,29 @@ html, body, #root {
   border-radius: 3px;
 }
 
+.ap-section {
+  margin: 8px 0 18px;
+  padding: 0 4px;
+}
+
+.ap-section:not(:first-child) {
+  margin-top: 36px;
+}
+
+.ap-section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+  letter-spacing: 0;
+}
+
+.ap-section-desc {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.42);
+}
+
 /* Group (label + card) */
 .ap-group {
   margin-bottom: 28px;
@@ -558,6 +581,50 @@ html, body, #root {
   height: 0.5px;
   background: rgba(255, 255, 255, 0.1);
   margin: 0 16px;
+}
+
+.ap-widget-security-note {
+  padding: 14px 16px;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.ap-widget-security-title {
+  font-size: 13px;
+  font-weight: 650;
+  color: rgba(253, 230, 138, 0.9);
+}
+
+.ap-widget-security-desc {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.48);
+}
+
+.ap-widget-permissions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.ap-widget-permission {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.ap-widget-permission.risk {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(248, 113, 113, 0.18);
+  color: rgba(252, 165, 165, 0.9);
 }
 
 /* ── AI fields animated reveal ── */

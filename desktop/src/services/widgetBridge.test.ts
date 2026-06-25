@@ -259,6 +259,101 @@ describe('widgetBridge', () => {
     });
   });
 
+  describe('network module (with permission)', () => {
+    beforeEach(() => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        status: 200,
+        json: vi.fn().mockResolvedValue({ ok: true }),
+      }));
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('performs allowed get requests without credentials', async () => {
+      const manifest = createTestManifest(['network']);
+      const req = makeRequest('network', 'get', ['https://api.example.com/data']);
+      const res = await handleBridgeRequest(req, manifest);
+
+      expect(res.success).toBe(true);
+      expect(fetch).toHaveBeenCalledWith('https://api.example.com/data', {
+        method: 'GET',
+        headers: {},
+        credentials: 'omit',
+      });
+    });
+
+    it('filters sensitive request headers', async () => {
+      const manifest = createTestManifest(['network']);
+      const req = makeRequest('network', 'post', [
+        'https://api.example.com/data',
+        {
+          headers: {
+            Authorization: 'Bearer secret',
+            Cookie: 'sid=secret',
+            'X-Widget': 'clock',
+          },
+          body: { hello: 'world' },
+        },
+      ]);
+      const res = await handleBridgeRequest(req, manifest);
+
+      expect(res.success).toBe(true);
+      expect(fetch).toHaveBeenCalledWith('https://api.example.com/data', {
+        method: 'POST',
+        headers: {
+          'X-Widget': 'clock',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ hello: 'world' }),
+        credentials: 'omit',
+      });
+    });
+
+    it('rejects localhost and private network URLs', async () => {
+      const manifest = createTestManifest(['network']);
+
+      for (const url of [
+        'http://localhost:3000',
+        'http://127.0.0.1:5173',
+        'http://192.168.1.2',
+        'http://10.0.0.2',
+        'http://172.16.0.2',
+        'http://device.local/status',
+      ]) {
+        const res = await handleBridgeRequest(makeRequest('network', 'get', [url]), manifest);
+        expect(res.success).toBe(false);
+        expect(res.error).toContain('Network URL host is not allowed');
+      }
+      expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it('rejects non-http protocols', async () => {
+      const manifest = createTestManifest(['network']);
+      const res = await handleBridgeRequest(
+        makeRequest('network', 'get', ['file:///Users/test/.ssh/id_rsa']),
+        manifest,
+      );
+
+      expect(res.success).toBe(false);
+      expect(res.error).toContain('Network URL protocol must be http or https');
+      expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it('rejects unsupported network methods', async () => {
+      const manifest = createTestManifest(['network']);
+      const res = await handleBridgeRequest(
+        makeRequest('network', 'delete', ['https://api.example.com/data']),
+        manifest,
+      );
+
+      expect(res.success).toBe(false);
+      expect(res.error).toContain('Unknown network method: delete');
+      expect(fetch).not.toHaveBeenCalled();
+    });
+  });
+
   describe('app module (with permission)', () => {
     it('returns app version', async () => {
       const manifest = createTestManifest(['app']);

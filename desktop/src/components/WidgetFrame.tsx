@@ -24,6 +24,8 @@ export function WidgetFrame({ instance }: WidgetFrameProps) {
 
   const { setPosition, bringToFront, setSize, uninstallWidget, updateSettings } =
     useWidgetStore();
+  const iframeSrc = getWidgetAssetUrl(manifest.id, manifest.entry);
+  const targetOrigin = new URL(iframeSrc).origin;
 
   // ── postMessage 桥接 ──
   useEffect(() => {
@@ -40,12 +42,12 @@ export function WidgetFrame({ instance }: WidgetFrameProps) {
       const response = await handleBridgeRequest(request, manifest);
 
       // 回传响应
-      iframe.contentWindow?.postMessage(response, "*");
+      iframe.contentWindow?.postMessage(response, targetOrigin);
     };
 
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [manifest]);
+  }, [manifest, targetOrigin]);
 
   // ── 事件推送：向 iframe 广播应用事件 ──
   useEffect(() => {
@@ -55,11 +57,11 @@ export function WidgetFrame({ instance }: WidgetFrameProps) {
     const unsub = subscribeWidgetEvent("*", (event, payload) => {
       iframe?.contentWindow?.postMessage(
         { type: "event", event, payload },
-        "*"
+        targetOrigin
       );
     });
     return unsub;
-  }, [manifest.permissions]);
+  }, [manifest.permissions, targetOrigin]);
 
   // ── Widget 初始化：发送配置 ──
   useEffect(() => {
@@ -78,13 +80,13 @@ export function WidgetFrame({ instance }: WidgetFrameProps) {
             widgetId: manifest.id,
           },
         },
-        "*"
+        targetOrigin
       );
     };
 
     iframe.addEventListener("load", onLoad);
     return () => iframe.removeEventListener("load", onLoad);
-  }, [manifest.id, settings]);
+  }, [manifest.id, settings, targetOrigin]);
 
   // ── 拖拽 ──
   const handlePointerDown = useCallback(
@@ -155,8 +157,6 @@ export function WidgetFrame({ instance }: WidgetFrameProps) {
   }, []);
 
   if (!enabled) return null;
-
-  const iframeSrc = getWidgetAssetUrl(manifest.id, manifest.entry);
 
   return (
     <div

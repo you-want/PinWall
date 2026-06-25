@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "tauri:build:app": "tauri build --bundles app",
     "test": "vitest",
     "test:run": "vitest run",
     "test:watch": "vitest watch",

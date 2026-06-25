@@ -1,0 +1,148 @@
+# PinWall Desktop Release QA
+
+This checklist is the release gate for the desktop product mainline. It focuses on the macOS app experience and intentionally ignores the old web demo.
+
+## Automated Gate
+
+Run these before any manual release pass:
+
+```bash
+cd desktop
+pnpm test:run
+pnpm build
+cd src-tauri
+cargo test
+```
+
+For a release candidate, also run:
+
+```bash
+cd desktop
+pnpm tauri:build:app
+```
+
+Expected result:
+
+- Frontend unit tests pass.
+- Production bundle builds.
+- Rust tests pass.
+- Tauri produces a macOS app under `desktop/src-tauri/target/release/bundle/macos/`.
+
+For public distribution, run the full bundle command and confirm the DMG is produced:
+
+```bash
+cd desktop
+pnpm tauri build
+```
+
+The full bundle should produce a DMG under `desktop/src-tauri/target/release/bundle/dmg/`. If the app bundle succeeds but DMG creation fails with a local `hdiutil` error, treat it as a packaging-environment issue and verify the full DMG path in GitHub Actions before publishing.
+
+Current local note:
+
+- `pnpm tauri:build:app` succeeds and produces `PinWall.app`.
+- A local full `pnpm tauri build` reached the DMG stage but failed at `hdiutil create` with `设备未配置`. The app bundle itself was produced successfully. Re-check DMG creation on GitHub Actions or another macOS packaging environment before publishing.
+
+## Fresh Install
+
+- [ ] Install the app from the generated DMG.
+- [ ] Launch PinWall from Applications.
+- [ ] The main transparent desktop window appears without a system title bar.
+- [ ] The settings window can be opened.
+- [ ] The tray/menu-bar icon appears.
+- [ ] The app can quit cleanly from the tray/menu-bar.
+
+## Core Note Flow
+
+- [ ] Create a note from the floating button.
+- [ ] Create a note with `Cmd+Shift+N`.
+- [ ] Edit title and content.
+- [ ] Create a note with empty content and confirm fallback content is shown.
+- [ ] Drag a note and confirm it stays where dropped.
+- [ ] Bring an overlapped note to front by clicking it.
+- [ ] Collapse/restore a note.
+- [ ] Delete a note and confirm the delete prompt works.
+- [ ] Create more than five notes and confirm extra notes move into the stack.
+- [ ] Restore a stacked note to the desktop.
+
+## Reminder Flow
+
+- [ ] Create a reminder note for one minute in the future.
+- [ ] The notification window appears when due.
+- [ ] The notification contains the correct note title/content.
+- [ ] Dismissing the notification hides it.
+- [ ] The same reminder does not fire repeatedly after dismissal.
+- [ ] "View" or fullscreen behavior brings the corresponding note into focus.
+
+## Desktop Behavior
+
+- [ ] Clicking blank desktop/window area sends PinWall back behind normal desktop interactions.
+- [ ] Floating buttons and cards remain interactive when the app is summoned.
+- [ ] `Cmd+Shift+Space` toggles the main window state.
+- [ ] `Cmd+Shift+A` arranges cards.
+- [ ] `Cmd+Shift+B` opens the breathing guide.
+- [ ] The app stays responsive after rapid window toggling.
+
+## Persistence
+
+- [ ] Notes survive app quit and restart.
+- [ ] Note positions survive app quit and restart.
+- [ ] Reminder settings survive app quit and restart.
+- [ ] Settings changes survive app quit and restart.
+- [ ] Removing a note persists after restart.
+
+## Settings
+
+- [ ] Language switching updates visible settings text and tray/menu labels.
+- [ ] Settings are grouped into Basics, Note Experience, Care Reminders, and Experimental sections.
+- [ ] Launch-on-startup toggle does not error.
+- [ ] Global shortcut recording works and can be reset.
+- [ ] Window opacity slider persists and changes the desktop appearance.
+- [ ] Background auto-change toggle and interval controls persist.
+- [ ] AI settings can be enabled/disabled without exposing the API key in plain text fields.
+- [ ] Quota monitor can be enabled/disabled.
+- [ ] Care reminder toggles persist.
+- [ ] Widget extension section only presents local install as the production path.
+- [ ] Marketplace is clearly marked experimental and is not presented as a release-ready store.
+- [ ] Installed widgets show their requested permissions.
+- [ ] Network, system, cards, and AI permissions are visually distinguishable from low-risk permissions.
+
+## Widget Local Install
+
+This is an experimental feature for 0.1.x.
+
+- [ ] Install one official local widget directory from `../widgets`.
+- [ ] The widget appears on the desktop.
+- [ ] The widget can be toggled off and on.
+- [ ] The widget can be removed.
+- [ ] Installing a widget with an invalid id is rejected.
+- [ ] Installing a widget with `../` in `entry` or `icon` is rejected.
+- [ ] Installing a widget with a missing `entry` or `icon` file is rejected.
+- [ ] Installing a widget directory containing symlinks is rejected.
+- [ ] A widget with `network` permission cannot fetch `file://`, localhost, or private-network URLs through the bridge.
+
+## Visual And Performance Checks
+
+- [ ] Empty state is visible on first launch with no notes.
+- [ ] Cards do not overlap incoherently after arrangement.
+- [ ] Text in cards and settings does not overflow obvious containers.
+- [ ] App idle CPU is low when no reminder or widget is active.
+- [ ] Dragging notes feels smooth with at least 10 notes.
+- [ ] Memory usage remains acceptable after 30 minutes of normal use.
+
+## Release Decision
+
+- [ ] Automated gate passed.
+- [ ] Core note flow passed.
+- [ ] Reminder flow passed.
+- [ ] Persistence passed.
+- [ ] No crash or console error observed during QA.
+- [ ] Known limitations are documented in the release notes.
+
+Release result:
+
+- [ ] Approved
+- [ ] Blocked
+
+Tester:
+
+Date:

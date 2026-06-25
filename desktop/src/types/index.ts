@@ -148,10 +148,12 @@ export type WidgetPermission =
 export type WidgetCategory =
   | "utility"
   | "productivity"
-  | "beautify"
+  | "beautification"
+  | "entertainment"
+  | "system"
   | "social"
   | "developer"
-  | "entertainment";
+  | "other";
 
 /** Widget 类型标识 */
 export type WidgetType = "official" | "community";

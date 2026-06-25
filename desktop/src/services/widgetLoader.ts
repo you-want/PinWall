@@ -1,5 +1,29 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { WidgetManifest } from "../types";
+import type { WidgetCategory, WidgetManifest, WidgetPermission, WidgetType } from "../types";
+
+const VALID_WIDGET_TYPES = new Set<WidgetType>(["official", "community"]);
+const VALID_WIDGET_CATEGORIES = new Set<WidgetCategory>([
+  "utility",
+  "productivity",
+  "beautification",
+  "entertainment",
+  "system",
+  "social",
+  "developer",
+  "other",
+]);
+const VALID_WIDGET_PERMISSIONS = new Set<WidgetPermission>([
+  "storage",
+  "theme",
+  "notify",
+  "cards",
+  "events",
+  "app",
+  "ai",
+  "system",
+  "network",
+  "i18n",
+]);
 
 /**
  * Widget 加载器
@@ -50,14 +74,68 @@ export function getWidgetAssetUrl(widgetId: string, filePath: string): string {
   return `asset://localhost/widgets/${widgetId}/${filePath}`;
 }
 
+export function isValidWidgetId(id: unknown): id is string {
+  if (typeof id !== "string") return false;
+  if (id.length < 5 || id.length > 120) return false;
+  if (id.startsWith(".") || id.endsWith(".") || id.includes("..")) return false;
+  const parts = id.split(".");
+  if (parts.length < 3) return false;
+  return parts.every((part) =>
+    part.length > 0 &&
+    !part.startsWith("-") &&
+    !part.endsWith("-") &&
+    /^[a-z0-9-]+$/.test(part)
+  );
+}
+
+export function isSafeWidgetRelativePath(path: unknown): path is string {
+  if (typeof path !== "string" || path.length === 0) return false;
+  if (path.startsWith("/") || path.includes("\\") || path.includes("\0")) return false;
+  return !path.split("/").some((part) => part === "..");
+}
+
+function isValidWidgetSize(size: unknown): size is WidgetManifest["defaultSize"] {
+  if (!size || typeof size !== "object") return false;
+  const value = size as { width?: unknown; height?: unknown };
+  return (
+    typeof value.width === "number" &&
+    typeof value.height === "number" &&
+    value.width > 0 &&
+    value.height > 0
+  );
+}
+
+function isValidWidgetType(type: unknown): type is WidgetType {
+  return typeof type === "string" && VALID_WIDGET_TYPES.has(type as WidgetType);
+}
+
+function isValidWidgetCategory(category: unknown): category is WidgetCategory {
+  return typeof category === "string" && VALID_WIDGET_CATEGORIES.has(category as WidgetCategory);
+}
+
+function hasValidPermissions(permissions: unknown): permissions is WidgetPermission[] {
+  return Array.isArray(permissions) &&
+    permissions.every((permission) =>
+      typeof permission === "string" &&
+      VALID_WIDGET_PERMISSIONS.has(permission as WidgetPermission)
+    );
+}
+
 /** 校验 Widget Manifest 是否合法 */
 export function validateManifest(manifest: any): manifest is WidgetManifest {
   if (!manifest) return false;
-  if (typeof manifest.id !== "string" || !manifest.id) return false;
+  if (!isValidWidgetId(manifest.id)) return false;
   if (typeof manifest.name !== "string" || !manifest.name) return false;
+  if (typeof manifest.description !== "string") return false;
+  if (typeof manifest.author !== "string") return false;
   if (typeof manifest.version !== "string") return false;
-  if (typeof manifest.entry !== "string" || !manifest.entry) return false;
-  if (!Array.isArray(manifest.permissions)) return false;
-  if (!manifest.defaultSize || typeof manifest.defaultSize.width !== "number") return false;
+  if (!isValidWidgetType(manifest.type)) return false;
+  if (!isValidWidgetCategory(manifest.category)) return false;
+  if (!isSafeWidgetRelativePath(manifest.entry)) return false;
+  if (!isSafeWidgetRelativePath(manifest.icon)) return false;
+  if (!hasValidPermissions(manifest.permissions)) return false;
+  if (!isValidWidgetSize(manifest.defaultSize)) return false;
+  if (manifest.minSize !== undefined && !isValidWidgetSize(manifest.minSize)) return false;
+  if (manifest.maxSize !== undefined && !isValidWidgetSize(manifest.maxSize)) return false;
   return true;
 }

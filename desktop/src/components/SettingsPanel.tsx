@@ -2,13 +2,16 @@ import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useI18n } from "../i18n";
-import type { Settings, AIConfig, QuotaMonitorConfig, QuotaMonitorModel, CareTone } from "../types";
-import { DEFAULT_QUOTA_MONITOR, QUOTA_REFRESH_INTERVALS, DEFAULT_GLOBAL_SHORTCUT } from "../types";
+import type { Settings, AIConfig, QuotaMonitorConfig, QuotaMonitorModel, CareTone, WidgetPermission } from "../types";
+import {
+  AUTO_CHANGE_INTERVALS,
+  DEFAULT_QUOTA_MONITOR,
+  QUOTA_REFRESH_INTERVALS,
+  DEFAULT_GLOBAL_SHORTCUT,
+} from "../types";
 import { ShortcutRecorder } from "./ShortcutRecorder";
 import { useWidgetStore } from "../stores/widgetStore";
 import { installWidgetFromPath, uninstallWidget } from "../services/widgetLoader";
-import { MarketplacePanel } from "./MarketplacePanel";
-import { DeveloperPortalPanel } from "./DeveloperPortalPanel";
 
 // ── Provider presets ──────────────────────────────────────
 const PROVIDER_PRESETS = [
@@ -49,6 +52,8 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({
   settings,
+  onOpacityChange,
+  onAutoChangeSettings,
   onAIConfigChange,
   onQuotaMonitorChange,
   onHolidayEnabledCnChange,
@@ -129,6 +134,11 @@ export function SettingsPanel({
       {/* Scrollable content */}
       <div className="ap-scroll">
 
+        <SettingsSection
+          title={lang === "zh" ? "基础" : "Basics"}
+          description={lang === "zh" ? "语言、启动和全局快捷键。" : "Language, startup, and global shortcut."}
+        />
+
         {/* ── Language ── */}
         <div className="ap-group">
           <div className="ap-group-label">{t.language_label}</div>
@@ -194,6 +204,112 @@ export function SettingsPanel({
           </div>
         </div>
 
+        <SettingsSection
+          title={lang === "zh" ? "便签体验" : "Note Experience"}
+          description={lang === "zh" ? "透明度、背景轮换和节日卡片。" : "Opacity, background rotation, and holiday cards."}
+        />
+
+        {/* ── Desktop Appearance ── */}
+        <div className="ap-group">
+          <div className="ap-group-label">{lang === "zh" ? "桌面外观" : "Desktop Appearance"}</div>
+          <div className="ap-card">
+            <div className="ap-field">
+              <label className="ap-field-label">{t.window_opacity}</label>
+              <div className="opacity-control">
+                <input
+                  className="opacity-slider"
+                  type="range"
+                  min="0.2"
+                  max="1"
+                  step="0.05"
+                  value={settings.opacity ?? 0.8}
+                  onChange={(e) => onOpacityChange(Number(e.target.value))}
+                />
+                <span className="opacity-value">
+                  {Math.round((settings.opacity ?? 0.8) * 100)}%
+                </span>
+              </div>
+            </div>
+            <div className="ap-divider" />
+            <div className="ap-row ap-row-toggle">
+              <div className="min-w-0 pr-4">
+                <div className="ap-row-label">{lang === "zh" ? "自动切换背景" : "Auto-change Background"}</div>
+                <div className="mt-1 text-xs text-white/45">
+                  {lang === "zh"
+                    ? `${settings.backgroundImages.length} 张背景图可用`
+                    : `${settings.backgroundImages.length} background images available`}
+                </div>
+              </div>
+              <label className="ap-switch">
+                <input
+                  type="checkbox"
+                  checked={settings.autoChangeEnabled}
+                  onChange={(e) => onAutoChangeSettings(e.target.checked, settings.autoChangeInterval)}
+                />
+                <span className="ap-switch-track">
+                  <span className="ap-switch-thumb" />
+                </span>
+              </label>
+            </div>
+            <div className={`ap-ai-fields ${settings.autoChangeEnabled ? "open" : ""}`}>
+              <div className="ap-divider" />
+              <div className="ap-field">
+                <label className="ap-field-label">{lang === "zh" ? "切换间隔" : "Rotation Interval"}</label>
+                <div className="ap-segmented mt-1.5">
+                  {AUTO_CHANGE_INTERVALS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      className={`ap-segment ${settings.autoChangeInterval === opt.value ? "active" : ""}`}
+                      onClick={() => onAutoChangeSettings(settings.autoChangeEnabled, opt.value)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Holiday Greetings ── */}
+        <div className="ap-group">
+          <div className="ap-group-label">{t.holiday_title}</div>
+          <div className="ap-card">
+            <div className="ap-row ap-row-toggle">
+              <span className="ap-row-label">{t.holiday_cn}</span>
+              <label className="ap-switch">
+                <input
+                  type="checkbox"
+                  checked={settings.holidayEnabledCn ?? true}
+                  onChange={(e) => onHolidayEnabledCnChange?.(e.target.checked)}
+                />
+                <span className="ap-switch-track">
+                  <span className="ap-switch-thumb" />
+                </span>
+              </label>
+            </div>
+            <div className="ap-divider" />
+            <div className="ap-row ap-row-toggle">
+              <span className="ap-row-label">{t.holiday_intl}</span>
+              <label className="ap-switch">
+                <input
+                  type="checkbox"
+                  checked={settings.holidayEnabledIntl ?? true}
+                  onChange={(e) => onHolidayEnabledIntlChange?.(e.target.checked)}
+                />
+                <span className="ap-switch-track">
+                  <span className="ap-switch-thumb" />
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <SettingsSection
+          title={lang === "zh" ? "关怀提醒" : "Care Reminders"}
+          description={lang === "zh" ? "喝水、休息、护眼、下班和心情提醒。" : "Hydration, rest, eye care, off-work, and mood reminders."}
+        />
+
         {/* ── Care Tone ── */}
         <div className="ap-group">
           <div className="ap-group-label">{t.care_tone_title}</div>
@@ -216,6 +332,137 @@ export function SettingsPanel({
             </div>
           </div>
         </div>
+
+        {/* ── Rest Reminder ── */}
+        <div className="ap-group">
+          <div className="ap-group-label">{t.rest_title}</div>
+          <div className="ap-card">
+            <div className="ap-row ap-row-toggle">
+              <span className="ap-row-label">{t.rest_enabled}</span>
+              <label className="ap-switch">
+                <input
+                  type="checkbox"
+                  checked={settings.restReminderEnabled ?? true}
+                  onChange={(e) => onCareSettingsChange?.({ restReminderEnabled: e.target.checked })}
+                />
+                <span className="ap-switch-track"><span className="ap-switch-thumb" /></span>
+              </label>
+            </div>
+            <div className="ap-divider" />
+            <div className="ap-field px-4 py-2">
+              <label className="ap-field-label">{t.rest_interval_label}</label>
+              <div className="ap-segmented mt-1.5">
+                {[30, 45, 60, 90, 120].map((min) => (
+                  <button
+                    key={min}
+                    className={`ap-segment ${(settings.restInterval ?? 90) === min ? "active" : ""}`}
+                    onClick={() => onCareSettingsChange?.({ restInterval: min })}
+                  >
+                    {min}{t.rest_minutes}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Off-work Care ── */}
+        <div className="ap-group">
+          <div className="ap-group-label">{t.offwork_title}</div>
+          <div className="ap-card">
+            <div className="ap-row ap-row-toggle">
+              <span className="ap-row-label">{t.offwork_enabled}</span>
+              <label className="ap-switch">
+                <input
+                  type="checkbox"
+                  checked={settings.offWorkReminderEnabled ?? true}
+                  onChange={(e) => onCareSettingsChange?.({ offWorkReminderEnabled: e.target.checked })}
+                />
+                <span className="ap-switch-track"><span className="ap-switch-thumb" /></span>
+              </label>
+            </div>
+            <div className="ap-divider" />
+            <div className="ap-field px-4 py-2">
+              <label className="ap-field-label">{t.offwork_time_label}</label>
+              <input
+                className="ap-input mt-1.5"
+                type="time"
+                value={settings.offWorkTime ?? "18:00"}
+                onChange={(e) => onCareSettingsChange?.({ offWorkTime: e.target.value })}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Eye Care ── */}
+        <div className="ap-group">
+          <div className="ap-group-label">{t.eyecare_title}</div>
+          <div className="ap-card">
+            <div className="ap-row ap-row-toggle">
+              <span className="ap-row-label">{t.eyecare_enabled}</span>
+              <label className="ap-switch">
+                <input
+                  type="checkbox"
+                  checked={settings.eyeCareEnabled ?? true}
+                  onChange={(e) => onCareSettingsChange?.({ eyeCareEnabled: e.target.checked })}
+                />
+                <span className="ap-switch-track"><span className="ap-switch-thumb" /></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Mood Check-in ── */}
+        <div className="ap-group">
+          <div className="ap-group-label">{t.mood_title}</div>
+          <div className="ap-card">
+            <div className="ap-row ap-row-toggle">
+              <span className="ap-row-label">{t.mood_enabled}</span>
+              <label className="ap-switch">
+                <input
+                  type="checkbox"
+                  checked={settings.moodCheckinEnabled ?? true}
+                  onChange={(e) => onCareSettingsChange?.({ moodCheckinEnabled: e.target.checked })}
+                />
+                <span className="ap-switch-track"><span className="ap-switch-thumb" /></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Weather Care ── */}
+        <div className="ap-group">
+          <div className="ap-group-label">{t.weather_title}</div>
+          <div className="ap-card">
+            <div className="ap-row ap-row-toggle">
+              <span className="ap-row-label">{t.weather_enabled}</span>
+              <label className="ap-switch">
+                <input
+                  type="checkbox"
+                  checked={settings.weatherCareEnabled ?? true}
+                  onChange={(e) => onCareSettingsChange?.({ weatherCareEnabled: e.target.checked })}
+                />
+                <span className="ap-switch-track"><span className="ap-switch-thumb" /></span>
+              </label>
+            </div>
+            <div className="ap-divider" />
+            <div className="ap-field px-4 py-2">
+              <label className="ap-field-label">{t.weather_city_label}</label>
+              <input
+                className="ap-input mt-1.5"
+                type="text"
+                value={settings.weatherCity ?? ""}
+                onChange={(e) => onCareSettingsChange?.({ weatherCity: e.target.value })}
+                placeholder={t.weather_city_placeholder}
+              />
+            </div>
+          </div>
+        </div>
+
+        <SettingsSection
+          title={lang === "zh" ? "实验功能" : "Experimental"}
+          description={lang === "zh" ? "AI、额度监控和本地 Widget。后续版本再开放市场生态。" : "AI, quota monitor, and local widgets. Marketplace comes later."}
+        />
 
         {/* ── AI Assistant ── */}
         <div className="ap-group">
@@ -274,40 +521,6 @@ export function SettingsPanel({
                   spellCheck={false}
                 />
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Holiday Greetings ── */}
-        <div className="ap-group">
-          <div className="ap-group-label">{t.holiday_title}</div>
-          <div className="ap-card">
-            <div className="ap-row ap-row-toggle">
-              <span className="ap-row-label">{t.holiday_cn}</span>
-              <label className="ap-switch">
-                <input
-                  type="checkbox"
-                  checked={settings.holidayEnabledCn ?? true}
-                  onChange={(e) => onHolidayEnabledCnChange?.(e.target.checked)}
-                />
-                <span className="ap-switch-track">
-                  <span className="ap-switch-thumb" />
-                </span>
-              </label>
-            </div>
-            <div className="ap-divider" />
-            <div className="ap-row ap-row-toggle">
-              <span className="ap-row-label">{t.holiday_intl}</span>
-              <label className="ap-switch">
-                <input
-                  type="checkbox"
-                  checked={settings.holidayEnabledIntl ?? true}
-                  onChange={(e) => onHolidayEnabledIntlChange?.(e.target.checked)}
-                />
-                <span className="ap-switch-track">
-                  <span className="ap-switch-thumb" />
-                </span>
-              </label>
             </div>
           </div>
         </div>
@@ -502,132 +715,6 @@ export function SettingsPanel({
           </div>
         </div>
 
-        {/* ── Rest Reminder ── */}
-        <div className="ap-group">
-          <div className="ap-group-label">{t.rest_title}</div>
-          <div className="ap-card">
-            <div className="ap-row ap-row-toggle">
-              <span className="ap-row-label">{t.rest_enabled}</span>
-              <label className="ap-switch">
-                <input
-                  type="checkbox"
-                  checked={settings.restReminderEnabled ?? true}
-                  onChange={(e) => onCareSettingsChange?.({ restReminderEnabled: e.target.checked })}
-                />
-                <span className="ap-switch-track"><span className="ap-switch-thumb" /></span>
-              </label>
-            </div>
-            <div className="ap-divider" />
-            <div className="ap-field px-4 py-2">
-              <label className="ap-field-label">{t.rest_interval_label}</label>
-              <div className="ap-segmented mt-1.5">
-                {[30, 45, 60, 90, 120].map((min) => (
-                  <button
-                    key={min}
-                    className={`ap-segment ${(settings.restInterval ?? 90) === min ? "active" : ""}`}
-                    onClick={() => onCareSettingsChange?.({ restInterval: min })}
-                  >
-                    {min}{t.rest_minutes}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Off-work Care ── */}
-        <div className="ap-group">
-          <div className="ap-group-label">{t.offwork_title}</div>
-          <div className="ap-card">
-            <div className="ap-row ap-row-toggle">
-              <span className="ap-row-label">{t.offwork_enabled}</span>
-              <label className="ap-switch">
-                <input
-                  type="checkbox"
-                  checked={settings.offWorkReminderEnabled ?? true}
-                  onChange={(e) => onCareSettingsChange?.({ offWorkReminderEnabled: e.target.checked })}
-                />
-                <span className="ap-switch-track"><span className="ap-switch-thumb" /></span>
-              </label>
-            </div>
-            <div className="ap-divider" />
-            <div className="ap-field px-4 py-2">
-              <label className="ap-field-label">{t.offwork_time_label}</label>
-              <input
-                className="ap-input mt-1.5"
-                type="time"
-                value={settings.offWorkTime ?? "18:00"}
-                onChange={(e) => onCareSettingsChange?.({ offWorkTime: e.target.value })}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* ── Eye Care ── */}
-        <div className="ap-group">
-          <div className="ap-group-label">{t.eyecare_title}</div>
-          <div className="ap-card">
-            <div className="ap-row ap-row-toggle">
-              <span className="ap-row-label">{t.eyecare_enabled}</span>
-              <label className="ap-switch">
-                <input
-                  type="checkbox"
-                  checked={settings.eyeCareEnabled ?? true}
-                  onChange={(e) => onCareSettingsChange?.({ eyeCareEnabled: e.target.checked })}
-                />
-                <span className="ap-switch-track"><span className="ap-switch-thumb" /></span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Mood Check-in ── */}
-        <div className="ap-group">
-          <div className="ap-group-label">{t.mood_title}</div>
-          <div className="ap-card">
-            <div className="ap-row ap-row-toggle">
-              <span className="ap-row-label">{t.mood_enabled}</span>
-              <label className="ap-switch">
-                <input
-                  type="checkbox"
-                  checked={settings.moodCheckinEnabled ?? true}
-                  onChange={(e) => onCareSettingsChange?.({ moodCheckinEnabled: e.target.checked })}
-                />
-                <span className="ap-switch-track"><span className="ap-switch-thumb" /></span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Weather Care ── */}
-        <div className="ap-group">
-          <div className="ap-group-label">{t.weather_title}</div>
-          <div className="ap-card">
-            <div className="ap-row ap-row-toggle">
-              <span className="ap-row-label">{t.weather_enabled}</span>
-              <label className="ap-switch">
-                <input
-                  type="checkbox"
-                  checked={settings.weatherCareEnabled ?? true}
-                  onChange={(e) => onCareSettingsChange?.({ weatherCareEnabled: e.target.checked })}
-                />
-                <span className="ap-switch-track"><span className="ap-switch-thumb" /></span>
-              </label>
-            </div>
-            <div className="ap-divider" />
-            <div className="ap-field px-4 py-2">
-              <label className="ap-field-label">{t.weather_city_label}</label>
-              <input
-                className="ap-input mt-1.5"
-                type="text"
-                value={settings.weatherCity ?? ""}
-                onChange={(e) => onCareSettingsChange?.({ weatherCity: e.target.value })}
-                placeholder={t.weather_city_placeholder}
-              />
-            </div>
-          </div>
-        </div>
-
         {/* ── Widget Extensions ── */}
         <WidgetExtensionsSection />
 
@@ -636,10 +723,58 @@ export function SettingsPanel({
   );
 }
 
+function SettingsSection({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="ap-section">
+      <div className="ap-section-title">{title}</div>
+      <div className="ap-section-desc">{description}</div>
+    </div>
+  );
+}
+
+const HIGH_RISK_WIDGET_PERMISSIONS = new Set<WidgetPermission>([
+  "cards",
+  "ai",
+  "system",
+  "network",
+]);
+
+function getWidgetPermissionLabel(permission: WidgetPermission, lang: "zh" | "en"): string {
+  const zh: Record<WidgetPermission, string> = {
+    storage: "本地存储",
+    theme: "主题",
+    notify: "通知",
+    cards: "便签",
+    events: "事件",
+    app: "应用信息",
+    ai: "AI",
+    system: "系统状态",
+    network: "网络",
+    i18n: "语言",
+  };
+  const en: Record<WidgetPermission, string> = {
+    storage: "Storage",
+    theme: "Theme",
+    notify: "Notify",
+    cards: "Cards",
+    events: "Events",
+    app: "App Info",
+    ai: "AI",
+    system: "System",
+    network: "Network",
+    i18n: "Language",
+  };
+  return (lang === "zh" ? zh : en)[permission];
+}
+
 function WidgetExtensionsSection() {
   const { widgets, toggleWidget } = useWidgetStore();
-  const [showMarketplace, setShowMarketplace] = useState(false);
-  const [showDevPortal, setShowDevPortal] = useState(false);
   const lang = useI18n().lang;
 
   const handleInstall = async () => {
@@ -666,6 +801,17 @@ function WidgetExtensionsSection() {
     <div className="ap-group">
       <div className="ap-group-label">{lang === "zh" ? "小组件扩展" : "Widget Extensions"}</div>
       <div className="ap-card">
+        <div className="ap-widget-security-note">
+          <div className="ap-widget-security-title">
+            {lang === "zh" ? "仅安装可信来源的小组件" : "Install widgets only from trusted sources"}
+          </div>
+          <div className="ap-widget-security-desc">
+            {lang === "zh"
+              ? "本地小组件运行在桌面宿主中；网络、系统、便签和 AI 权限会访问更敏感的能力。"
+              : "Local widgets run inside the desktop host. Network, system, cards, and AI permissions can access more sensitive capabilities."}
+          </div>
+        </div>
+        <div className="ap-divider" />
         {widgets.length === 0 ? (
           <div className="px-4 py-3 text-sm text-white/45">
             {lang === "zh" ? "尚未安装任何小组件" : "No widgets installed"}
@@ -688,6 +834,19 @@ function WidgetExtensionsSection() {
                   </div>
                   <div className="mt-1 text-xs text-white/45">
                     {w.manifest.description}
+                  </div>
+                  <div className="ap-widget-permissions">
+                    {w.manifest.permissions.map((permission) => {
+                      const isRisky = HIGH_RISK_WIDGET_PERMISSIONS.has(permission);
+                      return (
+                        <span
+                          key={permission}
+                          className={`ap-widget-permission ${isRisky ? "risk" : ""}`}
+                        >
+                          {getWidgetPermissionLabel(permission, lang)}
+                        </span>
+                      );
+                    })}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -714,37 +873,16 @@ function WidgetExtensionsSection() {
         <div className="ap-divider" />
         <div className="px-4 py-3 flex gap-2">
           <button
-            className="flex-1 py-2 rounded-lg text-sm font-medium bg-indigo-500/80 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
-            onClick={() => setShowMarketplace(true)}
-          >
-            🧩 {lang === "zh" ? "浏览市场" : "Browse Marketplace"}
-          </button>
-          <button
             className="flex-1 py-2 rounded-lg text-sm font-medium bg-white/10 hover:bg-white/15 text-white/80 transition-colors cursor-pointer"
             onClick={handleInstall}
           >
             + {lang === "zh" ? "本地安装" : "Local Install"}
           </button>
-        </div>
-        <div className="ap-divider" />
-        <div className="px-4 py-3">
-          <button
-            className="w-full py-2 rounded-lg text-sm font-medium bg-white/5 hover:bg-white/10 text-white/60 transition-colors cursor-pointer"
-            onClick={() => setShowDevPortal(true)}
-          >
-            🛠 {lang === "zh" ? "开发者中心" : "Developer Portal"}
-          </button>
+          <span className="flex items-center rounded-lg bg-white/5 px-3 text-xs text-white/35">
+            {lang === "zh" ? "市场实验中" : "Marketplace experimental"}
+          </span>
         </div>
       </div>
-      {showMarketplace && (
-        <MarketplacePanel onClose={() => setShowMarketplace(false)} lang={lang} />
-      )}
-      {showDevPortal && (
-        <DeveloperPortalPanel
-          onClose={() => setShowDevPortal(false)}
-          lang={lang}
-        />
-      )}
     </div>
   );
 }

@@ -20,6 +20,25 @@ import { getSettings } from "./storage";
 type EventSubscriber = (event: string, payload: any) => void;
 const eventSubscribers = new Map<string, Set<EventSubscriber>>();
 
+const BLOCKED_NETWORK_HOSTS = new Set([
+  "localhost",
+  "0.0.0.0",
+  "127.0.0.1",
+  "::1",
+]);
+
+const BLOCKED_NETWORK_HEADER_NAMES = new Set([
+  "authorization",
+  "cookie",
+  "host",
+  "origin",
+  "referer",
+  "sec-fetch-site",
+  "sec-fetch-mode",
+  "sec-fetch-dest",
+  "user-agent",
+]);
+
 /** 向所有订阅者广播应用事件（供 Widget 监听） */
 export function emitWidgetEvent(event: string, payload?: any) {
   const subs = eventSubscribers.get("*");
@@ -55,6 +74,63 @@ function errorResponse(id: string, error: string): WidgetBridgeResponse {
 /** 构建成功响应 */
 function successResponse(id: string, data?: any): WidgetBridgeResponse {
   return { type: "response", id, success: true, data };
+}
+
+function isPrivateIpv4(hostname: string): boolean {
+  const parts = hostname.split(".").map((part) => Number(part));
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+    return false;
+  }
+  const [a, b] = parts;
+  return (
+    a === 10 ||
+    a === 127 ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168)
+  );
+}
+
+function assertAllowedNetworkUrl(input: unknown): URL {
+  if (typeof input !== "string" || input.trim() === "") {
+    throw new Error("Network URL must be a non-empty string");
+  }
+
+  const parsed = new URL(input);
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    throw new Error("Network URL protocol must be http or https");
+  }
+
+  const hostname = parsed.hostname.toLowerCase();
+  if (
+    BLOCKED_NETWORK_HOSTS.has(hostname) ||
+    hostname.endsWith(".local") ||
+    isPrivateIpv4(hostname)
+  ) {
+    throw new Error("Network URL host is not allowed");
+  }
+
+  return parsed;
+}
+
+function sanitizeNetworkHeaders(headers: unknown): Record<string, string> {
+  if (!headers || typeof headers !== "object" || Array.isArray(headers)) {
+    return {};
+  }
+
+  return Object.entries(headers as Record<string, unknown>).reduce<Record<string, string>>(
+    (acc, [name, value]) => {
+      const normalizedName = name.toLowerCase();
+      if (BLOCKED_NETWORK_HEADER_NAMES.has(normalizedName)) {
+        return acc;
+      }
+      if (typeof value === "string") {
+        acc[name] = value;
+      }
+      return acc;
+    },
+    {}
+  );
 }
 
 /**
@@ -249,20 +325,25 @@ export async function handleBridgeRequest(
     }
     try {
       const [url, options] = args;
+      if (method !== "get" && method !== "post") {
+        return errorResponse(id, `Unknown network method: ${method}`);
+      }
+      const parsedUrl = assertAllowedNetworkUrl(url);
+      const headers = sanitizeNetworkHeaders(options?.headers);
       const fetchOptions: RequestInit = {
         method: method === "post" ? "POST" : "GET",
-        headers: options?.headers || {},
+        headers,
+        credentials: "omit",
       };
       if (method === "post" && options?.body) {
         fetchOptions.body =
           typeof options.body === "string"
             ? options.body
             : JSON.stringify(options.body);
-        if (!fetchOptions.headers) fetchOptions.headers = {};
         (fetchOptions.headers as Record<string, string>)["Content-Type"] ??=
           "application/json";
       }
-      const res = await fetch(url, fetchOptions);
+      const res = await fetch(parsedUrl.toString(), fetchOptions);
       const data = await res.json();
       return successResponse(id, { status: res.status, data });
     } catch (err: any) {
