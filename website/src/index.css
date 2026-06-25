@@ -263,6 +263,19 @@ img {
   border-radius: 50%;
 }
 
+.hero-version {
+  display: inline-block;
+  margin-top: 0.75rem;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--c-accent);
+  background: rgba(232, 85, 58, 0.08);
+  padding: 0.25rem 0.75rem;
+  border-radius: 100px;
+  border: 1px solid rgba(232, 85, 58, 0.15);
+}
+
 .hero-title {
   font-family: var(--font-display);
   font-size: clamp(3.5rem, 6vw, 5.5rem);
@@ -784,6 +797,47 @@ img {
   color: var(--c-accent-soft);
 }
 
+/* ─── What's New ─────────────────────────────── */
+
+.whats-new-section {
+  padding: var(--space-xl) 0;
+  background: var(--c-bg-warm);
+  border-top: 1px solid var(--c-border-light);
+  border-bottom: 1px solid var(--c-border-light);
+}
+
+.whats-new-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+  margin-top: var(--space-lg);
+}
+
+.whats-new-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-light);
+  border-radius: var(--r-md);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--c-ink-soft);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.whats-new-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(26, 22, 18, 0.06);
+}
+
+.whats-new-check {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--c-accent);
+}
+
 /* ─── Capabilities ───────────────────────────── */
 
 .capabilities {
@@ -887,6 +941,15 @@ img {
   position: relative;
 }
 
+.cta-version {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--c-accent);
+  margin-top: 0.5rem;
+  position: relative;
+}
+
 /* ─── Footer ─────────────────────────────────── */
 
 .footer {
@@ -964,6 +1027,10 @@ img {
 
   .cap-list {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .whats-new-list {
+    grid-template-columns: 1fr;
   }
 
   .nav-links {

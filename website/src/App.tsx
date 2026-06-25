@@ -144,6 +144,7 @@ function AppContent() {
                 <span className="dot" />
                 {t.hero_badge}
               </div>
+              <div className="hero-version">{t.hero_version}</div>
               <h1 className="hero-title">
                 {t.hero_title_1}<br />
                 <span className="accent">{t.hero_title_accent}</span>{t.hero_title_2}
@@ -324,6 +325,31 @@ function AppContent() {
         </div>
       </section>
 
+      {/* What's New */}
+      <section className="whats-new-section reveal">
+        <div className="container">
+          <div className="section-label">{t.whats_new_label}</div>
+          <h2 className="section-title">{t.whats_new_title}</h2>
+          <p className="section-desc">{t.whats_new_desc}</p>
+
+          <div className="whats-new-list">
+            {[
+              t.whats_new_item_1,
+              t.whats_new_item_2,
+              t.whats_new_item_3,
+              t.whats_new_item_4,
+            ].map((item, i) => (
+              <div className="whats-new-item" key={i}>
+                <svg className="whats-new-check" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* How it works */}
       <section className="how-section reveal" id="how" ref={howRef}>
         <div className="container">
@@ -402,6 +428,7 @@ function AppContent() {
               </a>
             </div>
             <p className="cta-note">{t.cta_note}</p>
+            <p className="cta-version">{t.cta_version}</p>
           </div>
         </div>
       </section>

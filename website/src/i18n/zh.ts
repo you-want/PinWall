@@ -7,10 +7,20 @@ export const zh = {
 
   // Hero
   hero_badge: 'macOS 桌面应用 · 开源免费',
+  hero_version: 'v0.1.1',
   hero_title_1: '把便签',
   hero_title_accent: '钉在桌面',
   hero_title_2: '上',
-  hero_subtitle: 'PinWall 是一个直接铺在你桌面上的便签墙。透明窗口、自由拖拽、智能提醒——让每一条备忘都有存在感。',
+  hero_subtitle: 'PinWall 是一个直接铺在你桌面上的便签墙。透明窗口、自由拖拽、智能提醒——让每一条备忘都有存在感。v0.1.1 优化了点击穿透精度与提醒稳定性。',
+
+  // What's New
+  whats_new_label: '更新日志',
+  whats_new_title: 'v0.1.1 更新内容',
+  whats_new_desc: '本次补丁版本聚焦桌面稳定性、交互打磨与更安全的本地 Widget。',
+  whats_new_item_1: '修复新建便签弹框布局 — 按钮与颜色提示不再重叠',
+  whats_new_item_2: '优化点击穿透行为 — 仅空白桌面区域穿透，便签和按钮保持可交互',
+  whats_new_item_3: '提醒卡片不再重复堆积 — 同一类型只保留一张',
+  whats_new_item_4: 'Widget 安全加固 — 更严格的 manifest、路径和网络校验',
   hero_download: '下载 macOS 版',
   hero_learn: '了解用法 →',
 
@@ -36,10 +46,10 @@ export const zh = {
   feature_drag_desc: '每张便签都可以拖拽到屏幕任意位置。点击便签自动置顶，就像真实的便利贴一样随意张贴。',
 
   feature_reminder_title: '智能提醒通知',
-  feature_reminder_desc: '为便签设置提醒时间，到时弹出独立通知窗口并播放提示音。点击"全屏查看"直接跳转到对应便签。',
+  feature_reminder_desc: '为便签设置提醒时间，到时弹出独立通知窗口并播放提示音。提醒卡片自动去重——每种类型只保留一张，更新已有卡片而非不断堆积。',
 
   feature_stack_title: '卡片堆叠收纳',
-  feature_stack_desc: '暂时不用的便签可以收纳到堆叠区，保持桌面整洁。点击展开查看所有收纳的便签，一键钉回桌面。',
+  feature_stack_desc: '暂时不用的便签可以收纳到堆叠区，保持桌面整洁。点击展开查看所有收纳的便签，一键钉回桌面。堆叠的便签在重启后也会自动恢复。',
 
   feature_color_title: '8 种渐变配色',
   feature_color_desc: '创建便签时从 8 种精心设计的渐变色中选择，也可以随机分配。每张便签都有独特的视觉个性。',
@@ -70,12 +80,12 @@ export const zh = {
 
   cap_transparent: '透明窗口',
   cap_transparent_desc: '完全透明的窗口层，便签直接浮在壁纸上',
-  cap_click_through: '点击穿透',
-  cap_click_through_desc: '空白区域点击自动退到底层，不影响桌面操作',
+  cap_click_through: '智能点击穿透',
+  cap_click_through_desc: '空白区域点击穿透到桌面，便签、按钮和 Widget 保持可交互',
   cap_free_layout: '自由布局',
   cap_free_layout_desc: '拖拽定位，便签可以放在屏幕的任何角落',
   cap_reminder: '定时提醒',
-  cap_reminder_desc: '设置提醒时间，独立通知窗口弹出+提示音',
+  cap_reminder_desc: '设置提醒时间，独立通知窗口弹出+提示音，同类型卡片自动去重不堆积',
   cap_stack: '堆叠收纳',
   cap_stack_desc: '暂时不用的便签收纳堆叠，一键展开钉回',
   cap_fullscreen: '全屏/最小化',
@@ -99,6 +109,7 @@ export const zh = {
   cta_download: '免费下载 macOS 版',
   cta_source: 'GitHub 源码',
   cta_note: 'macOS 13+ · 开源免费 · MIT License',
+  cta_version: 'v0.1.1 · 最新发布',
 
   // Footer
   footer_download: '下载',

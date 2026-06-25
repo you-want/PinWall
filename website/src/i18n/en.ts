@@ -7,10 +7,20 @@ export const en = {
 
   // Hero
   hero_badge: 'macOS Desktop App · Open Source & Free',
+  hero_version: 'v0.1.1',
   hero_title_1: 'Pin Notes',
   hero_title_accent: 'On Your Desktop',
   hero_title_2: '',
-  hero_subtitle: 'PinWall is a sticky-note wall that lives directly on your desktop. Transparent windows, free dragging, smart reminders — make every note feel present.',
+  hero_subtitle: 'PinWall is a sticky-note wall that lives directly on your desktop. Transparent windows, free dragging, smart reminders — make every note feel present. Updated with click-through precision and reminder stability.',
+
+  // What's New
+  whats_new_label: 'What\'s New',
+  whats_new_title: 'What\'s New in v0.1.1',
+  whats_new_desc: 'This patch release focuses on desktop stability, interaction polish, and safer widgets.',
+  whats_new_item_1: 'Fixed new-card modal layout — buttons and color hints no longer overlap',
+  whats_new_item_2: 'Refined click-through behavior — only blank desktop areas pass clicks through',
+  whats_new_item_3: 'Reminder cards no longer duplicate on repeated alerts',
+  whats_new_item_4: 'Widget security hardened with stricter manifest, path, and network validation',
   hero_download: 'Download for macOS',
   hero_learn: 'Learn More →',
 
@@ -36,10 +46,10 @@ export const en = {
   feature_drag_desc: 'Drag any note to anywhere on screen. Click a note to bring it to front — just like placing real sticky notes wherever you want.',
 
   feature_reminder_title: 'Smart Reminder Notifications',
-  feature_reminder_desc: 'Set reminder times for notes. A standalone notification window pops up with a sound alert. Click "View Fullscreen" to jump straight to the note.',
+  feature_reminder_desc: 'Set reminder times for notes. A standalone notification window pops up with a sound alert. Reminder cards are deduplicated — only one active card per type, updated in place instead of stacking endlessly.',
 
   feature_stack_title: 'Card Stack & Stash',
-  feature_stack_desc: 'Stash notes you\'re not using into the stack area to keep your desktop clean. Expand to view all stashed notes and pin them back with one click.',
+  feature_stack_desc: 'Stash notes you\'re not using into the stack area to keep your desktop clean. Expand to view all stashed notes and pin them back with one click. Stacked notes also auto-recover on restart.',
 
   feature_color_title: '8 Gradient Color Themes',
   feature_color_desc: 'Choose from 8 carefully designed gradient colors when creating notes, or let the system pick randomly. Every note gets its own visual personality.',
@@ -70,12 +80,12 @@ export const en = {
 
   cap_transparent: 'Transparent Window',
   cap_transparent_desc: 'Fully transparent window layer, notes float directly on your wallpaper',
-  cap_click_through: 'Click-Through',
-  cap_click_through_desc: 'Click blank areas to drop to bottom layer, no desktop interference',
+  cap_click_through: 'Smart Click-Through',
+  cap_click_through_desc: 'Blank areas pass clicks through to your desktop; cards, buttons, and widgets stay interactive',
   cap_free_layout: 'Free Layout',
   cap_free_layout_desc: 'Drag to position — place notes in any corner of the screen',
   cap_reminder: 'Timed Reminders',
-  cap_reminder_desc: 'Set reminder times, standalone notification popup + sound alert',
+  cap_reminder_desc: 'Set reminder times; one notification per type — no duplicate cards piling up',
   cap_stack: 'Stack & Stash',
   cap_stack_desc: 'Stash unused notes, expand and pin back with one click',
   cap_fullscreen: 'Fullscreen / Minimize',
@@ -99,6 +109,7 @@ export const en = {
   cta_download: 'Free Download for macOS',
   cta_source: 'GitHub Source',
   cta_note: 'macOS 13+ · Open Source & Free · MIT License',
+  cta_version: 'v0.1.1 · Latest Release',
 
   // Footer
   footer_download: 'Download',
