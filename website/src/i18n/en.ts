@@ -6,12 +6,20 @@ export const en = {
   nav_download: 'Download',
 
   // Hero
-  hero_badge: 'macOS Desktop App · Open Source & Free',
+  hero_badge: 'macOS Desktop App · Web App · Open Source & Free',
   hero_version: 'v0.1.1',
   hero_title_1: 'Pin Notes',
   hero_title_accent: 'On Your Desktop',
   hero_title_2: '',
-  hero_subtitle: 'PinWall is a sticky-note wall that lives directly on your desktop. Transparent windows, free dragging, smart reminders — make every note feel present. Updated with click-through precision and reminder stability.',
+  hero_subtitle: 'PinWall is a sticky-note wall that lives directly on your desktop. Transparent windows, free dragging, smart reminders — make every note feel present. Available for macOS and the web.',
+
+  // Nav extra
+  nav_web: 'Web App',
+
+  // Hero web CTA
+  hero_web_badge: '🌐 Also available as a Web App',
+  hero_web_desc: 'No installation needed. Open your browser and start taking notes. Sync across devices, capture ideas anytime.',
+  hero_web_link: 'Try Online →',
 
   // What's New
   whats_new_label: 'What\'s New',
@@ -102,14 +110,30 @@ export const en = {
   cap_local_desc: 'All data saved to local disk, privacy-first',
   cap_native: 'macOS Native',
   cap_native_desc: 'Built with Tauri — tiny installer, outstanding performance',
+  cap_web: 'Web App',
+  cap_web_desc: 'React + Vite, no install needed, works in any browser',
+  cap_share: 'Share Notes',
+  cap_share_desc: 'Generate share links to view notes with anyone',
+  cap_export: 'Markdown / JSON Export',
+  cap_export_desc: 'Export all notes as Markdown or JSON with one click',
+  cap_search: 'Global Search',
+  cap_search_desc: '⌘K to search, quickly find notes by content',
+  cap_masonry: 'Masonry Layout',
+  cap_masonry_desc: 'Grid and random layout modes, switch anytime',
+  cap_todo: 'Checkboxes (Todo)',
+  cap_todo_desc: 'Mark notes as checked — use as a todo list',
+  cap_context_menu: 'Context Menu',
+  cap_context_menu_desc: 'Right-click to align or randomize note positions',
 
   // CTA
   cta_title: 'Bring Your Desktop to Life',
   cta_desc: 'Download PinWall and pin every note where it belongs — front and center.',
   cta_download: 'Free Download for macOS',
+  cta_web: 'Try Web App',
   cta_source: 'GitHub Source',
   cta_note: 'macOS 13+ · Open Source & Free · MIT License',
   cta_version: 'v0.1.1 · Latest Release',
+  cta_web_note: 'Also available as a web app, no install needed',
 
   // Footer
   footer_download: 'Download',

@@ -80,6 +80,7 @@ function AppContent() {
   const featuresRef = useReveal<HTMLElement>()
   const howRef = useReveal<HTMLElement>()
   const capRef = useReveal<HTMLElement>()
+  const webappRef = useReveal<HTMLElement>()
   const ctaRef = useReveal<HTMLElement>()
 
   useEffect(() => {
@@ -109,6 +110,11 @@ function AppContent() {
           <li><a href="#features">{t.nav_features}</a></li>
           <li><a href="#how">{t.nav_how}</a></li>
           <li><a href="#capabilities">{t.nav_capabilities}</a></li>
+          <li>
+            <a href="https://pinwall.raingpt.top" target="_blank" rel="noopener noreferrer">
+              {t.nav_web}
+            </a>
+          </li>
           <li>
             <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer">
               {t.nav_download}
@@ -325,31 +331,6 @@ function AppContent() {
         </div>
       </section>
 
-      {/* What's New */}
-      <section className="whats-new-section reveal">
-        <div className="container">
-          <div className="section-label">{t.whats_new_label}</div>
-          <h2 className="section-title">{t.whats_new_title}</h2>
-          <p className="section-desc">{t.whats_new_desc}</p>
-
-          <div className="whats-new-list">
-            {[
-              t.whats_new_item_1,
-              t.whats_new_item_2,
-              t.whats_new_item_3,
-              t.whats_new_item_4,
-            ].map((item, i) => (
-              <div className="whats-new-item" key={i}>
-                <svg className="whats-new-check" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* How it works */}
       <section className="how-section reveal" id="how" ref={howRef}>
         <div className="container">
@@ -380,6 +361,31 @@ function AppContent() {
         </div>
       </section>
 
+      {/* What's New */}
+      <section className="whats-new-section reveal">
+        <div className="container">
+          <div className="section-label">{t.whats_new_label}</div>
+          <h2 className="section-title">{t.whats_new_title}</h2>
+          <p className="section-desc">{t.whats_new_desc}</p>
+
+          <div className="whats-new-list">
+            {[
+              t.whats_new_item_1,
+              t.whats_new_item_2,
+              t.whats_new_item_3,
+              t.whats_new_item_4,
+            ].map((item, i) => (
+              <div className="whats-new-item" key={i}>
+                <svg className="whats-new-check" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Capabilities */}
       <section className="capabilities reveal" id="capabilities" ref={capRef}>
         <div className="container">
@@ -401,6 +407,13 @@ function AppContent() {
               ['⌨️', t.cap_shortcut, t.cap_shortcut_desc],
               ['💾', t.cap_local, t.cap_local_desc],
               ['🍎', t.cap_native, t.cap_native_desc],
+              ['🌐', t.cap_web, t.cap_web_desc],
+              ['🔗', t.cap_share, t.cap_share_desc],
+              ['📥', t.cap_export, t.cap_export_desc],
+              ['🔍', t.cap_search, t.cap_search_desc],
+              ['📊', t.cap_masonry, t.cap_masonry_desc],
+              ['✅', t.cap_todo, t.cap_todo_desc],
+              ['📋', t.cap_context_menu, t.cap_context_menu_desc],
             ].map(([icon, title, desc], i) => (
               <div className="cap-item" key={i}>
                 <div className="cap-icon">{icon}</div>
@@ -408,6 +421,106 @@ function AppContent() {
                 <div className="cap-desc">{desc}</div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Web App */}
+      <section className="webapp-section reveal" ref={webappRef}>
+        <div className="container">
+          <div className="webapp-layout">
+            <div className="webapp-info">
+              <div className="section-label">{t.hero_web_badge}</div>
+              <h2 className="webapp-title">{t.cap_title}</h2>
+              <p className="webapp-desc">{t.hero_web_desc}</p>
+              <div className="webapp-features">
+                <div className="webapp-feature">
+                  <span className="webapp-feature-icon">🌐</span>
+                  <span>{t.cap_web}</span>
+                </div>
+                <div className="webapp-feature">
+                  <span className="webapp-feature-icon">🔗</span>
+                  <span>{t.cap_share}</span>
+                </div>
+                <div className="webapp-feature">
+                  <span className="webapp-feature-icon">📥</span>
+                  <span>{t.cap_export}</span>
+                </div>
+                <div className="webapp-feature">
+                  <span className="webapp-feature-icon">🔍</span>
+                  <span>{t.cap_search}</span>
+                </div>
+                <div className="webapp-feature">
+                  <span className="webapp-feature-icon">📊</span>
+                  <span>{t.cap_masonry}</span>
+                </div>
+                <div className="webapp-feature">
+                  <span className="webapp-feature-icon">✅</span>
+                  <span>{t.cap_todo}</span>
+                </div>
+              </div>
+              <a
+                href="https://pinwall.raingpt.top"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary btn-webapp"
+              >
+                {t.hero_web_link}
+              </a>
+            </div>
+            <div className="webapp-screenshot">
+              <div className="browser-mock">
+                <div className="browser-bar">
+                  <div className="browser-dots">
+                    <span className="browser-dot r" />
+                    <span className="browser-dot y" />
+                    <span className="browser-dot g" />
+                  </div>
+                  <div className="browser-url">pinwall.raingpt.top</div>
+                </div>
+                <div className="browser-content">
+                  <div className="masonry-demo">
+                    <div className="masonry-card" style={{
+                      gridColumn: 'span 1',
+                      background: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
+                    }}>
+                      <div className="masonry-card-line" style={{ width: '80%' }} />
+                      <div className="masonry-card-line" style={{ width: '60%' }} />
+                    </div>
+                    <div className="masonry-card tall" style={{
+                      background: 'linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)',
+                    }}>
+                      <div className="masonry-card-line" style={{ width: '70%' }} />
+                      <div className="masonry-card-line" style={{ width: '90%' }} />
+                      <div className="masonry-card-line" style={{ width: '50%' }} />
+                    </div>
+                    <div className="masonry-card" style={{
+                      background: 'linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%)',
+                    }}>
+                      <div className="masonry-card-line" style={{ width: '65%' }} />
+                      <div className="masonry-card-line" style={{ width: '40%' }} />
+                    </div>
+                    <div className="masonry-card" style={{
+                      background: 'linear-gradient(135deg, #fdcbf1 0%, #e6dee9 100%)',
+                    }}>
+                      <div className="masonry-card-line" style={{ width: '75%' }} />
+                      <div className="masonry-card-line" style={{ width: '55%' }} />
+                    </div>
+                    <div className="masonry-card short" style={{
+                      background: 'linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)',
+                    }}>
+                      <div className="masonry-card-line" style={{ width: '60%' }} />
+                    </div>
+                    <div className="masonry-card" style={{
+                      background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+                    }}>
+                      <div className="masonry-card-line" style={{ width: '85%' }} />
+                      <div className="masonry-card-line" style={{ width: '45%' }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -423,11 +536,15 @@ function AppContent() {
                 <DownloadIcon />
                 {t.cta_download}
               </a>
+              <a href="https://pinwall.raingpt.top" target="_blank" rel="noopener noreferrer" className="btn-secondary">
+                🌐 {t.cta_web}
+              </a>
               <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="btn-secondary">
                 {t.cta_source}
               </a>
             </div>
             <p className="cta-note">{t.cta_note}</p>
+            <p className="cta-web-note">{t.cta_web_note} · <a href="https://pinwall.raingpt.top" target="_blank" rel="noopener noreferrer">pinwall.raingpt.top</a></p>
             <p className="cta-version">{t.cta_version}</p>
           </div>
         </div>

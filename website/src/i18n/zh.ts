@@ -6,12 +6,20 @@ export const zh = {
   nav_download: '下载',
 
   // Hero
-  hero_badge: 'macOS 桌面应用 · 开源免费',
+  hero_badge: 'macOS 桌面应用 · 网页版 · 开源免费',
   hero_version: 'v0.1.1',
   hero_title_1: '把便签',
   hero_title_accent: '钉在桌面',
   hero_title_2: '上',
-  hero_subtitle: 'PinWall 是一个直接铺在你桌面上的便签墙。透明窗口、自由拖拽、智能提醒——让每一条备忘都有存在感。v0.1.1 优化了点击穿透精度与提醒稳定性。',
+  hero_subtitle: 'PinWall 是一个直接铺在你桌面上的便签墙。透明窗口、自由拖拽、智能提醒——让每一条备忘都有存在感。支持 macOS 桌面端与网页版。',
+
+  // Nav extra
+  nav_web: '网页版',
+
+  // Hero web CTA
+  hero_web_badge: '🌐 同时支持网页版',
+  hero_web_desc: '无需安装，打开浏览器即可使用。多端同步，随时随地记录灵感。',
+  hero_web_link: '在线试用 →',
 
   // What's New
   whats_new_label: '更新日志',
@@ -102,14 +110,30 @@ export const zh = {
   cap_local_desc: '所有数据保存在本地磁盘，隐私安全',
   cap_native: 'macOS 原生',
   cap_native_desc: '基于 Tauri 构建，安装包小，性能出色',
+  cap_web: '网页版',
+  cap_web_desc: 'React + Vite 构建，无需安装，浏览器即用',
+  cap_share: '分享便签',
+  cap_share_desc: '生成分享链接，将便签内容分享给他人查看',
+  cap_export: 'Markdown / JSON 导出',
+  cap_export_desc: '一键导出所有便签为 Markdown 或 JSON 格式',
+  cap_search: '全局搜索',
+  cap_search_desc: '⌘K 呼出搜索面板，快速定位便签内容',
+  cap_masonry: '瀑布流布局',
+  cap_masonry_desc: '网格/随机两种布局模式，自由切换',
+  cap_todo: '待办勾选',
+  cap_todo_desc: '便签支持勾选完成状态，作为待办清单使用',
+  cap_context_menu: '右键菜单',
+  cap_context_menu_desc: '右键空白处快速排列、随机分布便签',
 
   // CTA
   cta_title: '让你的桌面活起来',
   cta_desc: '下载 PinWall，把每一条备忘都钉在最显眼的地方。',
   cta_download: '免费下载 macOS 版',
+  cta_web: '试用网页版',
   cta_source: 'GitHub 源码',
   cta_note: 'macOS 13+ · 开源免费 · MIT License',
   cta_version: 'v0.1.1 · 最新发布',
+  cta_web_note: '也支持网页版，无需安装',
 
   // Footer
   footer_download: '下载',
