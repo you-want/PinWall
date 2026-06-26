@@ -82,6 +82,7 @@ export const zh = {
   // Notification
   aria_dismiss_reminder: "关闭提醒",
   view_fullscreen: "全屏查看",
+  reminder_confirm: "知道了",
 
   // Quota Monitor
   quota_title: "额度监测",

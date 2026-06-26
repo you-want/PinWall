@@ -65,6 +65,28 @@ export type SystemCardKind =
   | "weather"
   | "mood-checkin";
 
+export type SystemReminderKind = SystemCardKind;
+
+export type ReminderNotificationLifecycle =
+  | "card"
+  | "one-time"
+  | "recurring"
+  | "daily";
+
+export interface ReminderNotification {
+  id: string;
+  title: string;
+  content: string;
+  colorIndex: number;
+  lifecycle: ReminderNotificationLifecycle;
+  source: "card" | "system";
+  cardId?: string;
+  systemKind?: SystemReminderKind;
+  occurrenceKey?: string;
+  nextDueAt?: number;
+  canView?: boolean;
+}
+
 export interface PinCardData {
   id: string;
   title: string;

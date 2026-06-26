@@ -1,13 +1,13 @@
 import { useEffect, useRef } from "react";
 import { getSettings } from "../services/storage";
-import { useCardStore } from "../stores/cardStore";
 import { useLanguageStore } from "../stores/languageStore";
 import { getToneMessage, eyeCareReminder } from "../data/careTones";
 import type { CareTone } from "../types";
+import { showSystemReminder } from "../services/systemReminderService";
 
 /**
  * Lightweight eye care reminder based on the 20-20-20 rule.
- * Creates a small, temporary card every configured interval.
+ * Shows a lightweight notification every configured interval.
  * Less intrusive than rest reminders — designed to not break flow.
  */
 export function useEyeCareReminder() {
@@ -30,17 +30,14 @@ export function useEyeCareReminder() {
           const lang = useLanguageStore.getState().lang;
           const msg = getToneMessage(eyeCareReminder, tone);
           const title = lang === "zh" ? "👁️ 护眼时间" : "👁️ Eye Break";
-
-          // Create at a corner position, less intrusive
-          const x = window.innerWidth - 300;
-          const y = 60;
-          useCardStore.getState().upsertSystemCard({
+          await showSystemReminder({
             kind: "eye-care",
+            occurrenceKey: `eye-care-${Math.floor(now / intervalMs)}`,
             title,
             content: msg,
             colorIndex: 5,
-            x,
-            y,
+            lifecycle: "recurring",
+            nextDueAt: now + intervalMs,
           });
         }
       } catch (err) {

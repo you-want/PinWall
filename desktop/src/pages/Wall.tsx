@@ -8,6 +8,7 @@ import { NewCardModal } from "../components/NewCardModal";
 import { FloatingButtons } from "../components/FloatingButtons";
 import { CardStack } from "../components/CardStack";
 import { QuotaCard } from "../components/QuotaCard";
+import { WeatherCard } from "../components/WeatherCard";
 import { BreathingGuide } from "../components/BreathingGuide";
 import { WidgetManager } from "../components/WidgetManager";
 import { useI18n } from "../i18n";
@@ -25,7 +26,6 @@ import { useRestReminder } from "../hooks/useRestReminder";
 import { useOffWorkReminder } from "../hooks/useOffWorkReminder";
 import { useEyeCareReminder } from "../hooks/useEyeCareReminder";
 import { useMoodCheckin } from "../hooks/useMoodCheckin";
-import { useWeatherCare } from "../hooks/useWeatherCare";
 import type { CardType } from "../types";
 
 type NewCardState =
@@ -66,7 +66,6 @@ function Wall() {
   useOffWorkReminder();
   useEyeCareReminder();
   useMoodCheckin();
-  useWeatherCare();
 
   const { results: quotaResults, loading: quotaLoading, refresh: quotaRefresh } =
     useQuotaMonitor(settings?.quotaMonitor);
@@ -198,6 +197,10 @@ function Wall() {
           )}
 
           <FloatingButtons onNewCard={openNewCardModal} onSettings={openSettingsWindow} onArrange={handleArrangeCards} />
+
+          {settings?.weatherCareEnabled && (
+            <WeatherCard settings={settings} />
+          )}
 
           {settings?.quotaMonitor?.enabled && settings.quotaMonitor.models.length > 0 && (
             <QuotaCard

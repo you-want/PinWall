@@ -1,13 +1,13 @@
 import { useEffect, useRef } from "react";
 import { getSettings } from "../services/storage";
-import { useCardStore } from "../stores/cardStore";
 import { useLanguageStore } from "../stores/languageStore";
 import { getToneMessage, restReminder } from "../data/careTones";
 import type { CareTone } from "../types";
+import { showSystemReminder } from "../services/systemReminderService";
 
 /**
  * Tracks how long the app has been running and periodically
- * creates a rest suggestion card using the configured care tone.
+ * shows a rest suggestion notification using the configured care tone.
  */
 export function useRestReminder() {
   const startTimeRef = useRef(Date.now());
@@ -32,18 +32,16 @@ export function useRestReminder() {
           const lang = useLanguageStore.getState().lang;
           const msg = getToneMessage(restReminder, tone);
           const title = lang === "zh" ? "🧘 休息时间" : "🧘 Break Time";
-
-          const x = 100 + Math.floor(Math.random() * 200);
-          const y = 100 + Math.floor(Math.random() * 150);
           const colorIndex = Math.floor(Math.random() * 8);
 
-          useCardStore.getState().upsertSystemCard({
+          await showSystemReminder({
             kind: "rest",
+            occurrenceKey: `rest-${Math.floor(Date.now() / intervalMs)}`,
             title,
             content: msg,
             colorIndex,
-            x,
-            y,
+            lifecycle: "recurring",
+            nextDueAt: Date.now() + intervalMs,
           });
         }
       } catch (err) {

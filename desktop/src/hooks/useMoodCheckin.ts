@@ -1,13 +1,13 @@
 import { useEffect, useRef } from "react";
 import { getSettings } from "../services/storage";
 import { useMoodStore } from "../stores/moodStore";
-import { useCardStore } from "../stores/cardStore";
 import { useLanguageStore } from "../stores/languageStore";
 import { getToneMessage, moodCheckinPrompt } from "../data/careTones";
 import type { CareTone } from "../types";
+import { showSystemReminder } from "../services/systemReminderService";
 
 /**
- * Checks at configured mood check-in times and creates a mood prompt card
+ * Checks at configured mood check-in times and shows a mood prompt notification
  * if the user hasn't checked in yet for this time slot.
  */
 export function useMoodCheckin() {
@@ -49,16 +49,13 @@ export function useMoodCheckin() {
             const msg = getToneMessage(moodCheckinPrompt, tone);
             const title = lang === "zh" ? "😊 心情打卡" : "😊 Mood Check-in";
 
-            const x = window.innerWidth / 2 - 110;
-            const y = window.innerHeight / 2 - 70;
-            useCardStore.getState().upsertSystemCard({
+            await showSystemReminder({
               kind: "mood-checkin",
+              occurrenceKey: slotKey,
               title,
               content: msg,
               colorIndex: 6,
-              cardType: "mood",
-              x,
-              y,
+              lifecycle: "daily",
             });
           }
         }

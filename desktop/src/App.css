@@ -356,6 +356,91 @@ html, body, #root {
   -webkit-font-smoothing: antialiased;
 }
 
+.ap-settings-shell {
+  flex-direction: row;
+  background: #1f2024;
+}
+
+.ap-sidebar {
+  width: 210px;
+  flex-shrink: 0;
+  padding: 22px 14px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.ap-sidebar-title {
+  padding: 0 10px 16px;
+  font-size: 18px;
+  font-weight: 750;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.ap-sidebar-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ap-sidebar-tab {
+  width: 100%;
+  min-height: 54px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+.ap-sidebar-tab span {
+  display: block;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.ap-sidebar-tab small {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.36);
+  font-size: 11px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ap-sidebar-tab:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.ap-sidebar-tab.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.ap-status {
+  margin: 16px 8px 0;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.12);
+  color: rgba(252, 165, 165, 0.95);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.ap-content {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.ap-mobile-tabs {
+  display: none;
+}
+
 .ap-header {
   display: flex;
   align-items: center;
@@ -417,6 +502,10 @@ html, body, #root {
 }
 
 .ap-section {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
   margin: 8px 0 18px;
   padding: 0 4px;
 }
@@ -437,6 +526,18 @@ html, body, #root {
   font-size: 12px;
   line-height: 1.45;
   color: rgba(255, 255, 255, 0.42);
+}
+
+.ap-section-summary {
+  flex-shrink: 0;
+  max-width: 220px;
+  margin-top: 2px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 11px;
+  line-height: 1.3;
 }
 
 /* Group (label + card) */
@@ -470,6 +571,15 @@ html, body, #root {
   padding: 3px;
   margin: 12px 16px;
   gap: 2px;
+}
+
+.ap-segmented-wrap {
+  flex-wrap: wrap;
+}
+
+.ap-segmented-wrap .ap-segment {
+  min-width: 72px;
+  flex: 1 0 auto;
 }
 
 .ap-segment {
@@ -676,6 +786,23 @@ html, body, #root {
   color: rgba(255, 255, 255, 0.25);
 }
 
+.ap-inline-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ap-inline-field .ap-input {
+  min-width: 0;
+}
+
+.ap-inline-btn {
+  flex-shrink: 0;
+  min-width: 78px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
 .opacity-control {
   display: flex;
   align-items: center;
@@ -698,6 +825,57 @@ html, body, #root {
   border-radius: 50%;
   background: #fff;
   cursor: pointer;
+}
+
+.opacity-value {
+  min-width: 44px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .ap-settings-shell {
+    flex-direction: column;
+  }
+
+  .ap-sidebar {
+    display: none;
+  }
+
+  .ap-content {
+    width: 100%;
+    max-width: none;
+    padding-top: 16px;
+  }
+
+  .ap-mobile-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+  }
+
+  .ap-mobile-tab {
+    flex: 0 0 auto;
+    padding: 7px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.58);
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .ap-mobile-tab.active {
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+  }
+
+  .ap-section {
+    flex-direction: column;
+    gap: 8px;
+  }
 }
 
 .opacity-value {
@@ -1723,6 +1901,105 @@ html, body, #root {
 .btn-reminder-view:hover {
   background: rgba(255, 255, 255, 0.75);
   color: rgba(0, 0, 0, 0.85);
+}
+
+.btn-reminder-confirm {
+  background: rgba(0, 0, 0, 0.62);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.btn-reminder-confirm:hover {
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.weather-card {
+  position: fixed;
+  top: 18px;
+  left: 24px;
+  z-index: 9998;
+  width: 300px;
+  max-width: calc(100vw - 48px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  background: rgba(28, 28, 30, 0.76);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+  color: rgba(255, 255, 255, 0.92);
+  pointer-events: auto;
+  backdrop-filter: blur(32px) saturate(170%);
+  -webkit-backdrop-filter: blur(32px) saturate(170%);
+}
+
+.weather-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 14px 10px;
+}
+
+.weather-card-title {
+  max-width: 190px;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weather-card-subtitle {
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 12px;
+}
+
+.weather-card-temp {
+  font-size: 30px;
+  font-weight: 720;
+  line-height: 1;
+}
+
+.weather-days {
+  display: grid;
+  gap: 1px;
+  padding: 0 10px 10px;
+}
+
+.weather-day {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 4px 5px;
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 12px;
+}
+
+.weather-day:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.weather-day-name {
+  color: rgba(255, 255, 255, 0.56);
+}
+
+.weather-day-desc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weather-day-temp {
+  color: rgba(255, 255, 255, 0.9);
+  font-variant-numeric: tabular-nums;
+}
+
+.weather-empty {
+  padding: 0 14px 14px;
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 12px;
 }
 
 /* ===== Card Stack (Stash) ===== */
