@@ -1,35 +1,54 @@
 import { useEffect, useRef } from "react";
-import { getSettings } from "../services/storage";
-import { getWeather } from "../services/weatherService";
+import { getSettings, saveSettings } from "../services/storage";
+import { detectCurrentWeatherLocation, getWeather, getWeatherByCoords } from "../services/weatherService";
 import { generateWeatherCare } from "../services/aiService";
-import { useCardStore } from "../stores/cardStore";
 import { useLanguageStore } from "../stores/languageStore";
 import { getToneMessage, weatherCold, weatherRain, weatherHot, weatherSunny } from "../data/careTones";
 import type { CareTone } from "../types";
+import { showSystemReminder } from "../services/systemReminderService";
 
 /**
- * On app startup (once per day), fetch weather for the configured city
- * and create a weather care card with a personalized message.
+ * Before off-work time, fetch weather for the configured or detected city
+ * and show a weather care notification with a personalized message.
  */
 export function useWeatherCare() {
-  const firedRef = useRef(false);
+  const runningRef = useRef(false);
 
   useEffect(() => {
-    if (firedRef.current) return;
-    firedRef.current = true;
-
-    (async () => {
+    const checkWeatherCare = async () => {
+      if (runningRef.current) return;
+      runningRef.current = true;
       try {
         const settings = await getSettings();
-        if (!settings.weatherCareEnabled || !settings.weatherCity) return;
+        if (!settings.weatherCareEnabled) return;
 
-        // Only fire once per day
         const today = new Date().toISOString().slice(0, 10);
         const lastDate = settings.lastWeatherCardDate;
         if (lastDate === today) return;
 
-        const weather = await getWeather(settings.weatherCity);
+        const now = new Date();
+        const offWorkTime = settings.offWorkTime ?? "18:00";
+        const [offH, offM] = offWorkTime.split(":").map(Number);
+        const offMinutes = offH * 60 + offM;
+        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+        const reminderMinutesBeforeOffWork = 30;
+        const targetMinutes = Math.max(0, offMinutes - reminderMinutesBeforeOffWork);
+        if (nowMinutes < targetMinutes || nowMinutes >= offMinutes) return;
+
+        const manualCity = settings.weatherCity?.trim();
+        const location = manualCity ? null : await detectCurrentWeatherLocation();
+        const weather = manualCity
+          ? await getWeather(manualCity)
+          : location
+            ? await getWeatherByCoords(location)
+            : null;
         if (!weather) return;
+
+        if (!manualCity && weather.city) {
+          const latest = await getSettings();
+          latest.weatherCity = weather.city;
+          await saveSettings(latest);
+        }
 
         const tone = (settings.careTone ?? "warm") as CareTone;
         const lang = useLanguageStore.getState().lang;
@@ -60,26 +79,28 @@ export function useWeatherCare() {
           content = getToneMessage(tpl, tone);
         }
 
-        const x = 80 + Math.floor(Math.random() * 100);
-        const y = 80 + Math.floor(Math.random() * 80);
-        useCardStore.getState().upsertSystemCard({
+        await showSystemReminder({
           kind: "weather",
+          occurrenceKey: `${today}-weather`,
           title,
-          content,
+          content: weather.city ? `${weather.city}: ${content}` : content,
           colorIndex: 2,
-          x,
-          y,
+          lifecycle: "one-time",
         });
 
-        // Save last date
         const s = await getSettings();
         s.lastWeatherCardDate = today;
-        const { saveSettings } = await import("../services/storage");
         await saveSettings(s);
       } catch (err) {
         console.error("[useWeatherCare] error:", err);
+      } finally {
+        runningRef.current = false;
       }
-    })();
+    };
+
+    checkWeatherCare();
+    const interval = setInterval(checkWeatherCare, 60_000);
+    return () => clearInterval(interval);
   }, []);
 }
 

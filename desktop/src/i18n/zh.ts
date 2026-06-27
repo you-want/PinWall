@@ -29,7 +29,6 @@ export const zh = {
 
   // Settings Panel
   settings_title: "设置",
-  window_opacity: "窗口透明度",
   auto_change_bg: "自动切换背景",
   enable_auto_change: "启用自动切换",
   interval_label: "切换间隔：",
@@ -82,6 +81,7 @@ export const zh = {
   // Notification
   aria_dismiss_reminder: "关闭提醒",
   view_fullscreen: "全屏查看",
+  reminder_confirm: "知道了",
 
   // Quota Monitor
   quota_title: "额度监测",

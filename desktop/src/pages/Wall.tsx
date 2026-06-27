@@ -8,6 +8,7 @@ import { NewCardModal } from "../components/NewCardModal";
 import { FloatingButtons } from "../components/FloatingButtons";
 import { CardStack } from "../components/CardStack";
 import { QuotaCard } from "../components/QuotaCard";
+import { WeatherCard } from "../components/WeatherCard";
 import { BreathingGuide } from "../components/BreathingGuide";
 import { WidgetManager } from "../components/WidgetManager";
 import { useI18n } from "../i18n";
@@ -25,7 +26,6 @@ import { useRestReminder } from "../hooks/useRestReminder";
 import { useOffWorkReminder } from "../hooks/useOffWorkReminder";
 import { useEyeCareReminder } from "../hooks/useEyeCareReminder";
 import { useMoodCheckin } from "../hooks/useMoodCheckin";
-import { useWeatherCare } from "../hooks/useWeatherCare";
 import type { CardType } from "../types";
 
 type NewCardState =
@@ -66,7 +66,6 @@ function Wall() {
   useOffWorkReminder();
   useEyeCareReminder();
   useMoodCheckin();
-  useWeatherCare();
 
   const { results: quotaResults, loading: quotaLoading, refresh: quotaRefresh } =
     useQuotaMonitor(settings?.quotaMonitor);
@@ -165,6 +164,9 @@ function Wall() {
   }, []);
 
   const hasSettings = !!settings;
+  const quotaConfig = settings?.quotaMonitor;
+  const showQuotaCard = !!(quotaConfig?.enabled && quotaConfig.models.length > 0);
+  const showWeatherCard = !!settings?.weatherCareEnabled;
 
   return (
     <div className="app-container">
@@ -199,13 +201,21 @@ function Wall() {
 
           <FloatingButtons onNewCard={openNewCardModal} onSettings={openSettingsWindow} onArrange={handleArrangeCards} />
 
-          {settings?.quotaMonitor?.enabled && settings.quotaMonitor.models.length > 0 && (
-            <QuotaCard
-              results={quotaResults}
-              models={settings.quotaMonitor.models}
-              loading={quotaLoading}
-              onRefresh={quotaRefresh}
-            />
+          {(showQuotaCard || showWeatherCard) && (
+            <aside className="wall-side-panel" data-testid="wall-side-panel">
+              {showQuotaCard && (
+                <QuotaCard
+                  results={quotaResults}
+                  models={quotaConfig.models}
+                  loading={quotaLoading}
+                  onRefresh={quotaRefresh}
+                />
+              )}
+
+              {showWeatherCard && (
+                <WeatherCard settings={settings} />
+              )}
+            </aside>
           )}
 
           {newCardModal.open && (

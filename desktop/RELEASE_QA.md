@@ -93,18 +93,36 @@ Current local note:
 ## Settings
 
 - [ ] Language switching updates visible settings text and tray/menu labels.
-- [ ] Settings are grouped into Basics, Note Experience, Care Reminders, and Experimental sections.
+- [ ] Settings use section navigation for Basics, Note Experience, Care Reminders, and Experimental.
+- [ ] Section navigation can switch without scrolling through the full settings page.
 - [ ] Launch-on-startup toggle does not error.
 - [ ] Global shortcut recording works and can be reset.
-- [ ] Window opacity slider persists and changes the desktop appearance.
+- [ ] Settings do not expose a window opacity slider; desktop transparency uses the app default.
 - [ ] Background auto-change toggle and interval controls persist.
 - [ ] AI settings can be enabled/disabled without exposing the API key in plain text fields.
 - [ ] Quota monitor can be enabled/disabled.
-- [ ] Care reminder toggles persist.
+- [ ] Care reminder toggles and parameters persist.
+- [ ] Care reminders explain that they appear as top-right notifications instead of desktop cards.
 - [ ] Widget extension section only presents local install as the production path.
 - [ ] Marketplace is clearly marked experimental and is not presented as a release-ready store.
 - [ ] Installed widgets show their requested permissions.
 - [ ] Network, system, cards, and AI permissions are visually distinguishable from low-risk permissions.
+
+## Unified Care Reminders
+
+- [ ] Eye care reminder appears in the top-right notification window when due.
+- [ ] Rest reminder appears in the top-right notification window when due.
+- [ ] Off-work reminder appears in the top-right notification window at the configured time.
+- [ ] Weather component appears on the main wall when weather care is enabled.
+- [ ] Weather component hides when weather care is disabled.
+- [ ] Weather component can use a manually entered city.
+- [ ] Weather component can detect the current city when the city field is empty.
+- [ ] Weather component shows current weather and the next 7 days.
+- [ ] Mood check-in reminder appears as a top-right notification at configured slots.
+- [ ] Confirming a recurring reminder does not disable future reminders.
+- [ ] Confirming a one-time daily system reminder prevents duplicate notifications for the same day.
+- [ ] Dismissing or auto-dismissing a notification does not delete user notes.
+- [ ] User-created note reminders still keep their original note after notification.
 
 ## Widget Local Install
 

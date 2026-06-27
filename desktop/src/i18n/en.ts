@@ -29,7 +29,6 @@ export const en = {
 
   // Settings Panel
   settings_title: "Settings",
-  window_opacity: "Window Opacity",
   auto_change_bg: "Auto-change Background",
   enable_auto_change: "Enable auto-change",
   interval_label: "Interval: ",
@@ -82,6 +81,7 @@ export const en = {
   // Notification
   aria_dismiss_reminder: "Dismiss reminder",
   view_fullscreen: "View Fullscreen",
+  reminder_confirm: "Got it",
 
   // Quota Monitor
   quota_title: "Quota Monitor",

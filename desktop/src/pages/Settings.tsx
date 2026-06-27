@@ -28,13 +28,6 @@ function Settings() {
     }
   }, []);
 
-  const handleOpacityChange = useCallback(async (opacity: number) => {
-    const s = await getSettings();
-    s.opacity = Math.max(0, Math.min(1, opacity));
-    await saveSettings(s);
-    setSettings(s);
-  }, []);
-
   const handleAutoChange = useCallback(async (enabled: boolean, interval: number) => {
     const s = await getSettings();
     s.autoChangeEnabled = enabled;
@@ -141,7 +134,6 @@ function Settings() {
     <SettingsPanel
       settings={settings}
       onClose={handleClose}
-      onOpacityChange={handleOpacityChange}
       onAutoChangeSettings={handleAutoChange}
       onAIConfigChange={handleAIConfigChange}
       onQuotaMonitorChange={handleQuotaMonitorChange}

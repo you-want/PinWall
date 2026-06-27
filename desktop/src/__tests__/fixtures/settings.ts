@@ -1,4 +1,5 @@
 import type { Settings } from '@/types';
+import { DEFAULT_MOOD_CHECKIN_TIMES } from '@/types';
 
 /** 创建一份最小可用设置 */
 export function createMockSettings(overrides: Partial<Settings> = {}): Settings {
@@ -12,7 +13,7 @@ export function createMockSettings(overrides: Partial<Settings> = {}): Settings 
     careTone: 'warm',
     hydrationGoal: 8,
     moodCheckinEnabled: true,
-    moodCheckinTimes: ['10:00', '18:00'],
+    moodCheckinTimes: [...DEFAULT_MOOD_CHECKIN_TIMES],
     restReminderEnabled: true,
     restInterval: 90,
     offWorkTime: '18:00',

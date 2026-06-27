@@ -23,6 +23,9 @@ export const DEFAULT_AI_CONFIG: AIConfig = {
 // ─── Care Tone ────────────────────────────────────────────
 export type CareTone = "warm" | "rational" | "playful";
 
+export const DEFAULT_MOOD_CHECKIN_TIME = "09:10";
+export const DEFAULT_MOOD_CHECKIN_TIMES = [DEFAULT_MOOD_CHECKIN_TIME];
+
 export interface Settings {
   backgroundImages: BackgroundImage[];
   currentImageId: string | null;
@@ -41,7 +44,7 @@ export interface Settings {
   careTone?: CareTone; // 关怀语气风格，默认 "warm"
   hydrationGoal?: number; // 每日喝水目标（杯），默认 8
   moodCheckinEnabled?: boolean; // 心情打卡开关，默认 true
-  moodCheckinTimes?: string[]; // 心情打卡时间 ["10:00","18:00"]
+  moodCheckinTimes?: string[]; // 心情打卡时间，默认 ["09:10"]
   restReminderEnabled?: boolean; // 休息提醒开关，默认 true
   restInterval?: number; // 休息间隔（分钟），默认 90
   offWorkTime?: string; // 下班时间 HH:MM，默认 "18:00"
@@ -64,6 +67,28 @@ export type SystemCardKind =
   | "overtime"
   | "weather"
   | "mood-checkin";
+
+export type SystemReminderKind = SystemCardKind;
+
+export type ReminderNotificationLifecycle =
+  | "card"
+  | "one-time"
+  | "recurring"
+  | "daily";
+
+export interface ReminderNotification {
+  id: string;
+  title: string;
+  content: string;
+  colorIndex: number;
+  lifecycle: ReminderNotificationLifecycle;
+  source: "card" | "system";
+  cardId?: string;
+  systemKind?: SystemReminderKind;
+  occurrenceKey?: string;
+  nextDueAt?: number;
+  canView?: boolean;
+}
 
 export interface PinCardData {
   id: string;

@@ -1,6 +1,7 @@
 import { useRef, useEffect } from "react";
 import { webviewWindow } from "@tauri-apps/api";
 import { useNotificationStore } from "../stores/notificationStore";
+import { useReminderStore } from "../stores/reminderStore";
 import { useI18n } from "../i18n";
 
 const colors = [
@@ -54,14 +55,14 @@ function playDingSound() {
 
 function Notification() {
   const { t } = useI18n();
-  const card = useNotificationStore((s) => s.notificationCard);
+  const notification = useNotificationStore((s) => s.notification);
   const dismissNotification = useNotificationStore((s) => s.dismissNotification);
   const viewCardAction = useNotificationStore((s) => s.viewCard);
   const exitingRef = useRef(false);
 
   // Play sound when card changes
   useEffect(() => {
-    if (card) {
+    if (notification) {
       playDingSound();
       exitingRef.current = false;
 
@@ -71,7 +72,7 @@ function Notification() {
       }, 15000);
       return () => clearTimeout(timer);
     }
-  }, [card?.id]);
+  }, [notification?.id]);
 
   const handleDismiss = async () => {
     if (exitingRef.current) return;
@@ -88,11 +89,11 @@ function Notification() {
   };
 
   const handleView = async () => {
-    if (!card) return;
+    if (!notification?.cardId) return;
     if (exitingRef.current) return;
     exitingRef.current = true;
     setTimeout(async () => {
-      viewCardAction(card.id);
+      viewCardAction(notification.cardId!);
       try {
         const win = webviewWindow.getCurrentWebviewWindow();
         await win.hide();
@@ -102,7 +103,20 @@ function Notification() {
     }, 300);
   };
 
-  if (!card) {
+  const handleConfirm = async () => {
+    if (!notification) return;
+    if (exitingRef.current) return;
+    if (notification.source === "system" && notification.systemKind && notification.occurrenceKey) {
+      useReminderStore.getState().confirmSystemReminder(
+        notification.systemKind,
+        notification.occurrenceKey,
+        notification.nextDueAt,
+      );
+    }
+    await handleDismiss();
+  };
+
+  if (!notification) {
     return null;
   }
 
@@ -110,7 +124,7 @@ function Notification() {
     <div className="reminder-notification">
       <div
         className="reminder-notification-inner"
-        style={{ background: getGradient(card.colorIndex) }}
+        style={{ background: getGradient(notification.colorIndex) }}
       >
         <div className="reminder-notification-header">
           <div className="window-controls">
@@ -121,17 +135,22 @@ function Notification() {
               onClick={handleDismiss}
             />
           </div>
-          <div className="card-title">{card.title}</div>
+          <div className="card-title">{notification.title}</div>
           <span className="reminder-badge">🔔</span>
         </div>
         <div className="card-body">
-          {card.content.length > 80
-            ? card.content.slice(0, 80) + "..."
-            : card.content}
+          {notification.content.length > 80
+            ? notification.content.slice(0, 80) + "..."
+            : notification.content}
         </div>
         <div className="reminder-notification-actions">
-          <button className="btn-reminder btn-reminder-view" onClick={handleView}>
-            {t.view_fullscreen}
+          {notification.canView && notification.cardId && (
+            <button className="btn-reminder btn-reminder-view" onClick={handleView}>
+              {t.view_fullscreen}
+            </button>
+          )}
+          <button className="btn-reminder btn-reminder-confirm" onClick={handleConfirm}>
+            {t.reminder_confirm}
           </button>
         </div>
       </div>

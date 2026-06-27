@@ -1,13 +1,13 @@
 import { useEffect, useRef } from "react";
 import { getSettings } from "../services/storage";
-import { useCardStore } from "../stores/cardStore";
 import { useLanguageStore } from "../stores/languageStore";
 import { getToneMessage, offWorkReminder, overtimeCare } from "../data/careTones";
 import type { CareTone } from "../types";
+import { showSystemReminder } from "../services/systemReminderService";
 
 /**
  * Checks the current time against the user's configured off-work time.
- * Shows a caring reminder card when it's time to stop working.
+ * Shows a caring reminder notification when it's time to stop working.
  * If the user keeps working past off-work time, shows overtime care every 30min.
  */
 export function useOffWorkReminder() {
@@ -48,15 +48,14 @@ export function useOffWorkReminder() {
             const lang = useLanguageStore.getState().lang;
             const msg = getToneMessage(overtimeCare, tone);
             const title = lang === "zh" ? "🌙 加班关怀" : "🌙 Overtime Care";
-            const x = 120 + Math.floor(Math.random() * 150);
-            const y = 120 + Math.floor(Math.random() * 100);
-            useCardStore.getState().upsertSystemCard({
+            await showSystemReminder({
               kind: "overtime",
+              occurrenceKey: `${today}-overtime-${expectedFires}`,
               title,
               content: msg,
               colorIndex: 5,
-              x,
-              y,
+              lifecycle: "recurring",
+              nextDueAt: Date.now() + 30 * 60_000,
             });
           }
           return;
@@ -69,13 +68,13 @@ export function useOffWorkReminder() {
         const lang = useLanguageStore.getState().lang;
         const msg = getToneMessage(offWorkReminder, tone);
         const title = lang === "zh" ? "🏠 下班啦" : "🏠 Time to Go Home";
-        useCardStore.getState().upsertSystemCard({
+        await showSystemReminder({
           kind: "off-work",
+          occurrenceKey: `${today}-off-work`,
           title,
           content: msg,
           colorIndex: 4,
-          x: 150,
-          y: 150,
+          lifecycle: "daily",
         });
       } catch (err) {
         console.error("[useOffWorkReminder] error:", err);

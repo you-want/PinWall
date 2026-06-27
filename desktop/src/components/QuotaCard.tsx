@@ -15,7 +15,7 @@ export function QuotaCard({ results, models, loading, onRefresh }: QuotaCardProp
   const cardStyle: CSSProperties = {
     boxSizing: "border-box",
     width: collapsed ? 220 : 360,
-    maxWidth: "calc(100vw - 3rem)",
+    maxWidth: "100%",
     background: "rgba(28,28,30,0.88)",
     backdropFilter: "blur(40px)",
     WebkitBackdropFilter: "blur(40px)",
@@ -51,7 +51,7 @@ export function QuotaCard({ results, models, loading, onRefresh }: QuotaCardProp
 
   return (
     <div
-      className="fixed top-4 right-6 z-[9999] overflow-hidden rounded-2xl border border-white/15 shadow-[0_4px_24px_rgba(0,0,0,0.3)] transition-[width] duration-300 ease-in-out pointer-events-auto"
+      className="quota-card overflow-hidden rounded-2xl border border-white/15 shadow-[0_4px_24px_rgba(0,0,0,0.3)] transition-[width] duration-300 ease-in-out pointer-events-auto"
       style={cardStyle}
       data-interactive="true"
     >

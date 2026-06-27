@@ -1,28 +1,14 @@
 import { useEffect, useCallback, useRef } from "react";
-import { webviewWindow } from "@tauri-apps/api";
 import { invoke } from "@tauri-apps/api/core";
 
 import type { PinCardData } from "../types";
 import { useNotificationStore } from "../stores/notificationStore";
+import { showNotificationWindow } from "../services/notificationWindow";
 
 export function useReminders(cards: PinCardData[], onReminderFired: (cardId: string) => void) {
   const pendingNotificationRef = useRef<string | null>(null);
 
-  const showNotificationWindow = useCallback(async () => {
-    try {
-      const notifWin = await webviewWindow.WebviewWindow.getByLabel("notification");
-      if (!notifWin) return;
-      const screenW = window.screen?.width ?? 1920;
-      const scaleFactor = window.devicePixelRatio || 1;
-      const x = Math.round((screenW - 300) * scaleFactor);
-      const y = Math.round(40 * scaleFactor);
-      await notifWin.setPosition({ x, y, type: "Physical" } as any);
-      await notifWin.show();
-      await notifWin.setFocus();
-    } catch (err) {
-      console.error("Failed to show notification window:", err);
-    }
-  }, []);
+  const showCardNotificationWindow = useCallback(() => showNotificationWindow(), []);
 
   // Process pending notifications
   useEffect(() => {
@@ -33,12 +19,12 @@ export function useReminders(cards: PinCardData[], onReminderFired: (cardId: str
         const card = cards.find((c) => c.id === cardId);
         if (card) {
           useNotificationStore.getState().showNotification(card);
-          showNotificationWindow();
+          showCardNotificationWindow();
         }
       }
     }, 200);
     return () => clearInterval(interval);
-  }, [cards, showNotificationWindow]);
+  }, [cards, showCardNotificationWindow]);
 
   // Check for due reminders every second
   useEffect(() => {
