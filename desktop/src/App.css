@@ -267,6 +267,29 @@ html, body, #root {
   visibility: visible;
 }
 
+.wall-side-panel {
+  position: fixed;
+  top: 16px;
+  right: 24px;
+  z-index: 9998;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  width: min(360px, calc(100vw - 48px));
+  max-height: calc(100vh - 112px);
+  overflow: visible;
+  pointer-events: none;
+}
+
+.wall-side-panel > [data-interactive] {
+  pointer-events: auto;
+}
+
+.quota-card {
+  flex-shrink: 0;
+}
+
 /* Settings button */
 .floating-settings-btn {
   background: linear-gradient(135deg, #4a90d9 0%, #3a80c9 100%);
@@ -803,37 +826,6 @@ html, body, #root {
   font-size: 12px;
 }
 
-.opacity-control {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.opacity-slider {
-  flex: 1;
-  height: 6px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.2);
-  outline: none;
-  cursor: pointer;
-}
-
-.opacity-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #fff;
-  cursor: pointer;
-}
-
-.opacity-value {
-  min-width: 44px;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 13px;
-  text-align: right;
-}
-
 @media (max-width: 640px) {
   .ap-settings-shell {
     flex-direction: column;
@@ -876,13 +868,6 @@ html, body, #root {
     flex-direction: column;
     gap: 8px;
   }
-}
-
-.opacity-value {
-  width: 50px;
-  text-align: right;
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
 }
 
 .toggle-label {
@@ -1913,12 +1898,7 @@ html, body, #root {
 }
 
 .weather-card {
-  position: fixed;
-  top: 18px;
-  left: 24px;
-  z-index: 9998;
-  width: 300px;
-  max-width: calc(100vw - 48px);
+  width: min(300px, 100%);
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 14px;

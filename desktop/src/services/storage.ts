@@ -1,7 +1,7 @@
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { BaseDirectory } from "@tauri-apps/plugin-fs";
 import type { Settings, BackgroundImage, AIConfig, QuotaMonitorConfig } from "../types";
-import { DEFAULT_AI_CONFIG, DEFAULT_QUOTA_MONITOR, DEFAULT_GLOBAL_SHORTCUT } from "../types";
+import { DEFAULT_AI_CONFIG, DEFAULT_MOOD_CHECKIN_TIMES, DEFAULT_QUOTA_MONITOR, DEFAULT_GLOBAL_SHORTCUT } from "../types";
 
 const SETTINGS_FILE = "pinwall-settings.json";
 
@@ -21,7 +21,7 @@ const defaultSettings: Settings = {
   careTone: "warm",
   hydrationGoal: 8,
   moodCheckinEnabled: true,
-  moodCheckinTimes: ["10:00", "18:00"],
+  moodCheckinTimes: [...DEFAULT_MOOD_CHECKIN_TIMES],
   restReminderEnabled: true,
   restInterval: 90,
   offWorkTime: "18:00",
@@ -56,7 +56,7 @@ export async function getSettings(): Promise<Settings> {
     if (!parsed.careTone) parsed.careTone = "warm";
     if (parsed.hydrationGoal === undefined) parsed.hydrationGoal = 8;
     if (parsed.moodCheckinEnabled === undefined) parsed.moodCheckinEnabled = true;
-    if (!parsed.moodCheckinTimes) parsed.moodCheckinTimes = ["10:00", "18:00"];
+    if (!parsed.moodCheckinTimes) parsed.moodCheckinTimes = [...DEFAULT_MOOD_CHECKIN_TIMES];
     if (parsed.restReminderEnabled === undefined) parsed.restReminderEnabled = true;
     if (parsed.restInterval === undefined) parsed.restInterval = 90;
     if (!parsed.offWorkTime) parsed.offWorkTime = "18:00";

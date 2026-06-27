@@ -8,6 +8,7 @@ import {
   DEFAULT_GLOBAL_SHORTCUT,
   DEFAULT_QUOTA_MONITOR,
   QUOTA_REFRESH_INTERVALS,
+  DEFAULT_MOOD_CHECKIN_TIME,
 } from "../types";
 import { ShortcutRecorder } from "./ShortcutRecorder";
 import { useWidgetStore } from "../stores/widgetStore";
@@ -40,7 +41,6 @@ type SettingsTab = "basics" | "notes" | "care" | "experimental";
 interface SettingsPanelProps {
   settings: Settings;
   onClose: () => void;
-  onOpacityChange: (opacity: number) => void;
   onAutoChangeSettings: (enabled: boolean, interval: number) => void;
   onAIConfigChange?: (config: AIConfig) => void;
   onQuotaMonitorChange?: (config: QuotaMonitorConfig) => void;
@@ -54,7 +54,6 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({
   settings,
-  onOpacityChange,
   onAutoChangeSettings,
   onAIConfigChange,
   onQuotaMonitorChange,
@@ -97,6 +96,7 @@ export function SettingsPanel({
     settings.moodCheckinEnabled ?? true,
     settings.weatherCareEnabled ?? true,
   ].filter(Boolean).length;
+  const moodCheckinTime = settings.moodCheckinTimes?.[0] ?? DEFAULT_MOOD_CHECKIN_TIME;
 
   const tabs = useMemo(() => ([
     {
@@ -107,7 +107,7 @@ export function SettingsPanel({
     {
       id: "notes" as const,
       title: lang === "zh" ? "便签体验" : "Notes",
-      desc: lang === "zh" ? "透明度、背景、节日" : "Opacity, background, holidays",
+      desc: lang === "zh" ? "背景、节日" : "Background, holidays",
     },
     {
       id: "care" as const,
@@ -260,29 +260,13 @@ export function SettingsPanel({
         <>
           <SettingsSection
             title={lang === "zh" ? "便签体验" : "Note Experience"}
-            description={lang === "zh" ? "控制桌面墙透明度、背景轮换和节日卡片。" : "Control desktop wall opacity, background rotation, and holiday cards."}
-            summary={lang === "zh" ? `透明度 ${Math.round((settings.opacity ?? 0.8) * 100)}%` : `Opacity ${Math.round((settings.opacity ?? 0.8) * 100)}%`}
+            description={lang === "zh" ? "控制背景轮换和节日卡片。" : "Control background rotation and holiday cards."}
+            summary={lang === "zh" ? "窗口透明度由程序默认控制" : "Window opacity is managed by PinWall"}
           />
 
           <div className="ap-group">
             <div className="ap-group-label">{lang === "zh" ? "桌面外观" : "Desktop Appearance"}</div>
             <div className="ap-card">
-              <div className="ap-field">
-                <label className="ap-field-label">{t.window_opacity}</label>
-                <div className="opacity-control">
-                  <input
-                    className="opacity-slider"
-                    type="range"
-                    min="0.2"
-                    max="1"
-                    step="0.05"
-                    value={settings.opacity ?? 0.8}
-                    onChange={(e) => onOpacityChange(Number(e.target.value))}
-                  />
-                  <span className="opacity-value">{Math.round((settings.opacity ?? 0.8) * 100)}%</span>
-                </div>
-              </div>
-              <div className="ap-divider" />
               <ToggleRow
                 label={lang === "zh" ? "自动切换背景" : "Auto-change Background"}
                 description={lang === "zh"
@@ -422,10 +406,22 @@ export function SettingsPanel({
               <div className="ap-divider" />
               <ToggleRow
                 label={t.mood_title}
-                description={lang === "zh" ? "默认 10:00 与 18:00 提醒" : "Defaults to 10:00 and 18:00"}
+                description={lang === "zh" ? `${moodCheckinTime} 提醒` : `Reminds at ${moodCheckinTime}`}
                 checked={settings.moodCheckinEnabled ?? true}
                 onChange={(checked) => onCareSettingsChange?.({ moodCheckinEnabled: checked })}
               />
+              <div className="ap-field pt-0">
+                <label className="ap-field-label" htmlFor="mood-checkin-time">
+                  {lang === "zh" ? "打卡提醒时间" : "Check-in reminder time"}
+                </label>
+                <input
+                  id="mood-checkin-time"
+                  className="ap-input mt-1.5"
+                  type="time"
+                  value={moodCheckinTime}
+                  onChange={(e) => onCareSettingsChange?.({ moodCheckinTimes: [e.target.value || DEFAULT_MOOD_CHECKIN_TIME] })}
+                />
+              </div>
               <div className="ap-divider" />
               <ToggleRow
                 label={t.weather_title}

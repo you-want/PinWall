@@ -26,7 +26,6 @@ function renderSettings(overrides = {}) {
   const props = {
     settings: createMockSettings(overrides),
     onClose: vi.fn(),
-    onOpacityChange: vi.fn(),
     onAutoChangeSettings: vi.fn(),
     onAIConfigChange: vi.fn(),
     onQuotaMonitorChange: vi.fn(),
@@ -75,15 +74,12 @@ describe('SettingsPanel', () => {
     expect(screen.getByText('Eye Care')).toBeInTheDocument();
   });
 
-  it('exposes opacity controls in note experience', () => {
-    const props = renderSettings({ opacity: 0.75 });
+  it('keeps opacity managed by the app instead of exposing a slider', () => {
+    renderSettings({ opacity: 0.75 });
 
     fireEvent.click(screen.getByRole('button', { name: 'Notes' }));
-    const slider = screen.getByRole('slider');
-    expect(slider).toHaveValue('0.75');
-
-    fireEvent.change(slider, { target: { value: '0.9' } });
-    expect(props.onOpacityChange).toHaveBeenCalledWith(0.9);
+    expect(screen.getByText('Window opacity is managed by PinWall')).toBeInTheDocument();
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
   });
 
   it('keeps experimental AI form collapsed until enabled', () => {
@@ -128,5 +124,17 @@ describe('SettingsPanel', () => {
 
     fireEvent.blur(input);
     expect(props.onCareSettingsChange).toHaveBeenCalledWith({ weatherCity: 'Shang' });
+  });
+
+  it('lets users configure the mood check-in reminder time', () => {
+    const props = renderSettings({ moodCheckinTimes: ['09:10'] });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Care' }));
+    expect(screen.getByText('Reminds at 09:10')).toBeInTheDocument();
+
+    const input = screen.getByLabelText('Check-in reminder time');
+    fireEvent.change(input, { target: { value: '08:45' } });
+
+    expect(props.onCareSettingsChange).toHaveBeenCalledWith({ moodCheckinTimes: ['08:45'] });
   });
 });

@@ -3,7 +3,7 @@ import { getSettings } from "../services/storage";
 import { useMoodStore } from "../stores/moodStore";
 import { useLanguageStore } from "../stores/languageStore";
 import { getToneMessage, moodCheckinPrompt } from "../data/careTones";
-import type { CareTone } from "../types";
+import { DEFAULT_MOOD_CHECKIN_TIMES, type CareTone } from "../types";
 import { showSystemReminder } from "../services/systemReminderService";
 
 /**
@@ -19,7 +19,7 @@ export function useMoodCheckin() {
         const settings = await getSettings();
         if (!settings.moodCheckinEnabled) return;
 
-        const times = settings.moodCheckinTimes ?? ["10:00", "18:00"];
+        const times = settings.moodCheckinTimes ?? DEFAULT_MOOD_CHECKIN_TIMES;
         const now = new Date();
         const today = now.toISOString().slice(0, 10);
         const nowMinutes = now.getHours() * 60 + now.getMinutes();

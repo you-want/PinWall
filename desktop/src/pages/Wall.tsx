@@ -164,6 +164,9 @@ function Wall() {
   }, []);
 
   const hasSettings = !!settings;
+  const quotaConfig = settings?.quotaMonitor;
+  const showQuotaCard = !!(quotaConfig?.enabled && quotaConfig.models.length > 0);
+  const showWeatherCard = !!settings?.weatherCareEnabled;
 
   return (
     <div className="app-container">
@@ -198,17 +201,21 @@ function Wall() {
 
           <FloatingButtons onNewCard={openNewCardModal} onSettings={openSettingsWindow} onArrange={handleArrangeCards} />
 
-          {settings?.weatherCareEnabled && (
-            <WeatherCard settings={settings} />
-          )}
+          {(showQuotaCard || showWeatherCard) && (
+            <aside className="wall-side-panel" data-testid="wall-side-panel">
+              {showQuotaCard && (
+                <QuotaCard
+                  results={quotaResults}
+                  models={quotaConfig.models}
+                  loading={quotaLoading}
+                  onRefresh={quotaRefresh}
+                />
+              )}
 
-          {settings?.quotaMonitor?.enabled && settings.quotaMonitor.models.length > 0 && (
-            <QuotaCard
-              results={quotaResults}
-              models={settings.quotaMonitor.models}
-              loading={quotaLoading}
-              onRefresh={quotaRefresh}
-            />
+              {showWeatherCard && (
+                <WeatherCard settings={settings} />
+              )}
+            </aside>
           )}
 
           {newCardModal.open && (
