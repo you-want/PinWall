@@ -6,11 +6,10 @@ test.describe('PinWall E2E Tests', () => {
     await expect(page.locator('.app-container')).toBeVisible();
   });
 
-  test('shows empty hint when no cards', async ({ page }) => {
+  test('renders wall content after startup', async ({ page }) => {
     await page.goto('http://localhost:1930');
-    // The app should show the empty state hint
-    const hasHint = await page.locator('.empty-hint, .loading').isVisible();
-    expect(hasHint).toBe(true);
+    await expect(page.locator('.loading')).not.toBeVisible();
+    await expect(page.locator('.empty-hint, .pin-card, .wall-side-panel').first()).toBeVisible();
   });
 
   test('floating buttons are visible', async ({ page }) => {
@@ -32,7 +31,7 @@ test.describe('PinWall E2E Tests', () => {
 
     const titleInput = page.locator('#card-title');
     await expect(titleInput).toBeVisible();
-    await expect(titleInput).toHaveValue('新建便签');
+    await expect(titleInput).toHaveValue(/^(新建便签|New Note)$/);
 
     const contentTextarea = page.locator('#card-content');
     await expect(contentTextarea).toBeVisible();

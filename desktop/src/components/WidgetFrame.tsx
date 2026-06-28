@@ -5,27 +5,60 @@ import type {
   WidgetSizePreset,
 } from "../types";
 import { WIDGET_SIZE_PRESETS } from "../types";
-import { getWidgetAssetUrl } from "../services/widgetLoader";
+import { getWidgetFrameUrl, loadWidgetEntryHtml } from "../services/widgetLoader";
 import { handleBridgeRequest, subscribeWidgetEvent } from "../services/widgetBridge";
 import { useWidgetStore } from "../stores/widgetStore";
 
 interface WidgetFrameProps {
   instance: WidgetInstance;
+  variant?: "freeform" | "side-panel";
 }
 
-export function WidgetFrame({ instance }: WidgetFrameProps) {
+export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps) {
   const { manifest, x, y, size, zIndex, settings, enabled } = instance;
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [entryHtml, setEntryHtml] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
 
   const { setPosition, bringToFront, setSize, uninstallWidget, updateSettings } =
     useWidgetStore();
-  const iframeSrc = getWidgetAssetUrl(manifest.id, manifest.entry);
-  const targetOrigin = new URL(iframeSrc).origin;
+  const iframeSrc = getWidgetFrameUrl(manifest);
+  const targetOrigin = entryHtml ? "*" : new URL(iframeSrc).origin;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setLoadError(null);
+    if (!manifest.installedPath && manifest.type !== "official") {
+      setEntryHtml(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    loadWidgetEntryHtml(manifest.id)
+      .then((html) => {
+        if (cancelled) return;
+        setEntryHtml(html);
+        setLoadError(null);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("[WidgetFrame] Failed to load widget entry:", err);
+        setEntryHtml(null);
+        setLoadError(err instanceof Error ? err.message : String(err));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [manifest.id, manifest.entry, manifest.installedPath, reloadKey]);
 
   // ── postMessage 桥接 ──
   useEffect(() => {
@@ -47,7 +80,7 @@ export function WidgetFrame({ instance }: WidgetFrameProps) {
 
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [manifest, targetOrigin]);
+  }, [manifest, targetOrigin, reloadKey]);
 
   // ── 事件推送：向 iframe 广播应用事件 ──
   useEffect(() => {
@@ -61,15 +94,14 @@ export function WidgetFrame({ instance }: WidgetFrameProps) {
       );
     });
     return unsub;
-  }, [manifest.permissions, targetOrigin]);
+  }, [manifest.permissions, targetOrigin, reloadKey]);
 
   // ── Widget 初始化：发送配置 ──
   useEffect(() => {
     const iframe = iframeRef.current;
     if (!iframe) return;
 
-    const onLoad = () => {
-      // 发送初始化配置
+    const sendReady = () => {
       iframe.contentWindow?.postMessage(
         {
           type: "event",
@@ -84,13 +116,23 @@ export function WidgetFrame({ instance }: WidgetFrameProps) {
       );
     };
 
+    const onLoad = () => {
+      sendReady();
+      window.setTimeout(sendReady, 120);
+    };
+
     iframe.addEventListener("load", onLoad);
-    return () => iframe.removeEventListener("load", onLoad);
-  }, [manifest.id, settings, targetOrigin]);
+    const readyTimer = window.setTimeout(sendReady, 120);
+    return () => {
+      window.clearTimeout(readyTimer);
+      iframe.removeEventListener("load", onLoad);
+    };
+  }, [manifest.id, settings, targetOrigin, reloadKey, entryHtml]);
 
   // ── 拖拽 ──
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
+      if (variant === "side-panel") return;
       if ((e.target as HTMLElement).closest(".widget-control")) {
         return;
       }
@@ -114,7 +156,7 @@ export function WidgetFrame({ instance }: WidgetFrameProps) {
       document.addEventListener("pointermove", handlePointerMove);
       document.addEventListener("pointerup", handlePointerUp);
     },
-    [manifest.id, x, y, setPosition, bringToFront]
+    [manifest.id, x, y, setPosition, bringToFront, variant]
   );
 
   // ── 右键菜单 ──
@@ -150,20 +192,26 @@ export function WidgetFrame({ instance }: WidgetFrameProps) {
   // ── 刷新 ──
   const handleRefresh = useCallback(() => {
     const iframe = iframeRef.current;
-    if (iframe) {
+    if (entryHtml) {
+      setReloadKey((key) => key + 1);
+    } else if (iframe) {
       iframe.src = iframe.src; // 重新加载
     }
     setContextMenu(null);
-  }, []);
+  }, [entryHtml]);
 
   if (!enabled) return null;
 
-  return (
-    <div
-      ref={containerRef}
-      data-interactive
-      className="widget-frame"
-      style={{
+  const frameStyle: React.CSSProperties = variant === "side-panel"
+    ? {
+        position: "relative",
+        width: "100%",
+        height: size.height,
+        zIndex: "auto",
+        cursor: "default",
+        userSelect: "none",
+      }
+    : {
         position: "absolute",
         left: x,
         top: y,
@@ -172,7 +220,14 @@ export function WidgetFrame({ instance }: WidgetFrameProps) {
         zIndex,
         cursor: isDragging ? "grabbing" : "grab",
         userSelect: "none",
-      }}
+      };
+
+  return (
+    <div
+      ref={containerRef}
+      data-interactive
+      className={`widget-frame ${variant === "side-panel" ? "widget-frame-side" : ""}`}
+      style={frameStyle}
       onPointerDown={handlePointerDown}
       onContextMenu={handleContextMenu}
     >
@@ -181,18 +236,21 @@ export function WidgetFrame({ instance }: WidgetFrameProps) {
         style={{
           width: "100%",
           height: "100%",
-          borderRadius: 16,
+          position: "relative",
+          borderRadius: 14,
           overflow: "hidden",
-          background: "rgba(255, 255, 255, 0.85)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          boxShadow: "0 4px 24px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)",
-          border: "1px solid rgba(255,255,255,0.5)",
+          background: "rgba(28, 28, 30, 0.76)",
+          backdropFilter: "blur(32px) saturate(170%)",
+          WebkitBackdropFilter: "blur(32px) saturate(170%)",
+          boxShadow: "0 8px 28px rgba(0,0,0,0.22)",
+          border: "1px solid rgba(255,255,255,0.16)",
         }}
       >
         <iframe
+          key={`${manifest.id}-${reloadKey}-${entryHtml ? "srcdoc" : "src"}`}
           ref={iframeRef}
-          src={iframeSrc}
+          src={entryHtml ? undefined : iframeSrc}
+          srcDoc={entryHtml ?? undefined}
           title={manifest.name}
           sandbox="allow-scripts allow-same-origin"
           style={{
@@ -202,6 +260,25 @@ export function WidgetFrame({ instance }: WidgetFrameProps) {
             pointerEvents: isDragging ? "none" : "auto",
           }}
         />
+        {loadError && (
+          <div
+            role="status"
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 16,
+              color: "rgba(255,255,255,0.78)",
+              fontSize: 12,
+              textAlign: "center",
+              background: "rgba(28, 28, 30, 0.82)",
+            }}
+          >
+            小组件加载失败，请右键刷新或重新安装
+          </div>
+        )}
       </div>
 
       {/* 右键菜单 */}

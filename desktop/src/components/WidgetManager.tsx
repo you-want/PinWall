@@ -1,6 +1,4 @@
-import { useEffect } from "react";
 import { useWidgetStore } from "../stores/widgetStore";
-import { loadInstalledWidgets } from "../services/widgetLoader";
 import { WidgetFrame } from "./WidgetFrame";
 
 /**
@@ -10,17 +8,12 @@ import { WidgetFrame } from "./WidgetFrame";
  * 2. 渲染所有已启用的 Widget 实例
  * 3. 管理 Widget 层级（低于便签卡片）
  */
-export function WidgetManager() {
-  const { widgets, syncWidgets } = useWidgetStore();
+interface WidgetManagerProps {
+  variant?: "freeform" | "side-panel";
+}
 
-  // 启动时加载 Widget 列表
-  useEffect(() => {
-    loadInstalledWidgets().then((manifests) => {
-      if (manifests.length > 0) {
-        syncWidgets(manifests);
-      }
-    });
-  }, [syncWidgets]);
+export function WidgetManager({ variant = "freeform" }: WidgetManagerProps) {
+  const { widgets } = useWidgetStore();
 
   const enabledWidgets = widgets.filter((w) => w.enabled);
 
@@ -29,7 +22,7 @@ export function WidgetManager() {
   return (
     <>
       {enabledWidgets.map((instance) => (
-        <WidgetFrame key={instance.manifest.id} instance={instance} />
+        <WidgetFrame key={instance.manifest.id} instance={instance} variant={variant} />
       ))}
     </>
   );

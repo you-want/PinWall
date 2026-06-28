@@ -38,6 +38,8 @@ vi.mock('@tauri-apps/api/core', () => ({
     if (cmd === 'get_system_info') {
       if (args?.category === 'getBattery') return Promise.resolve({ level: 0.85, charging: false });
       if (args?.category === 'getMemoryInfo') return Promise.resolve({ total: 17179869184, used: 8589934592, free: 8589934592 });
+      if (args?.category === 'getMediaInfo') return Promise.resolve({ trackName: 'PinWall Focus', isPlaying: false });
+      if (args?.category === 'mediaControl') return Promise.resolve({ ok: true });
       return Promise.resolve({});
     }
     return Promise.resolve(null);
@@ -256,6 +258,24 @@ describe('widgetBridge', () => {
 
       expect(res.success).toBe(true);
       expect(res.data.total).toBe(17179869184);
+    });
+
+    it('returns media info for the official music widget fallback', async () => {
+      const manifest = createTestManifest(['system']);
+      const req = makeRequest('system', 'getMediaInfo');
+      const res = await handleBridgeRequest(req, manifest);
+
+      expect(res.success).toBe(true);
+      expect(res.data.trackName).toBe('PinWall Focus');
+    });
+
+    it('accepts media control commands for the official music widget', async () => {
+      const manifest = createTestManifest(['system']);
+      const req = makeRequest('system', 'mediaControl', ['play']);
+      const res = await handleBridgeRequest(req, manifest);
+
+      expect(res.success).toBe(true);
+      expect(res.data).toEqual({ ok: true });
     });
   });
 

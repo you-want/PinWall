@@ -24,7 +24,7 @@ html, body, #root {
   position: relative;
   overflow: hidden;
   background: transparent;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 [data-interactive] {
@@ -278,8 +278,34 @@ html, body, #root {
   gap: 12px;
   width: min(360px, calc(100vw - 48px));
   max-height: calc(100vh - 112px);
-  overflow: visible;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 4px;
   pointer-events: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+}
+
+.wall-side-panel::-webkit-scrollbar {
+  width: 4px;
+}
+
+.wall-side-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.wall-side-panel::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.wall-side-panel:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+}
+
+.wall-side-panel:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.28);
 }
 
 .wall-side-panel > [data-interactive] {
@@ -288,6 +314,11 @@ html, body, #root {
 
 .quota-card {
   flex-shrink: 0;
+}
+
+.widget-frame-side {
+  flex-shrink: 0;
+  max-width: 100%;
 }
 
 /* Settings button */
@@ -734,6 +765,69 @@ html, body, #root {
   color: rgba(255, 255, 255, 0.48);
 }
 
+.ap-widget-catalog {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px 16px 4px;
+}
+
+.ap-widget-catalog-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.ap-widget-card-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.ap-widget-install-btn {
+  flex-shrink: 0;
+  min-width: 82px;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+.ap-widget-install-btn:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.ap-widget-subhead {
+  padding: 12px 16px 2px;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ap-widget-source-badge,
+.ap-widget-version-badge {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.ap-widget-source-badge {
+  background: rgba(99, 102, 241, 0.2);
+  color: rgba(199, 210, 254, 0.9);
+}
+
+.ap-widget-version-badge {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.5);
+}
+
 .ap-widget-permissions {
   display: flex;
   flex-wrap: wrap;
@@ -758,6 +852,74 @@ html, body, #root {
   background: rgba(239, 68, 68, 0.12);
   border-color: rgba(248, 113, 113, 0.18);
   color: rgba(252, 165, 165, 0.9);
+}
+
+.ap-widget-permission.medium {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.16);
+  color: rgba(253, 230, 138, 0.82);
+}
+
+.ap-widget-permission.low {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.ap-widget-permission-details {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.ap-widget-permission-detail {
+  display: grid;
+  gap: 2px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ap-widget-permission-detail span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ap-widget-permission-detail small {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.ap-widget-local-install {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+}
+
+.ap-widget-status {
+  margin: 0 16px 14px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  .ap-widget-catalog {
+    grid-template-columns: 1fr;
+  }
+
+  .ap-widget-catalog-card,
+  .ap-widget-local-install {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ap-widget-install-btn {
+    width: 100%;
+  }
 }
 
 /* ── AI fields animated reveal ── */

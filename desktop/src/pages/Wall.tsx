@@ -14,6 +14,7 @@ import { WidgetManager } from "../components/WidgetManager";
 import { useI18n } from "../i18n";
 import type { Settings } from "../types";
 import { getSettings } from "../services/storage";
+import { loadInstalledWidgets } from "../services/widgetLoader";
 import { syncLaunchOnStartupSetting } from "../services/autostart";
 import { useCards } from "../hooks/useCards";
 import { useReminders } from "../hooks/useReminders";
@@ -27,6 +28,7 @@ import { useOffWorkReminder } from "../hooks/useOffWorkReminder";
 import { useEyeCareReminder } from "../hooks/useEyeCareReminder";
 import { useMoodCheckin } from "../hooks/useMoodCheckin";
 import type { CardType } from "../types";
+import { useWidgetStore } from "../stores/widgetStore";
 
 type NewCardState =
   | { open: false }
@@ -38,6 +40,8 @@ function Wall() {
   const [newCardModal, setNewCardModal] = useState<NewCardState>({ open: false });
   const [showBreathing, setShowBreathing] = useState(false);
   const newCardPositionRef = useRef({ x: 0, y: 0 });
+  const widgets = useWidgetStore((state) => state.widgets);
+  const syncWidgets = useWidgetStore((state) => state.syncWidgets);
 
   const {
     cards,
@@ -95,6 +99,14 @@ function Wall() {
       window.removeEventListener("focus", handleFocus);
     };
   }, [refresh]);
+
+  useEffect(() => {
+    loadInstalledWidgets().then((manifests) => {
+      if (manifests.length > 0) {
+        syncWidgets(manifests);
+      }
+    });
+  }, [syncWidgets]);
 
   useEffect(() => {
     const handleMouseDown = async (e: MouseEvent) => {
@@ -167,6 +179,7 @@ function Wall() {
   const quotaConfig = settings?.quotaMonitor;
   const showQuotaCard = !!(quotaConfig?.enabled && quotaConfig.models.length > 0);
   const showWeatherCard = !!settings?.weatherCareEnabled;
+  const hasEnabledWidgets = widgets.some((widget) => widget.enabled);
 
   return (
     <div className="app-container">
@@ -190,8 +203,6 @@ function Wall() {
             onUnstash={handleUnstashCard}
           />
 
-          <WidgetManager />
-
           {cards.length === 0 && (
             <div className="empty-hint">
               <p className="hint-title">{t.welcome_title}</p>
@@ -201,7 +212,7 @@ function Wall() {
 
           <FloatingButtons onNewCard={openNewCardModal} onSettings={openSettingsWindow} onArrange={handleArrangeCards} />
 
-          {(showQuotaCard || showWeatherCard) && (
+          {(showQuotaCard || showWeatherCard || hasEnabledWidgets) && (
             <aside className="wall-side-panel" data-testid="wall-side-panel">
               {showQuotaCard && (
                 <QuotaCard
@@ -215,6 +226,8 @@ function Wall() {
               {showWeatherCard && (
                 <WeatherCard settings={settings} />
               )}
+
+              <WidgetManager variant="side-panel" />
             </aside>
           )}
 

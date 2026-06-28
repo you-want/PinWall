@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SettingsPanel } from '@/components/SettingsPanel';
 import { createMockSettings } from '@/__tests__';
@@ -10,11 +10,40 @@ vi.mock('@tauri-apps/api/core', () => ({
 }));
 
 vi.mock('@tauri-apps/plugin-dialog', () => ({
-  open: vi.fn(),
+  open: vi.fn().mockResolvedValue('/trusted/widget'),
 }));
 
 vi.mock('@/services/widgetLoader', () => ({
-  installWidgetFromPath: vi.fn(),
+  installWidgetFromPathWithResult: vi.fn().mockResolvedValue({
+    manifest: {
+      id: 'com.local.clock',
+      name: 'Local Clock',
+      description: 'Local widget',
+      version: '1.0.0',
+      author: 'Local',
+      entry: 'index.html',
+      icon: 'icon.svg',
+      type: 'community',
+      category: 'utility',
+      permissions: ['storage'],
+      defaultSize: { width: 180, height: 120 },
+    },
+  }),
+  installOfficialWidget: vi.fn().mockImplementation(async (id: string) => ({
+    manifest: {
+      id,
+      name: id === 'com.pinwall.weather' ? '天气小组件' : '时钟小组件',
+      description: 'Official widget',
+      version: '1.0.0',
+      author: 'PinWall Team',
+      entry: 'index.html',
+      icon: 'icon.svg',
+      type: 'official',
+      category: 'utility',
+      permissions: id === 'com.pinwall.weather' ? ['storage', 'network'] : ['storage', 'theme'],
+      defaultSize: { width: 200, height: 160 },
+    },
+  })),
   uninstallWidget: vi.fn().mockResolvedValue(true),
 }));
 
@@ -48,7 +77,7 @@ function installWidget(overrides: Partial<WidgetManifest> = {}) {
     version: '1.0.0',
     author: 'Test',
     entry: 'index.html',
-    icon: 'icon.png',
+    icon: 'icon.svg',
     type: 'community',
     category: 'utility',
     permissions: ['storage', 'network', 'system', 'cards', 'ai'],
@@ -61,6 +90,7 @@ function installWidget(overrides: Partial<WidgetManifest> = {}) {
 describe('SettingsPanel', () => {
   beforeEach(() => {
     useWidgetStore.setState({ widgets: [], _zIndexCounter: 50 });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   it('renders section navigation and switches to care reminders', () => {
@@ -96,11 +126,51 @@ describe('SettingsPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Experimental' }));
     expect(screen.getByText('Risky Widget')).toBeInTheDocument();
-    expect(screen.getByText('Network')).toHaveClass('risk');
-    expect(screen.getByText('System')).toHaveClass('risk');
-    expect(screen.getByText('Cards')).toHaveClass('risk');
+    const riskRow = screen.getByText('Risky Widget').closest('.ap-widget-installed-row')!;
+    expect(within(riskRow as HTMLElement).getByText('Network')).toHaveClass('risk');
+    expect(within(riskRow as HTMLElement).getByText('System')).toHaveClass('risk');
+    expect(within(riskRow as HTMLElement).getByText('Cards')).toHaveClass('risk');
     const aiPermission = screen.getAllByText('AI').find((el) => el.classList.contains('ap-widget-permission'));
     expect(aiPermission).toHaveClass('risk');
+  });
+
+  it('shows official widgets with permission explanations', () => {
+    renderSettings();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Experimental' }));
+
+    expect(screen.getByText('Official Widget Hub')).toBeInTheDocument();
+    expect(screen.getByText('天气小组件')).toBeInTheDocument();
+    expect(screen.getAllByText('Network')[0]).toHaveClass('risk');
+    expect(screen.getByText(/Accesses external network resources/)).toBeInTheDocument();
+  });
+
+  it('installs official high-risk widgets after confirmation', async () => {
+    const service = await import('@/services/widgetLoader');
+    renderSettings();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Experimental' }));
+    const weatherCard = screen.getByText('天气小组件').closest('.ap-widget-catalog-card')!;
+    fireEvent.click(within(weatherCard as HTMLElement).getByRole('button', { name: 'Install' }));
+
+    await waitFor(() => {
+      expect(window.confirm).toHaveBeenCalled();
+      expect(service.installOfficialWidget).toHaveBeenCalledWith('com.pinwall.weather');
+      expect(useWidgetStore.getState().widgets.some((w) => w.manifest.id === 'com.pinwall.weather')).toBe(true);
+    });
+  });
+
+  it('keeps local widget install as an advanced trusted-source action', async () => {
+    const service = await import('@/services/widgetLoader');
+    renderSettings();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Experimental' }));
+    fireEvent.click(screen.getByRole('button', { name: /\+ Choose Folder/ }));
+
+    await waitFor(() => {
+      expect(service.installWidgetFromPathWithResult).toHaveBeenCalledWith('/trusted/widget');
+      expect(screen.getByText('Local Clock installed')).toBeInTheDocument();
+    });
   });
 
   it('can auto-detect weather city from care settings', async () => {
