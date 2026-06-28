@@ -14,7 +14,7 @@
       justify-content: center;
       height: 100vh;
       overflow: hidden;
-      color: #1a1a1a;
+      color: rgba(255,255,255,0.92);
     }
 
     .clock-container {
@@ -32,8 +32,8 @@
       width: 140px;
       height: 140px;
       border-radius: 50%;
-      background: rgba(255, 255, 255, 0.7);
-      border: 2px solid rgba(0, 0, 0, 0.08);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
     }
 
     .analog-clock .center-dot {
@@ -52,19 +52,20 @@
       left: 50%;
       transform-origin: bottom center;
       border-radius: 4px;
+      transition: transform 0.3s cubic-bezier(0.4, 2.08, 0.55, 0.44);
     }
 
     .hand-hour {
       width: 3.5px;
       height: 35%;
-      background: #374151;
+      background: rgba(255,255,255,0.86);
       margin-left: -1.75px;
     }
 
     .hand-minute {
       width: 2.5px;
       height: 45%;
-      background: #6b7280;
+      background: rgba(255,255,255,0.62);
       margin-left: -1.25px;
     }
 
@@ -73,6 +74,7 @@
       height: 48%;
       background: var(--accent, #6366f1);
       margin-left: -0.75px;
+      transition: none;
     }
 
     .analog-clock .tick {
@@ -81,14 +83,14 @@
       left: 50%;
       width: 1.5px;
       height: 8px;
-      background: rgba(0,0,0,0.15);
+      background: rgba(255,255,255,0.18);
       transform-origin: center 64px;
       margin-left: -0.75px;
     }
     .analog-clock .tick.major {
       width: 2px;
       height: 12px;
-      background: rgba(0,0,0,0.3);
+      background: rgba(255,255,255,0.36);
       margin-left: -1px;
     }
 
@@ -102,13 +104,13 @@
 
     .digital-time .seconds {
       font-size: 18px;
-      color: #9ca3af;
+      color: rgba(255,255,255,0.48);
       margin-left: 2px;
     }
 
     .date-display {
       font-size: 12px;
-      color: #6b7280;
+      color: rgba(255,255,255,0.58);
       font-weight: 500;
     }
 
@@ -116,7 +118,7 @@
     .analog-label {
       font-size: 13px;
       font-weight: 500;
-      color: #4b5563;
+      color: rgba(255,255,255,0.72);
       font-variant-numeric: tabular-nums;
     }
   </style>
@@ -125,36 +127,124 @@
   <div class="clock-container" id="clock"></div>
 
   <script>
-    // Widget config (will be set by host via postMessage)
+    // i18n messages
+    const MESSAGES = {
+      zh: {
+        days: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
+        months: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
+        yearSuffix: '年',
+        daySuffix: '日',
+      },
+      en: {
+        days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+        months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+        yearSuffix: '',
+        daySuffix: '',
+      },
+    };
+
+    // State
     let config = {
       mode: 'analog',
       showSeconds: true,
       showDate: true,
       accentColor: '#6366f1',
     };
+    let locale = 'zh';
+    let interval = null;
+    let lastRenderedMode = null;
 
-    // Listen for host messages
+    // Bridge pattern
+    let bridgeId = 0;
+    const pending = new Map();
+
+    function sendRequest(module, method, args) {
+      return new Promise((resolve, reject) => {
+        const id = `clock_${++bridgeId}`;
+        pending.set(id, { resolve, reject });
+        window.parent.postMessage({ type: 'request', id, module, method, args }, '*');
+        setTimeout(() => {
+          if (pending.has(id)) { pending.delete(id); reject(new Error('timeout')); }
+        }, 5000);
+      });
+    }
+
+    // Message handler
     window.addEventListener('message', (e) => {
       const msg = e.data;
-      if (msg?.type === 'event' && msg.event === 'pinwall:ready') {
-        if (msg.payload?.settings) {
-          config = { ...config, ...msg.payload.settings };
+
+      // Handle responses
+      if (msg?.type === 'response' && pending.has(msg.id)) {
+        const p = pending.get(msg.id);
+        pending.delete(msg.id);
+        msg.success ? p.resolve(msg.data) : p.reject(new Error(msg.error));
+        return;
+      }
+
+      // Handle events
+      if (msg?.type === 'event') {
+        if (msg.event === 'pinwall:ready') {
+          if (msg.payload?.settings) config = { ...config, ...msg.payload.settings };
+          if (msg.payload?.locale) locale = msg.payload.locale;
+          document.documentElement.style.setProperty('--accent', config.accentColor);
+          fullRender();
+          startTicker();
         }
-        document.documentElement.style.setProperty('--accent', config.accentColor);
-        render();
+        if (msg.event === 'pinwall:settings:changed') {
+          const oldConfig = { ...config };
+          config = { ...config, ...msg.payload };
+          if (msg.payload?.accentColor) {
+            document.documentElement.style.setProperty('--accent', config.accentColor);
+          }
+          if (oldConfig.mode !== config.mode || oldConfig.showSeconds !== config.showSeconds || oldConfig.showDate !== config.showDate) {
+            fullRender();
+          }
+        }
+        if (msg.event === 'pinwall:locale:changed') {
+          locale = msg.payload?.locale || 'zh';
+          fullRender();
+        }
       }
     });
-
-    const DAYS_ZH = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-    const MONTHS_ZH = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
 
     function pad(n) { return n.toString().padStart(2, '0'); }
 
     function formatDate(d) {
-      return `${d.getFullYear()}年${MONTHS_ZH[d.getMonth()]}${d.getDate()}日 ${DAYS_ZH[d.getDay()]}`;
+      const m = MESSAGES[locale] || MESSAGES.zh;
+      if (locale === 'en') {
+        return `${m.months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} ${m.days[d.getDay()]}`;
+      }
+      return `${d.getFullYear()}${m.yearSuffix}${m.months[d.getMonth()]}${d.getDate()}${m.daySuffix} ${m.days[d.getDay()]}`;
     }
 
-    function renderAnalog(d) {
+    // Build static analog clock structure once
+    function buildAnalogStructure() {
+      const container = document.getElementById('clock');
+      let ticks = '';
+      for (let i = 0; i < 12; i++) {
+        const cls = i % 3 === 0 ? 'tick major' : 'tick';
+        ticks += `<div class="${cls}" style="transform: rotate(${i * 30}deg)"></div>`;
+      }
+
+      const secondsHand = config.showSeconds
+        ? `<div class="hand hand-second" id="hand-second"></div>`
+        : '';
+
+      container.innerHTML = `
+        <div class="analog-clock" id="analog-face">
+          ${ticks}
+          <div class="hand hand-hour" id="hand-hour"></div>
+          <div class="hand hand-minute" id="hand-minute"></div>
+          ${secondsHand}
+          <div class="center-dot"></div>
+        </div>
+        <div class="analog-label" id="analog-label"></div>
+        <div class="date-display" id="date-display"></div>
+      `;
+      lastRenderedMode = 'analog';
+    }
+
+    function updateAnalogHands(d) {
       const h = d.getHours() % 12;
       const m = d.getMinutes();
       const s = d.getSeconds();
@@ -163,55 +253,73 @@
       const minDeg = (m + s / 60) * 6;
       const secDeg = s * 6;
 
-      let ticks = '';
-      for (let i = 0; i < 12; i++) {
-        const cls = i % 3 === 0 ? 'tick major' : 'tick';
-        ticks += `<div class="${cls}" style="transform: rotate(${i * 30}deg)"></div>`;
+      const hourEl = document.getElementById('hand-hour');
+      const minEl = document.getElementById('hand-minute');
+      const secEl = document.getElementById('hand-second');
+      const labelEl = document.getElementById('analog-label');
+      const dateEl = document.getElementById('date-display');
+
+      if (hourEl) hourEl.style.transform = `rotate(${hourDeg}deg)`;
+      if (minEl) minEl.style.transform = `rotate(${minDeg}deg)`;
+      if (secEl) secEl.style.transform = `rotate(${secDeg}deg)`;
+
+      if (labelEl) {
+        labelEl.textContent = `${pad(d.getHours())}:${pad(m)}${config.showSeconds ? ':' + pad(s) : ''}`;
       }
-
-      const secondsHand = config.showSeconds
-        ? `<div class="hand hand-second" style="transform: rotate(${secDeg}deg)"></div>`
-        : '';
-
-      const dateStr = config.showDate ? `<div class="date-display">${formatDate(d)}</div>` : '';
-      const timeStr = `<div class="analog-label">${pad(d.getHours())}:${pad(m)}${config.showSeconds ? ':' + pad(s) : ''}</div>`;
-
-      return `
-        <div class="analog-clock">
-          ${ticks}
-          <div class="hand hand-hour" style="transform: rotate(${hourDeg}deg)"></div>
-          <div class="hand hand-minute" style="transform: rotate(${minDeg}deg)"></div>
-          ${secondsHand}
-          <div class="center-dot"></div>
-        </div>
-        ${timeStr}
-        ${dateStr}
-      `;
+      if (dateEl) {
+        dateEl.textContent = config.showDate ? formatDate(d) : '';
+        dateEl.style.display = config.showDate ? '' : 'none';
+      }
     }
 
     function renderDigital(d) {
+      const container = document.getElementById('clock');
       const h = pad(d.getHours());
       const m = pad(d.getMinutes());
       const s = config.showSeconds ? `<span class="seconds">${pad(d.getSeconds())}</span>` : '';
       const dateStr = config.showDate ? `<div class="date-display">${formatDate(d)}</div>` : '';
 
-      return `
+      container.innerHTML = `
         <div class="digital-time">${h}:${m}${s}</div>
         ${dateStr}
       `;
+      lastRenderedMode = 'digital';
     }
 
-    function render() {
+    function fullRender() {
       const d = new Date();
-      const container = document.getElementById('clock');
-      container.innerHTML = config.mode === 'digital' ? renderDigital(d) : renderAnalog(d);
+      if (config.mode === 'digital') {
+        renderDigital(d);
+      } else {
+        if (lastRenderedMode !== 'analog') {
+          buildAnalogStructure();
+        }
+        updateAnalogHands(d);
+      }
     }
 
-    // Initial render
-    render();
+    function tick() {
+      const d = new Date();
+      if (config.mode === 'analog' && lastRenderedMode === 'analog') {
+        updateAnalogHands(d);
+      } else {
+        fullRender();
+      }
+    }
 
-    // Update every second
-    setInterval(render, 1000);
+    function startTicker() {
+      if (interval) clearInterval(interval);
+      interval = setInterval(tick, 1000);
+    }
+
+    // Cleanup
+    window.addEventListener('beforeunload', () => {
+      if (interval) clearInterval(interval);
+    });
+
+    // Initial render (standalone fallback)
+    fullRender();
+    startTicker();
   </script>
 </body>
 </html>

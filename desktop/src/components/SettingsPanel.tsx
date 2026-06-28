@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useI18n } from "../i18n";
-import type { Settings, AIConfig, QuotaMonitorConfig, QuotaMonitorModel, CareTone, WidgetPermission } from "../types";
+import type { Settings, AIConfig, QuotaMonitorConfig, QuotaMonitorModel, CareTone, WidgetManifest, WidgetPermission } from "../types";
 import {
   AUTO_CHANGE_INTERVALS,
   DEFAULT_GLOBAL_SHORTCUT,
@@ -12,8 +12,16 @@ import {
 } from "../types";
 import { ShortcutRecorder } from "./ShortcutRecorder";
 import { useWidgetStore } from "../stores/widgetStore";
-import { installWidgetFromPath, uninstallWidget } from "../services/widgetLoader";
+import { installOfficialWidget, installWidgetFromPathWithResult, uninstallWidget } from "../services/widgetLoader";
 import { detectCurrentCity } from "../services/weatherService";
+import { OFFICIAL_WIDGETS } from "../data/officialWidgets";
+import {
+  getWidgetPermissionDescription,
+  getWidgetPermissionLabel,
+  getWidgetPermissionRiskLabel,
+  hasHighRiskWidgetPermissions,
+  WIDGET_PERMISSION_RISK,
+} from "../data/widgetPermissions";
 
 const PROVIDER_PRESETS = [
   {
@@ -700,55 +708,58 @@ function TextField({
   );
 }
 
-const HIGH_RISK_WIDGET_PERMISSIONS = new Set<WidgetPermission>([
-  "cards",
-  "ai",
-  "system",
-  "network",
-]);
-
-function getWidgetPermissionLabel(permission: WidgetPermission, lang: "zh" | "en"): string {
-  const zh: Record<WidgetPermission, string> = {
-    storage: "本地存储",
-    theme: "主题",
-    notify: "通知",
-    cards: "便签",
-    events: "事件",
-    app: "应用信息",
-    ai: "AI",
-    system: "系统状态",
-    network: "网络",
-    i18n: "语言",
-  };
-  const en: Record<WidgetPermission, string> = {
-    storage: "Storage",
-    theme: "Theme",
-    notify: "Notify",
-    cards: "Cards",
-    events: "Events",
-    app: "App Info",
-    ai: "AI",
-    system: "System",
-    network: "Network",
-    i18n: "Language",
-  };
-  return (lang === "zh" ? zh : en)[permission];
-}
-
 function WidgetExtensionsSection() {
   const { widgets, toggleWidget } = useWidgetStore();
   const lang = useI18n().lang;
+  const [installingId, setInstallingId] = useState<string | null>(null);
+  const [status, setStatus] = useState("");
+
+  const installedIds = useMemo(() => new Set(widgets.map((w) => w.manifest.id)), [widgets]);
+
+  const setWidgetStatus = (message: string) => {
+    setStatus(message);
+  };
+
+  const finishInstall = (manifest: WidgetManifest | null, error?: string) => {
+    if (manifest) {
+      useWidgetStore.getState().installWidget(manifest);
+      setWidgetStatus(lang === "zh" ? `${manifest.name} 已安装` : `${manifest.name} installed`);
+      return;
+    }
+    setWidgetStatus(error || (lang === "zh" ? "安装失败" : "Install failed"));
+  };
+
+  const handleOfficialInstall = async (manifest: WidgetManifest) => {
+    if (hasHighRiskWidgetPermissions(manifest.permissions)) {
+      const highRisk = manifest.permissions
+        .filter((permission) => WIDGET_PERMISSION_RISK[permission] === "high")
+        .map((permission) => getWidgetPermissionLabel(permission, lang))
+        .join(lang === "zh" ? "、" : ", ");
+      const accepted = window.confirm(
+        lang === "zh"
+          ? `${manifest.name} 需要高风险权限：${highRisk}。确认安装？`
+          : `${manifest.name} requests high-risk permissions: ${highRisk}. Install it?`
+      );
+      if (!accepted) {
+        setWidgetStatus(lang === "zh" ? "已取消安装" : "Install cancelled");
+        return;
+      }
+    }
+
+    setInstallingId(manifest.id);
+    const result = await installOfficialWidget(manifest.id);
+    finishInstall(result.manifest, result.error);
+    setInstallingId(null);
+  };
 
   const handleInstall = async () => {
     const selected = await open({
       directory: true,
-      title: lang === "zh" ? "选择 Widget 目录" : "Select Widget Directory",
+      title: lang === "zh" ? "选择可信小组件目录" : "Select Trusted Widget Directory",
     });
     if (selected) {
-      const manifest = await installWidgetFromPath(selected as string);
-      if (manifest) {
-        useWidgetStore.getState().installWidget(manifest);
-      }
+      const result = await installWidgetFromPathWithResult(selected as string);
+      finishInstall(result.manifest, result.error);
     }
   };
 
@@ -756,80 +767,203 @@ function WidgetExtensionsSection() {
     const ok = await uninstallWidget(id);
     if (ok) {
       useWidgetStore.getState().uninstallWidget(id);
+      setWidgetStatus(lang === "zh" ? "小组件已移除" : "Widget removed");
+    } else {
+      setWidgetStatus(lang === "zh" ? "移除失败" : "Remove failed");
     }
   };
 
   return (
     <div className="ap-group">
-      <div className="ap-group-label">{lang === "zh" ? "小组件扩展" : "Widget Extensions"}</div>
+      <div className="ap-group-label">{lang === "zh" ? "官方小组件中心" : "Official Widget Hub"}</div>
       <div className="ap-card">
         <div className="ap-widget-security-note">
           <div className="ap-widget-security-title">
-            {lang === "zh" ? "仅安装可信来源的小组件" : "Install widgets only from trusted sources"}
+            {lang === "zh" ? "先从官方小组件开始" : "Start with official widgets"}
           </div>
           <div className="ap-widget-security-desc">
             {lang === "zh"
-              ? "本地小组件运行在桌面宿主中；网络、系统、便签和 AI 权限会访问更敏感的能力。"
-              : "Local widgets run inside the desktop host. Network, system, cards, and AI permissions can access more sensitive capabilities."}
+              ? "官方小组件会显示请求的权限；网络、系统、便签和 AI 权限安装前需要确认。"
+              : "Official widgets show requested permissions. Network, system, cards, and AI permissions require confirmation before install."}
           </div>
         </div>
         <div className="ap-divider" />
+
+        <div className="ap-widget-catalog">
+          {OFFICIAL_WIDGETS.map((item) => (
+            <OfficialWidgetCard
+              key={item.manifest.id}
+              manifest={item.manifest}
+              installed={installedIds.has(item.manifest.id)}
+              installing={installingId === item.manifest.id}
+              lang={lang}
+              onInstall={() => handleOfficialInstall(item.manifest)}
+            />
+          ))}
+        </div>
+
+        <div className="ap-divider" />
+        <div className="ap-widget-subhead">
+          {lang === "zh" ? "已安装小组件" : "Installed Widgets"}
+        </div>
         {widgets.length === 0 ? (
           <div className="px-4 py-3 text-sm text-white/45">
             {lang === "zh" ? "尚未安装任何小组件" : "No widgets installed"}
           </div>
         ) : (
           widgets.map((w) => (
-            <div key={w.manifest.id}>
-              <div className="ap-row ap-row-toggle">
-                <div className="min-w-0 pr-4">
-                  <div className="ap-row-label flex items-center gap-2">
-                    <span>{w.manifest.name}</span>
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-white/50">
-                      v{w.manifest.version}
-                    </span>
-                    {w.manifest.type === "official" && (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-indigo-500/30 text-indigo-300">
-                        {lang === "zh" ? "官方" : "Official"}
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-1 text-xs text-white/45">{w.manifest.description}</div>
-                  <div className="ap-widget-permissions">
-                    {w.manifest.permissions.map((permission) => {
-                      const isRisky = HIGH_RISK_WIDGET_PERMISSIONS.has(permission);
-                      return (
-                        <span key={permission} className={`ap-widget-permission ${isRisky ? "risk" : ""}`}>
-                          {getWidgetPermissionLabel(permission, lang)}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button className="text-xs text-red-400/70 hover:text-red-400 transition-colors cursor-pointer" onClick={() => handleUninstall(w.manifest.id)}>
-                    {lang === "zh" ? "移除" : "Remove"}
-                  </button>
-                  <label className="ap-switch">
-                    <input type="checkbox" checked={w.enabled} onChange={(e) => toggleWidget(w.manifest.id, e.target.checked)} />
-                    <span className="ap-switch-track"><span className="ap-switch-thumb" /></span>
-                  </label>
-                </div>
-              </div>
+            <div key={w.manifest.id} className="ap-widget-installed-row">
+              <InstalledWidgetRow
+                manifest={w.manifest}
+                enabled={w.enabled}
+                lang={lang}
+                onToggle={(enabled) => toggleWidget(w.manifest.id, enabled)}
+                onUninstall={() => handleUninstall(w.manifest.id)}
+              />
               {w !== widgets[widgets.length - 1] && <div className="ap-divider" />}
             </div>
           ))
         )}
+
         <div className="ap-divider" />
-        <div className="px-4 py-3 flex gap-2">
-          <button className="flex-1 py-2 rounded-lg text-sm font-medium bg-white/10 hover:bg-white/15 text-white/80 transition-colors cursor-pointer" onClick={handleInstall}>
-            + {lang === "zh" ? "本地安装" : "Local Install"}
+        <div className="ap-widget-local-install">
+          <div className="min-w-0 flex-1">
+            <div className="text-xs font-medium text-white/70">
+              {lang === "zh" ? "本地安装（高级）" : "Local install (advanced)"}
+            </div>
+            <div className="mt-1 text-xs text-white/35">
+              {lang === "zh" ? "仅安装可信来源的小组件目录。" : "Install only trusted local widget directories."}
+            </div>
+          </div>
+          <button className="ap-btn px-3 py-2 text-xs" onClick={handleInstall}>
+            + {lang === "zh" ? "选择目录" : "Choose Folder"}
           </button>
-          <span className="flex items-center rounded-lg bg-white/5 px-3 text-xs text-white/35">
-            {lang === "zh" ? "市场实验中" : "Marketplace experimental"}
+        </div>
+        {status && <div className="ap-widget-status">{status}</div>}
+      </div>
+    </div>
+  );
+}
+
+function OfficialWidgetCard({
+  manifest,
+  installed,
+  installing,
+  lang,
+  onInstall,
+}: {
+  manifest: WidgetManifest;
+  installed: boolean;
+  installing: boolean;
+  lang: "zh" | "en";
+  onInstall: () => void;
+}) {
+  return (
+    <div className="ap-widget-catalog-card">
+      <div className="ap-widget-card-main">
+        <div className="ap-row-label flex items-center gap-2">
+          <span>{manifest.name}</span>
+          <span className="ap-widget-source-badge">{lang === "zh" ? "官方" : "Official"}</span>
+        </div>
+        <div className="mt-1 text-xs text-white/45">{manifest.description}</div>
+        <div className="mt-1 text-[11px] text-white/35">
+          {manifest.category} · v{manifest.version} · {manifest.defaultSize.width}x{manifest.defaultSize.height}
+        </div>
+        <WidgetPermissionChips permissions={manifest.permissions} lang={lang} />
+        <WidgetPermissionDescriptions permissions={manifest.permissions} lang={lang} />
+      </div>
+      <button className="ap-btn ap-widget-install-btn" disabled={installing} onClick={onInstall}>
+        {installing
+            ? (lang === "zh" ? "安装中" : "Installing")
+            : installed
+              ? (lang === "zh" ? "更新" : "Update")
+            : (lang === "zh" ? "安装" : "Install")}
+      </button>
+    </div>
+  );
+}
+
+function InstalledWidgetRow({
+  manifest,
+  enabled,
+  lang,
+  onToggle,
+  onUninstall,
+}: {
+  manifest: WidgetManifest;
+  enabled: boolean;
+  lang: "zh" | "en";
+  onToggle: (enabled: boolean) => void;
+  onUninstall: () => void;
+}) {
+  return (
+    <div className="ap-row ap-row-toggle">
+      <div className="min-w-0 pr-4">
+        <div className="ap-row-label flex items-center gap-2">
+          <span>{manifest.name}</span>
+          <span className="ap-widget-version-badge">v{manifest.version}</span>
+          <span className="ap-widget-source-badge">
+            {manifest.type === "official" ? (lang === "zh" ? "官方" : "Official") : (lang === "zh" ? "本地" : "Local")}
           </span>
         </div>
+        <div className="mt-1 text-xs text-white/45">{manifest.description}</div>
+        <div className="mt-1 text-[11px] text-white/35">
+          {manifest.category} · {manifest.defaultSize.width}x{manifest.defaultSize.height}
+        </div>
+        <WidgetPermissionChips permissions={manifest.permissions} lang={lang} />
       </div>
+      <div className="flex items-center gap-3">
+        <button className="text-xs text-red-400/70 hover:text-red-400 transition-colors cursor-pointer" onClick={onUninstall}>
+          {lang === "zh" ? "移除" : "Remove"}
+        </button>
+        <label className="ap-switch">
+          <input type="checkbox" checked={enabled} onChange={(e) => onToggle(e.target.checked)} />
+          <span className="ap-switch-track"><span className="ap-switch-thumb" /></span>
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function WidgetPermissionChips({
+  permissions,
+  lang,
+}: {
+  permissions: WidgetPermission[];
+  lang: "zh" | "en";
+}) {
+  return (
+    <div className="ap-widget-permissions">
+      {permissions.map((permission) => {
+        const risk = WIDGET_PERMISSION_RISK[permission];
+        return (
+          <span key={permission} className={`ap-widget-permission ${risk} ${risk === "high" ? "risk" : ""}`}>
+            {getWidgetPermissionLabel(permission, lang)}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function WidgetPermissionDescriptions({
+  permissions,
+  lang,
+}: {
+  permissions: WidgetPermission[];
+  lang: "zh" | "en";
+}) {
+  return (
+    <div className="ap-widget-permission-details">
+      {permissions.map((permission) => {
+        const risk = WIDGET_PERMISSION_RISK[permission];
+        return (
+          <div key={permission} className="ap-widget-permission-detail">
+            <span>{getWidgetPermissionLabel(permission, lang)}</span>
+            <small>{getWidgetPermissionRiskLabel(risk, lang)} · {getWidgetPermissionDescription(permission, lang)}</small>
+          </div>
+        );
+      })}
     </div>
   );
 }

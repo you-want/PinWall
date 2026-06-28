@@ -5,6 +5,8 @@
 .idea/
 .vscode/
 .qoder/
+.claude/
+.dbg/
 
 # Logs
 logs/

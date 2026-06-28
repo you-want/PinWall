@@ -1,19 +1,10 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Wall from '@/pages/Wall';
+import { useWidgetStore } from '@/stores/widgetStore';
 
-vi.mock('@/i18n', () => ({
-  useI18n: () => ({
-    t: {
-      loading: 'Loading...',
-      welcome_title: 'Welcome',
-      welcome_subtitle: 'Create a note',
-    },
-  }),
-}));
-
-vi.mock('@/services/storage', () => ({
-  getSettings: vi.fn().mockResolvedValue({
+const mockSettings = vi.hoisted(() => ({
+  current: {
     backgroundImages: [],
     currentImageId: null,
     opacity: 1,
@@ -43,7 +34,25 @@ vi.mock('@/services/storage', () => ({
         model: 'gpt-4o-mini',
       }],
     },
+  },
+}));
+
+vi.mock('@/i18n', () => ({
+  useI18n: () => ({
+    t: {
+      loading: 'Loading...',
+      welcome_title: 'Welcome',
+      welcome_subtitle: 'Create a note',
+    },
   }),
+}));
+
+vi.mock('@/services/storage', () => ({
+  getSettings: vi.fn(() => Promise.resolve(mockSettings.current)),
+}));
+
+vi.mock('@/services/widgetLoader', () => ({
+  loadInstalledWidgets: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('@/services/autostart', () => ({
@@ -93,7 +102,7 @@ vi.mock('@/components/CardStack', () => ({
   CardStack: () => <div data-testid="card-stack" />,
 }));
 vi.mock('@/components/WidgetManager', () => ({
-  WidgetManager: () => <div data-testid="widget-manager" />,
+  WidgetManager: ({ variant }: { variant?: string }) => <div data-testid="widget-manager" data-variant={variant} />,
 }));
 vi.mock('@/components/FloatingButtons', () => ({
   FloatingButtons: () => <div data-testid="floating-buttons" />,
@@ -117,6 +126,22 @@ vi.mock('@tauri-apps/api/event', () => ({
 describe('Wall', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useWidgetStore.setState({ widgets: [], _zIndexCounter: 50 });
+    mockSettings.current = {
+      ...mockSettings.current,
+      weatherCareEnabled: true,
+      quotaMonitor: {
+        enabled: true,
+        refreshInterval: 5,
+        models: [{
+          id: 'openai',
+          name: 'OpenAI',
+          apiEndpoint: 'https://api.openai.com/v1',
+          apiKey: 'sk-test',
+          model: 'gpt-4o-mini',
+        }],
+      },
+    };
   });
 
   it('stacks special cards on the right with weather below quota monitor', async () => {
@@ -125,9 +150,30 @@ describe('Wall', () => {
     const sidePanel = await screen.findByTestId('wall-side-panel');
     const quotaCard = within(sidePanel).getByTestId('quota-card');
     const weatherCard = within(sidePanel).getByTestId('weather-card');
+    const widgetManager = within(sidePanel).getByTestId('widget-manager');
 
     expect(sidePanel).toContainElement(quotaCard);
     expect(sidePanel).toContainElement(weatherCard);
+    expect(widgetManager).toHaveAttribute('data-variant', 'side-panel');
     expect(quotaCard.compareDocumentPosition(weatherCard)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(weatherCard.compareDocumentPosition(widgetManager)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('does not render an empty side panel when optional cards and widgets are absent', async () => {
+    mockSettings.current = {
+      ...mockSettings.current,
+      weatherCareEnabled: false,
+      quotaMonitor: {
+        enabled: false,
+        refreshInterval: 5,
+        models: [],
+      },
+    };
+
+    render(<Wall />);
+
+    await screen.findByTestId('pin-board');
+
+    expect(screen.queryByTestId('wall-side-panel')).not.toBeInTheDocument();
   });
 });

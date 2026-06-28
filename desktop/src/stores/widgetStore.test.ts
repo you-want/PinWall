@@ -57,12 +57,17 @@ describe('useWidgetStore', () => {
       expect(settings).toEqual({ color: 'blue', count: 5 });
     });
 
-    it('does not install duplicate widget', () => {
+    it('updates an existing widget instead of duplicating it', () => {
       const manifest = createMockManifest();
       useWidgetStore.getState().installWidget(manifest);
-      useWidgetStore.getState().installWidget(manifest);
+      useWidgetStore.getState().toggleWidget(manifest.id, false);
+      useWidgetStore.getState().installWidget(createMockManifest({ version: '1.1.0', installedPath: '/tmp/widget' }));
 
-      expect(useWidgetStore.getState().widgets).toHaveLength(1);
+      const widgets = useWidgetStore.getState().widgets;
+      expect(widgets).toHaveLength(1);
+      expect(widgets[0].manifest.version).toBe('1.1.0');
+      expect(widgets[0].manifest.installedPath).toBe('/tmp/widget');
+      expect(widgets[0].enabled).toBe(true);
     });
 
     it('increments zIndex for each widget', () => {

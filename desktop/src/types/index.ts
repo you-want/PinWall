@@ -226,6 +226,7 @@ export interface WidgetManifest {
   minSize?: WidgetSize;
   maxSize?: WidgetSize;
   settings?: WidgetSettingDefinition[];
+  installedPath?: string;
 }
 
 /** Widget 预设尺寸档位 */

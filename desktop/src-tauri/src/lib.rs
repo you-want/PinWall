@@ -56,6 +56,8 @@ pub fn run() {
             tray::update_shortcut_display,
             widgets::list_installed_widgets,
             widgets::install_widget,
+            widgets::install_official_widget,
+            widgets::read_widget_entry_html,
             widgets::uninstall_widget,
             widgets::read_widget_storage,
             widgets::write_widget_storage,

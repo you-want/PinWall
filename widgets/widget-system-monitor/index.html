@@ -11,19 +11,20 @@
       background: transparent;
       height: 100vh;
       overflow: hidden;
-      color: #1a1a1a;
+      color: rgba(255,255,255,0.92);
     }
     .monitor {
       padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
       height: 100%;
+      overflow-y: auto;
     }
     .metric {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 5px;
     }
     .metric-header {
       display: flex;
@@ -33,126 +34,280 @@
     .metric-label {
       font-size: 12px;
       font-weight: 600;
-      color: #4b5563;
+      color: rgba(255,255,255,0.68);
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
+    }
+    .metric-label .icon {
+      font-size: 13px;
+      width: 16px;
+      text-align: center;
     }
     .metric-value {
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 700;
       font-variant-numeric: tabular-nums;
     }
+    .metric-value.low { color: #10b981; }
+    .metric-value.medium { color: #f59e0b; }
+    .metric-value.high { color: #ef4444; }
     .bar {
-      height: 6px;
+      height: 5px;
       border-radius: 3px;
-      background: rgba(0,0,0,0.06);
+      background: rgba(255,255,255,0.08);
       overflow: hidden;
     }
     .bar-fill {
       height: 100%;
       border-radius: 3px;
-      transition: width 0.6s ease;
+      transition: width 0.8s ease;
     }
-    .bar-fill.green { background: linear-gradient(90deg, #10b981, #34d399); }
-    .bar-fill.yellow { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
-    .bar-fill.red { background: linear-gradient(90deg, #ef4444, #f87171); }
+    .bar-fill.low { background: linear-gradient(90deg, #10b981, #34d399); }
+    .bar-fill.medium { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .bar-fill.high { background: linear-gradient(90deg, #ef4444, #f87171); }
     .bar-fill.blue { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
-    .battery-icon { font-size: 14px; }
-    .loading { text-align: center; color: #9ca3af; font-size: 13px; padding: 40px 0; }
+    .bar-fill.indigo { background: linear-gradient(90deg, #6366f1, #818cf8); }
+    .metric-detail {
+      font-size: 10px;
+      color: rgba(255,255,255,0.38);
+      font-variant-numeric: tabular-nums;
+    }
+    .loading {
+      text-align: center;
+      color: rgba(255,255,255,0.46);
+      font-size: 13px;
+      padding: 40px 0;
+    }
+    .error-metric {
+      font-size: 11px;
+      color: rgba(255,255,255,0.32);
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
   <div class="monitor" id="monitor">
-    <div class="loading">加载中...</div>
+    <div class="loading">...</div>
   </div>
 
   <script>
-    let config = { refreshInterval: 3 };
-    let _bridgeId = 0;
-    const _pending = new Map();
+    // i18n
+    const MESSAGES = {
+      zh: {
+        cpu: 'CPU',
+        memory: '内存',
+        disk: '磁盘',
+        battery: '电池',
+        charging: '充电中',
+        notCharging: '未充电',
+        noBattery: '无电池',
+        loading: '加载中...',
+        failed: '获取失败',
+        unavailable: '不可用',
+      },
+      en: {
+        cpu: 'CPU',
+        memory: 'Memory',
+        disk: 'Disk',
+        battery: 'Battery',
+        charging: 'Charging',
+        notCharging: 'On Battery',
+        noBattery: 'No Battery',
+        loading: 'Loading...',
+        failed: 'Fetch failed',
+        unavailable: 'Unavailable',
+      },
+    };
 
-    window.addEventListener('message', (e) => {
-      const msg = e.data;
-      if (msg?.type === 'event' && msg.event === 'pinwall:ready') {
-        if (msg.payload?.settings) config = { ...config, ...msg.payload.settings };
-        fetchSystemInfo();
-        setInterval(fetchSystemInfo, config.refreshInterval * 1000);
-      }
-      if (msg?.type === 'response' && _pending.has(msg.id)) {
-        const p = _pending.get(msg.id);
-        _pending.delete(msg.id);
-        msg.success ? p.resolve(msg.data) : p.reject(new Error(msg.error));
-      }
-    });
+    let locale = 'zh';
+    function t(key) {
+      const m = MESSAGES[locale] || MESSAGES.zh;
+      return m[key] || key;
+    }
+
+    // Config
+    let config = { refreshInterval: 3 };
+    let pollInterval = null;
+
+    // Bridge
+    let bridgeId = 0;
+    const pending = new Map();
 
     function bridge(module, method, args) {
       return new Promise((resolve, reject) => {
-        const id = `sm_${++_bridgeId}`;
-        _pending.set(id, { resolve, reject });
+        const id = `sm_${++bridgeId}`;
+        pending.set(id, { resolve, reject });
         window.parent.postMessage({ type: 'request', id, module, method, args }, '*');
         setTimeout(() => {
-          if (_pending.has(id)) { _pending.delete(id); reject(new Error('timeout')); }
+          if (pending.has(id)) { pending.delete(id); reject(new Error('timeout')); }
         }, 5000);
       });
     }
 
-    function getBarColor(pct) {
-      if (pct > 85) return 'red';
-      if (pct > 60) return 'yellow';
-      return 'green';
+    // Message handler
+    window.addEventListener('message', (e) => {
+      const msg = e.data;
+
+      if (msg?.type === 'response' && pending.has(msg.id)) {
+        const p = pending.get(msg.id);
+        pending.delete(msg.id);
+        msg.success ? p.resolve(msg.data) : p.reject(new Error(msg.error));
+        return;
+      }
+
+      if (msg?.type === 'event') {
+        if (msg.event === 'pinwall:ready') {
+          if (msg.payload?.settings) config = { ...config, ...msg.payload.settings };
+          if (msg.payload?.locale) locale = msg.payload.locale;
+          fetchSystemInfo();
+          startPolling();
+        }
+        if (msg.event === 'pinwall:settings:changed') {
+          config = { ...config, ...msg.payload };
+          startPolling();
+        }
+        if (msg.event === 'pinwall:locale:changed') {
+          locale = msg.payload?.locale || 'zh';
+          fetchSystemInfo();
+        }
+      }
+    });
+
+    function getLevel(pct) {
+      if (pct > 85) return 'high';
+      if (pct > 60) return 'medium';
+      return 'low';
     }
 
     function formatBytes(bytes) {
-      if (bytes >= 1e9) return (bytes / 1e9).toFixed(1) + ' GB';
-      if (bytes >= 1e6) return (bytes / 1e6).toFixed(0) + ' MB';
-      return (bytes / 1e3).toFixed(0) + ' KB';
+      if (bytes == null || bytes < 0) return '--';
+      if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
+      if (bytes >= 1048576) return (bytes / 1048576).toFixed(0) + ' MB';
+      return (bytes / 1024).toFixed(0) + ' KB';
+    }
+
+    function renderMetric(label, icon, pct, detail, levelClass, barClass) {
+      return `
+        <div class="metric">
+          <div class="metric-header">
+            <span class="metric-label"><span class="icon">${icon}</span>${escapeHtml(label)}</span>
+            <span class="metric-value ${levelClass || ''}">${pct}%</span>
+          </div>
+          <div class="bar">
+            <div class="bar-fill ${barClass || levelClass || 'low'}" style="width: ${pct}%"></div>
+          </div>
+          ${detail ? `<div class="metric-detail">${detail}</div>` : ''}
+        </div>
+      `;
+    }
+
+    function renderErrorMetric(label, icon) {
+      return `
+        <div class="metric">
+          <div class="metric-header">
+            <span class="metric-label"><span class="icon">${icon}</span>${escapeHtml(label)}</span>
+            <span class="error-metric">${t('unavailable')}</span>
+          </div>
+          <div class="bar">
+            <div class="bar-fill low" style="width: 0%"></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str || '';
+      return div.innerHTML;
     }
 
     async function fetchSystemInfo() {
       const container = document.getElementById('monitor');
-      try {
-        const [battery, memory] = await Promise.all([
-          bridge('system', 'getBattery', []).catch(() => ({ level: -1, charging: false })),
-          bridge('system', 'getMemoryInfo', []).catch(() => ({ total: 0, used: 0, free: 0 })),
-        ]);
 
-        const memPct = memory.total > 0 ? (memory.used / memory.total * 100).toFixed(0) : 0;
-        const battPct = battery.level >= 0 ? (battery.level * 100).toFixed(0) : '--';
-        const battColor = battery.level >= 0 ? getBarColor(100 - battery.level * 100) : 'blue';
-        const battIcon = battery.charging ? '🔌' : (battery.level > 0.5 ? '🔋' : '🪫');
+      // Fetch each metric independently so one failure doesn't block others
+      const [cpuResult, memResult, diskResult, batteryResult] = await Promise.allSettled([
+        bridge('system', 'getCPUUsage', []),
+        bridge('system', 'getMemoryInfo', []),
+        bridge('system', 'getDiskUsage', []),
+        bridge('system', 'getBattery', []),
+      ]);
 
-        container.innerHTML = `
-          <div class="metric">
-            <div class="metric-header">
-              <span class="metric-label">💾 内存</span>
-              <span class="metric-value">${memPct}%</span>
-            </div>
-            <div class="bar">
-              <div class="bar-fill ${getBarColor(memPct)}" style="width: ${memPct}%"></div>
-            </div>
-            <div style="font-size: 11px; color: #9ca3af;">
-              ${formatBytes(memory.used)} / ${formatBytes(memory.total)}
-            </div>
-          </div>
+      let html = '';
 
-          <div class="metric">
-            <div class="metric-header">
-              <span class="metric-label"><span class="battery-icon">${battIcon}</span> 电池</span>
-              <span class="metric-value">${battPct}%</span>
-            </div>
-            <div class="bar">
-              <div class="bar-fill ${battColor}" style="width: ${battery.level >= 0 ? battery.level * 100 : 0}%"></div>
-            </div>
-            <div style="font-size: 11px; color: #9ca3af;">
-              ${battery.charging ? '充电中' : '未充电'}
-            </div>
-          </div>
-        `;
-      } catch (err) {
-        container.innerHTML = `<div class="loading">获取系统信息失败</div>`;
+      // CPU
+      if (cpuResult.status === 'fulfilled' && cpuResult.value != null) {
+        const cpuPct = Math.round(cpuResult.value);
+        const level = getLevel(cpuPct);
+        html += renderMetric(t('cpu'), '⚡', cpuPct, null, level, level);
+      } else {
+        html += renderErrorMetric(t('cpu'), '⚡');
       }
+
+      // Memory
+      if (memResult.status === 'fulfilled' && memResult.value) {
+        const mem = memResult.value;
+        const memPct = mem.total > 0 ? Math.round((mem.used / mem.total) * 100) : 0;
+        const level = getLevel(memPct);
+        const detail = `${formatBytes(mem.used)} / ${formatBytes(mem.total)}`;
+        html += renderMetric(t('memory'), '💾', memPct, detail, level, level);
+      } else {
+        html += renderErrorMetric(t('memory'), '💾');
+      }
+
+      // Disk
+      if (diskResult.status === 'fulfilled' && diskResult.value) {
+        const disk = diskResult.value;
+        const diskPct = disk.total > 0 ? Math.round((disk.used / disk.total) * 100) : 0;
+        const level = getLevel(diskPct);
+        const detail = `${formatBytes(disk.used)} / ${formatBytes(disk.total)}`;
+        html += renderMetric(t('disk'), '💿', diskPct, detail, level, level);
+      } else {
+        html += renderErrorMetric(t('disk'), '💿');
+      }
+
+      // Battery
+      if (batteryResult.status === 'fulfilled' && batteryResult.value) {
+        const bat = batteryResult.value;
+        if (bat.level >= 0) {
+          const batPct = Math.round(bat.level * 100);
+          // For battery, low is good (green when high charge), invert the level
+          let level;
+          if (batPct > 60) level = 'low'; // green = good
+          else if (batPct > 20) level = 'medium'; // yellow = caution
+          else level = 'high'; // red = low battery
+
+          const statusText = bat.charging ? t('charging') : t('notCharging');
+          const icon = bat.charging ? '🔌' : (batPct > 20 ? '🔋' : '🪫');
+          html += renderMetric(t('battery'), icon, batPct, statusText, level, level);
+        } else {
+          html += renderErrorMetric(t('noBattery'), '🔋');
+        }
+      } else {
+        html += renderErrorMetric(t('battery'), '🔋');
+      }
+
+      container.innerHTML = html;
     }
+
+    function startPolling() {
+      if (pollInterval) clearInterval(pollInterval);
+      const intervalMs = Math.max(1000, (config.refreshInterval || 3) * 1000);
+      pollInterval = setInterval(fetchSystemInfo, intervalMs);
+    }
+
+    // Cleanup
+    window.addEventListener('beforeunload', () => {
+      if (pollInterval) clearInterval(pollInterval);
+    });
+
+    // Standalone fallback render
+    document.getElementById('monitor').innerHTML = `
+      ${renderErrorMetric(t('cpu'), '⚡')}
+      ${renderErrorMetric(t('memory'), '💾')}
+      ${renderErrorMetric(t('disk'), '💿')}
+      ${renderErrorMetric(t('battery'), '🔋')}
+    `;
   </script>
 </body>
 </html>

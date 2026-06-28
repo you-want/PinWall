@@ -4,13 +4,13 @@ This document describes how to publish a desktop release to GitHub Releases.
 
 ## Release Target
 
-- Current release: `v0.1.1`
+- Current release: `v0.1.3`
 - GitHub Releases: https://github.com/you-want/PinWall/releases
 - Release workflow: `.github/workflows/release.yml`
 
 ## What The Automation Does
 
-Pushing a tag like `v0.1.1` runs the `Release` workflow.
+Pushing a tag like `v0.1.3` runs the `Release` workflow.
 
 The workflow:
 
@@ -60,8 +60,8 @@ Then commit the release changes.
 ## Publish By Tag
 
 ```bash
-git tag v0.1.1
-git push origin v0.1.1
+git tag v0.1.3
+git push origin v0.1.3
 ```
 
 After the workflow completes, check:
@@ -76,7 +76,7 @@ The workflow also supports manual dispatch from GitHub Actions.
 Use the `Release` workflow and input:
 
 ```text
-v0.1.1
+v0.1.3
 ```
 
 Manual dispatch is useful for rerunning a failed release job, but tag-based release is preferred.

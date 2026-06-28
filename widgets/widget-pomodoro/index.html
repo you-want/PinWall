@@ -11,7 +11,7 @@
       background: transparent;
       height: 100vh;
       overflow: hidden;
-      color: #1a1a1a;
+      color: rgba(255,255,255,0.92);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -20,30 +20,112 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 16px;
+      gap: 14px;
       padding: 16px;
       width: 100%;
     }
+
+    /* Mode tabs */
+    .mode-tabs {
+      display: flex;
+      gap: 4px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 20px;
+      padding: 3px;
+    }
+    .mode-tab {
+      padding: 5px 14px;
+      border-radius: 16px;
+      border: none;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: transparent;
+      color: rgba(255,255,255,0.5);
+    }
+    .mode-tab.active {
+      background: rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.92);
+    }
+    .mode-tab:hover:not(.active) {
+      color: rgba(255,255,255,0.7);
+    }
+
+    /* Timer display */
     .timer {
       font-size: 52px;
       font-weight: 200;
       font-variant-numeric: tabular-nums;
       letter-spacing: -2px;
+      position: relative;
     }
+
+    /* Status */
     .status {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 1.5px;
     }
     .status.work { color: #ef4444; }
     .status.break { color: #10b981; }
+    .status.longbreak { color: #3b82f6; }
+
+    /* Progress ring */
+    .progress-ring-container {
+      position: relative;
+      width: 160px;
+      height: 160px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .progress-ring {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+    .progress-ring circle {
+      fill: none;
+      stroke-width: 4;
+      stroke-linecap: round;
+    }
+    .progress-ring .bg {
+      stroke: rgba(255,255,255,0.08);
+    }
+    .progress-ring .fill {
+      transition: stroke-dashoffset 1s linear;
+    }
+    .progress-ring .fill.work { stroke: #ef4444; }
+    .progress-ring .fill.break { stroke: #10b981; }
+    .progress-ring .fill.longbreak { stroke: #3b82f6; }
+
+    .timer-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      z-index: 1;
+    }
+    .timer-inner .timer {
+      font-size: 38px;
+      letter-spacing: -1px;
+    }
+    .timer-inner .status {
+      font-size: 11px;
+    }
+
+    /* Controls */
     .controls {
       display: flex;
       gap: 8px;
     }
     .btn {
-      padding: 8px 20px;
+      padding: 8px 22px;
       border-radius: 20px;
       border: none;
       font-size: 13px;
@@ -54,64 +136,206 @@
     .btn-primary {
       background: #6366f1;
       color: white;
+      min-width: 80px;
     }
     .btn-primary:hover { background: #4f46e5; }
+    .btn-primary:active { transform: scale(0.97); }
     .btn-secondary {
-      background: rgba(0,0,0,0.06);
-      color: #4b5563;
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.72);
     }
-    .btn-secondary:hover { background: rgba(0,0,0,0.1); }
-    .progress {
-      width: 100%;
-      height: 4px;
-      border-radius: 2px;
-      background: rgba(0,0,0,0.06);
-      overflow: hidden;
-    }
-    .progress-bar {
-      height: 100%;
-      border-radius: 2px;
-      transition: width 1s linear;
-    }
-    .progress-bar.work { background: #ef4444; }
-    .progress-bar.break { background: #10b981; }
-    .count {
+    .btn-secondary:hover { background: rgba(255,255,255,0.14); }
+
+    /* Stats */
+    .stats {
+      display: flex;
+      align-items: center;
+      gap: 12px;
       font-size: 12px;
-      color: #9ca3af;
+      color: rgba(255,255,255,0.48);
+    }
+    .stats .tomatoes {
+      display: flex;
+      gap: 3px;
+      flex-wrap: wrap;
+      max-width: 180px;
+      justify-content: center;
+    }
+    .stats .tomato {
+      font-size: 14px;
+      transition: transform 0.2s;
+    }
+    .stats .tomato.completed {
+      animation: pop 0.3s ease;
+    }
+    @keyframes pop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(1); }
     }
   </style>
 </head>
 <body>
-  <div class="pomo">
-    <div class="status work" id="status">专注</div>
-    <div class="timer" id="timer">25:00</div>
-    <div class="progress">
-      <div class="progress-bar work" id="progressBar" style="width: 0%"></div>
-    </div>
-    <div class="controls">
-      <button class="btn btn-primary" id="startBtn" onclick="toggleTimer()">开始</button>
-      <button class="btn btn-secondary" onclick="resetTimer()">重置</button>
-    </div>
-    <div class="count" id="count">今日完成: 0 🍅</div>
-  </div>
+  <div class="pomo" id="pomo"></div>
 
   <script>
-    let config = { workMinutes: 25, breakMinutes: 5 };
+    // i18n
+    const MESSAGES = {
+      zh: {
+        work: '专注',
+        break: '休息',
+        longBreak: '长休息',
+        start: '开始',
+        pause: '暂停',
+        resume: '继续',
+        reset: '重置',
+        completed: '今日完成',
+        workDone: '🍅 番茄完成！',
+        workDoneBody: '休息一下吧～',
+        breakDone: '⏰ 休息结束！',
+        breakDoneBody: '开始下一个番茄吧',
+        longBreakDone: '⏰ 长休息结束！',
+        longBreakDoneBody: '精力恢复，继续加油',
+      },
+      en: {
+        work: 'Focus',
+        break: 'Break',
+        longBreak: 'Long Break',
+        start: 'Start',
+        pause: 'Pause',
+        resume: 'Resume',
+        reset: 'Reset',
+        completed: 'Completed today',
+        workDone: '🍅 Pomodoro Done!',
+        workDoneBody: 'Take a break~',
+        breakDone: '⏰ Break Over!',
+        breakDoneBody: 'Start the next pomodoro',
+        longBreakDone: '⏰ Long Break Over!',
+        longBreakDoneBody: 'Recharged, keep going',
+      },
+    };
+
+    let locale = 'zh';
+    function t(key) {
+      const m = MESSAGES[locale] || MESSAGES.zh;
+      return m[key] || key;
+    }
+
+    // Config
+    let config = {
+      workMinutes: 25,
+      breakMinutes: 5,
+      longBreakMinutes: 15,
+      longBreakAfter: 4,
+    };
+
+    // State
     let isRunning = false;
     let isWorkPhase = true;
+    let isLongBreak = false;
     let remaining = config.workMinutes * 60;
     let total = config.workMinutes * 60;
     let completedCount = 0;
+    let pomodorosSinceLongBreak = 0;
     let interval = null;
 
+    // Bridge
+    let bridgeId = 0;
+    const pending = new Map();
+
+    function sendBridge(module, method, args) {
+      return new Promise((resolve, reject) => {
+        const id = `pomo_${++bridgeId}`;
+        pending.set(id, { resolve, reject });
+        window.parent.postMessage({ type: 'request', id, module, method, args }, '*');
+        setTimeout(() => {
+          if (pending.has(id)) { pending.delete(id); reject(new Error('timeout')); }
+        }, 5000);
+      });
+    }
+
+    // Load state from storage
+    async function loadState() {
+      try {
+        const saved = await sendBridge('storage', 'get', ['pomodoro_state']);
+        if (saved) {
+          // Only restore count if it's the same day
+          const today = new Date().toDateString();
+          if (saved.date === today) {
+            completedCount = saved.completedCount || 0;
+            pomodorosSinceLongBreak = saved.pomodorosSinceLongBreak || 0;
+          }
+          if (saved.remaining != null && saved.isRunning === false) {
+            remaining = saved.remaining;
+            total = saved.total;
+            isWorkPhase = saved.isWorkPhase !== false;
+            isLongBreak = saved.isLongBreak || false;
+          }
+        }
+      } catch { /* storage unavailable */ }
+    }
+
+    async function saveState() {
+      try {
+        await sendBridge('storage', 'set', ['pomodoro_state', {
+          date: new Date().toDateString(),
+          completedCount,
+          pomodorosSinceLongBreak,
+          remaining,
+          total,
+          isWorkPhase,
+          isLongBreak,
+          isRunning: false,
+        }]);
+      } catch { /* ignore */ }
+    }
+
+    async function notify(title, body) {
+      try {
+        await sendBridge('notify', 'send', [{ title, body }]);
+      } catch { /* notify unavailable */ }
+    }
+
+    // Message handler
     window.addEventListener('message', (e) => {
       const msg = e.data;
-      if (msg?.type === 'event' && msg.event === 'pinwall:ready') {
-        if (msg.payload?.settings) {
-          config = { ...config, ...msg.payload.settings };
+
+      if (msg?.type === 'response' && pending.has(msg.id)) {
+        const p = pending.get(msg.id);
+        pending.delete(msg.id);
+        msg.success ? p.resolve(msg.data) : p.reject(new Error(msg.error));
+        return;
+      }
+
+      if (msg?.type === 'event') {
+        if (msg.event === 'pinwall:ready') {
+          if (msg.payload?.settings) config = { ...config, ...msg.payload.settings };
+          if (msg.payload?.locale) locale = msg.payload.locale;
           remaining = config.workMinutes * 60;
           total = config.workMinutes * 60;
-          updateDisplay();
+          loadState().then(() => render());
+        }
+        if (msg.event === 'pinwall:settings:changed') {
+          const oldConfig = { ...config };
+          config = { ...config, ...msg.payload };
+          // If not running, update timer to new duration
+          if (!isRunning) {
+            if (isWorkPhase) {
+              remaining = config.workMinutes * 60;
+              total = config.workMinutes * 60;
+            } else if (isLongBreak) {
+              remaining = config.longBreakMinutes * 60;
+              total = config.longBreakMinutes * 60;
+            } else {
+              remaining = config.breakMinutes * 60;
+              total = config.breakMinutes * 60;
+            }
+            render();
+          }
+        }
+        if (msg.event === 'pinwall:locale:changed') {
+          locale = msg.payload?.locale || 'zh';
+          render();
         }
       }
     });
@@ -119,81 +343,174 @@
     function toggleTimer() {
       if (isRunning) {
         clearInterval(interval);
+        interval = null;
         isRunning = false;
-        document.getElementById('startBtn').textContent = '继续';
+        saveState();
       } else {
         isRunning = true;
-        document.getElementById('startBtn').textContent = '暂停';
         interval = setInterval(tick, 1000);
       }
+      render();
     }
 
     function tick() {
       remaining--;
       if (remaining <= 0) {
         clearInterval(interval);
+        interval = null;
         isRunning = false;
-        
+
         if (isWorkPhase) {
           completedCount++;
-          document.getElementById('count').textContent = `今日完成: ${completedCount} 🍅`;
-          // Notify
-          window.parent.postMessage({
-            type: 'request', id: 'notify_' + Date.now(),
-            module: 'notify', method: 'send',
-            args: [{ title: '🍅 番茄完成！', body: '休息一下吧～' }]
-          }, '*');
-          // Switch to break
-          isWorkPhase = false;
-          remaining = config.breakMinutes * 60;
-          total = config.breakMinutes * 60;
+          pomodorosSinceLongBreak++;
+
+          notify(t('workDone'), t('workDoneBody'));
+
+          // Determine next break type
+          if (pomodorosSinceLongBreak >= (config.longBreakAfter || 4)) {
+            isWorkPhase = false;
+            isLongBreak = true;
+            pomodorosSinceLongBreak = 0;
+            remaining = config.longBreakMinutes * 60;
+            total = config.longBreakMinutes * 60;
+          } else {
+            isWorkPhase = false;
+            isLongBreak = false;
+            remaining = config.breakMinutes * 60;
+            total = config.breakMinutes * 60;
+          }
         } else {
-          // Switch to work
+          // Break ended, back to work
+          const msg = isLongBreak ? t('longBreakDone') : t('breakDone');
+          const body = isLongBreak ? t('longBreakDoneBody') : t('breakDoneBody');
+          notify(msg, body);
+
           isWorkPhase = true;
+          isLongBreak = false;
           remaining = config.workMinutes * 60;
           total = config.workMinutes * 60;
-          window.parent.postMessage({
-            type: 'request', id: 'notify_' + Date.now(),
-            module: 'notify', method: 'send',
-            args: [{ title: '⏰ 休息结束！', body: '开始下一个番茄吧' }]
-          }, '*');
         }
-        
-        document.getElementById('startBtn').textContent = '开始';
-        updateStatus();
+
+        saveState();
       }
-      updateDisplay();
+      render();
     }
 
     function resetTimer() {
       clearInterval(interval);
+      interval = null;
       isRunning = false;
       isWorkPhase = true;
+      isLongBreak = false;
       remaining = config.workMinutes * 60;
       total = config.workMinutes * 60;
-      document.getElementById('startBtn').textContent = '开始';
-      updateStatus();
-      updateDisplay();
+      saveState();
+      render();
     }
 
-    function updateStatus() {
-      const statusEl = document.getElementById('status');
-      const barEl = document.getElementById('progressBar');
-      statusEl.textContent = isWorkPhase ? '专注' : '休息';
-      statusEl.className = 'status ' + (isWorkPhase ? 'work' : 'break');
-      barEl.className = 'progress-bar ' + (isWorkPhase ? 'work' : 'break');
+    function switchMode(mode) {
+      if (isRunning) {
+        clearInterval(interval);
+        interval = null;
+        isRunning = false;
+      }
+      if (mode === 'work') {
+        isWorkPhase = true;
+        isLongBreak = false;
+        remaining = config.workMinutes * 60;
+        total = config.workMinutes * 60;
+      } else if (mode === 'break') {
+        isWorkPhase = false;
+        isLongBreak = false;
+        remaining = config.breakMinutes * 60;
+        total = config.breakMinutes * 60;
+      } else if (mode === 'longbreak') {
+        isWorkPhase = false;
+        isLongBreak = true;
+        remaining = config.longBreakMinutes * 60;
+        total = config.longBreakMinutes * 60;
+      }
+      saveState();
+      render();
     }
 
-    function updateDisplay() {
+    function getPhaseClass() {
+      if (isWorkPhase) return 'work';
+      if (isLongBreak) return 'longbreak';
+      return 'break';
+    }
+
+    function getPhaseLabel() {
+      if (isWorkPhase) return t('work');
+      if (isLongBreak) return t('longBreak');
+      return t('break');
+    }
+
+    function render() {
       const m = Math.floor(remaining / 60);
       const s = remaining % 60;
-      document.getElementById('timer').textContent =
-        `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-      const pct = total > 0 ? ((total - remaining) / total * 100) : 0;
-      document.getElementById('progressBar').style.width = pct + '%';
+      const timeStr = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+      const pct = total > 0 ? ((total - remaining) / total) : 0;
+      const phase = getPhaseClass();
+
+      // SVG ring parameters
+      const radius = 72;
+      const circumference = 2 * Math.PI * radius;
+      const offset = circumference * (1 - pct);
+
+      // Tomato indicators
+      let tomatoes = '';
+      const maxShow = Math.min(completedCount, 12);
+      for (let i = 0; i < maxShow; i++) {
+        tomatoes += `<span class="tomato completed">🍅</span>`;
+      }
+      if (completedCount > 12) {
+        tomatoes += `<span style="font-size:11px;color:rgba(255,255,255,0.4);">+${completedCount - 12}</span>`;
+      }
+
+      const container = document.getElementById('pomo');
+      container.innerHTML = `
+        <div class="mode-tabs">
+          <button class="mode-tab ${isWorkPhase ? 'active' : ''}" onclick="switchMode('work')">${t('work')}</button>
+          <button class="mode-tab ${!isWorkPhase && !isLongBreak ? 'active' : ''}" onclick="switchMode('break')">${t('break')}</button>
+          <button class="mode-tab ${isLongBreak ? 'active' : ''}" onclick="switchMode('longbreak')">${t('longBreak')}</button>
+        </div>
+
+        <div class="progress-ring-container">
+          <svg class="progress-ring" viewBox="0 0 160 160">
+            <circle class="bg" cx="80" cy="80" r="${radius}" />
+            <circle class="fill ${phase}" cx="80" cy="80" r="${radius}"
+              stroke-dasharray="${circumference}"
+              stroke-dashoffset="${offset}" />
+          </svg>
+          <div class="timer-inner">
+            <div class="timer">${timeStr}</div>
+            <div class="status ${phase}">${getPhaseLabel()}</div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button class="btn btn-primary" onclick="toggleTimer()">
+            ${isRunning ? t('pause') : (remaining < total ? t('resume') : t('start'))}
+          </button>
+          <button class="btn btn-secondary" onclick="resetTimer()">${t('reset')}</button>
+        </div>
+
+        <div class="stats">
+          <span>${t('completed')}: ${completedCount}</span>
+          <div class="tomatoes">${tomatoes || '<span style="opacity:0.4">—</span>'}</div>
+        </div>
+      `;
     }
 
-    updateDisplay();
+    // Cleanup
+    window.addEventListener('beforeunload', () => {
+      if (interval) clearInterval(interval);
+      saveState();
+    });
+
+    // Initial render
+    render();
   </script>
 </body>
 </html>

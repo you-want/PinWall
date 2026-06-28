@@ -24,6 +24,8 @@ pub struct WidgetManifest {
     #[serde(rename = "maxSize")]
     pub max_size: Option<WidgetSize>,
     pub settings: Option<Vec<serde_json::Value>>,
+    #[serde(rename = "installedPath", default, skip_serializing_if = "Option::is_none")]
+    pub installed_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -146,6 +148,41 @@ fn validate_manifest_files(source: &PathBuf, manifest: &WidgetManifest) -> Resul
     Ok(())
 }
 
+fn official_widget_dir_name(id: &str) -> Option<&'static str> {
+    match id {
+        "com.pinwall.clock" => Some("widget-clock"),
+        "com.pinwall.weather" => Some("widget-weather"),
+        "com.pinwall.pomodoro" => Some("widget-pomodoro"),
+        "com.pinwall.system-monitor" => Some("widget-system-monitor"),
+        "com.pinwall.music" => Some("widget-music"),
+        _ => None,
+    }
+}
+
+fn official_widget_source(app: &tauri::AppHandle, id: &str) -> Result<PathBuf, String> {
+    validate_widget_id(id)?;
+    let dir_name = official_widget_dir_name(id)
+        .ok_or_else(|| "Official widget is not available".to_string())?;
+
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        let bundled = resource_dir
+            .join("official-widgets")
+            .join(dir_name);
+        if bundled.exists() {
+            return Ok(bundled);
+        }
+    }
+
+    let dev_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../widgets")
+        .join(dir_name);
+    if dev_path.exists() {
+        return Ok(dev_path);
+    }
+
+    Err("Official widget files were not found".to_string())
+}
+
 /// 获取 widgets 目录路径
 fn widgets_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     let dir = app
@@ -175,8 +212,11 @@ pub fn list_installed_widgets(app: tauri::AppHandle) -> Result<Vec<WidgetManifes
         }
         match std::fs::read_to_string(&manifest_path) {
             Ok(content) => match serde_json::from_str::<WidgetManifest>(&content) {
-                Ok(manifest) => match validate_manifest(&manifest) {
-                    Ok(()) => manifests.push(manifest),
+                Ok(mut manifest) => match validate_manifest(&manifest) {
+                    Ok(()) => {
+                        manifest.installed_path = Some(entry.path().to_string_lossy().to_string());
+                        manifests.push(manifest);
+                    },
                     Err(e) => {
                         eprintln!(
                             "[Widget] Invalid manifest for {:?}: {}",
@@ -210,6 +250,10 @@ pub fn list_installed_widgets(app: tauri::AppHandle) -> Result<Vec<WidgetManifes
 #[tauri::command]
 pub fn install_widget(app: tauri::AppHandle, path: String) -> Result<WidgetManifest, String> {
     let source = PathBuf::from(&path);
+    install_widget_from_source(&app, source)
+}
+
+fn install_widget_from_source(app: &tauri::AppHandle, source: PathBuf) -> Result<WidgetManifest, String> {
     if !source.exists() {
         return Err("Source path does not exist".to_string());
     }
@@ -224,7 +268,7 @@ pub fn install_widget(app: tauri::AppHandle, path: String) -> Result<WidgetManif
     validate_manifest_files(&source, &manifest)?;
 
     // 目标目录
-    let dest = widgets_dir(&app)?.join(&manifest.id);
+    let dest = widgets_dir(app)?.join(&manifest.id);
 
     // 如果已存在则先删除（覆盖安装）
     if dest.exists() {
@@ -234,7 +278,50 @@ pub fn install_widget(app: tauri::AppHandle, path: String) -> Result<WidgetManif
     // 递归复制
     copy_dir_recursive(&source, &dest)?;
 
-    Ok(manifest)
+    let mut installed_manifest = manifest;
+    installed_manifest.installed_path = Some(dest.to_string_lossy().to_string());
+    Ok(installed_manifest)
+}
+
+/// 安装内置官方 Widget（从打包资源或开发目录复制到用户 widgets 目录）
+#[tauri::command]
+pub fn install_official_widget(app: tauri::AppHandle, id: String) -> Result<WidgetManifest, String> {
+    let source = official_widget_source(&app, &id)?;
+    install_widget_from_source(&app, source)
+}
+
+/// 读取已安装 Widget 的入口 HTML，用于前端 iframe srcDoc 渲染。
+#[tauri::command]
+pub fn read_widget_entry_html(app: tauri::AppHandle, id: String) -> Result<String, String> {
+    validate_widget_id(&id)?;
+
+    let widget_dir = widgets_dir(&app)?.join(&id);
+    if !widget_dir.exists() {
+        return Err("Widget is not installed".to_string());
+    }
+
+    let manifest_path = widget_dir.join("widget.json");
+    let manifest_content = std::fs::read_to_string(&manifest_path)
+        .map_err(|e| format!("Cannot read widget.json: {}", e))?;
+    let manifest: WidgetManifest = serde_json::from_str(&manifest_content)
+        .map_err(|e| format!("Invalid widget.json: {}", e))?;
+    validate_manifest(&manifest)?;
+    if manifest.id != id {
+        return Err("Widget manifest id does not match installed directory".to_string());
+    }
+
+    let entry_path = widget_dir.join(&manifest.entry);
+    let metadata = std::fs::symlink_metadata(&entry_path)
+        .map_err(|_| format!("Widget entry file does not exist: {}", manifest.entry))?;
+    if metadata.file_type().is_symlink() {
+        return Err("Widget entry cannot be a symlink".to_string());
+    }
+    if !metadata.is_file() {
+        return Err("Widget entry must be a file".to_string());
+    }
+
+    std::fs::read_to_string(&entry_path)
+        .map_err(|e| format!("Cannot read widget entry: {}", e))
 }
 
 /// 卸载 Widget（删除 widgets/{id}/ 目录及其存储数据）
@@ -348,6 +435,16 @@ pub fn get_system_info(category: String) -> Result<serde_json::Value, String> {
                 Ok(serde_json::json!({ "total": 0, "used": 0, "free": 0 }))
             }
         }
+        "getMediaInfo" => Ok(serde_json::json!({
+            "trackName": "PinWall Focus",
+            "artistName": "Local Demo",
+            "albumName": "Desktop Session",
+            "isPlaying": false,
+            "position": 0,
+            "duration": 180,
+            "volume": 0.7
+        })),
+        "mediaControl" => Ok(serde_json::json!({ "ok": true })),
         _ => Ok(serde_json::json!({})),
     }
 }
@@ -445,6 +542,33 @@ mod tests {
     }
 
     #[test]
+    fn maps_only_known_official_widget_ids() {
+        assert_eq!(official_widget_dir_name("com.pinwall.clock"), Some("widget-clock"));
+        assert_eq!(official_widget_dir_name("com.pinwall.weather"), Some("widget-weather"));
+        assert_eq!(official_widget_dir_name("com.pinwall.unknown"), None);
+        assert_eq!(official_widget_dir_name("../widgets/widget-clock"), None);
+    }
+
+    #[test]
+    fn bundled_official_widgets_are_installable_sources() {
+        let widgets_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../widgets");
+        for id in [
+            "com.pinwall.clock",
+            "com.pinwall.weather",
+            "com.pinwall.pomodoro",
+            "com.pinwall.system-monitor",
+            "com.pinwall.music",
+        ] {
+            let dir_name = official_widget_dir_name(id).unwrap();
+            let source = widgets_root.join(dir_name);
+            let manifest_content = std::fs::read_to_string(source.join("widget.json")).unwrap();
+            let manifest: WidgetManifest = serde_json::from_str(&manifest_content).unwrap();
+            validate_manifest(&manifest).unwrap();
+            validate_manifest_files(&source, &manifest).unwrap();
+        }
+    }
+
+    #[test]
     fn validates_manifest_entry_and_icon_files() {
         let temp_root = std::env::temp_dir().join(format!(
             "pinwall-widget-test-{}",
@@ -472,6 +596,7 @@ mod tests {
             min_size: None,
             max_size: None,
             settings: None,
+            installed_path: None,
         };
 
         assert!(validate_manifest_files(&temp_root, &manifest).is_ok());

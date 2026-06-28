@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import type { WidgetCategory, WidgetManifest, WidgetPermission, WidgetType } from "../types";
 
 const VALID_WIDGET_TYPES = new Set<WidgetType>(["official", "community"]);
@@ -56,6 +56,47 @@ export async function installWidgetFromPath(sourcePath: string): Promise<WidgetM
   }
 }
 
+export interface WidgetInstallResult {
+  manifest: WidgetManifest | null;
+  error?: string;
+}
+
+/** 通过 Tauri command 从本地路径安装 Widget，并返回可展示的失败原因 */
+export async function installWidgetFromPathWithResult(sourcePath: string): Promise<WidgetInstallResult> {
+  try {
+    const manifest = await invoke<WidgetManifest>("install_widget", { path: sourcePath });
+    if (validateManifest(manifest)) {
+      return { manifest };
+    }
+    return { manifest: null, error: "Installed widget manifest is invalid." };
+  } catch (err) {
+    console.error("[WidgetLoader] Install failed:", err);
+    return { manifest: null, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/** 安装内置官方 Widget */
+export async function installOfficialWidget(widgetId: string): Promise<WidgetInstallResult> {
+  try {
+    const manifest = await invoke<WidgetManifest>("install_official_widget", { id: widgetId });
+    if (validateManifest(manifest)) {
+      return { manifest };
+    }
+    return { manifest: null, error: "Installed widget manifest is invalid." };
+  } catch (err) {
+    console.error("[WidgetLoader] Official install failed:", err);
+    return { manifest: null, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/** 读取已安装 Widget 的入口 HTML，用于 iframe srcDoc 渲染 */
+export async function loadWidgetEntryHtml(widgetId: string): Promise<string> {
+  if (!isValidWidgetId(widgetId)) {
+    throw new Error("Invalid widget id.");
+  }
+  return invoke<string>("read_widget_entry_html", { id: widgetId });
+}
+
 /** 通过 Tauri command 卸载 Widget */
 export async function uninstallWidget(widgetId: string): Promise<boolean> {
   try {
@@ -69,9 +110,16 @@ export async function uninstallWidget(widgetId: string): Promise<boolean> {
 
 /** 获取 Widget 资源文件的 asset protocol URL（用于 iframe src） */
 export function getWidgetAssetUrl(widgetId: string, filePath: string): string {
+  return `asset://localhost/widgets/${widgetId}/${filePath}`;
+}
+
+export function getWidgetFrameUrl(manifest: WidgetManifest): string {
+  if (manifest.installedPath) {
+    return convertFileSrc(`${manifest.installedPath}/${manifest.entry}`);
+  }
   // asset protocol 需要配置 scope，路径相对于 $APPDATA
   // 实际 URL 格式取决于 Tauri asset protocol 的配置
-  return `asset://localhost/widgets/${widgetId}/${filePath}`;
+  return getWidgetAssetUrl(manifest.id, manifest.entry);
 }
 
 export function isValidWidgetId(id: unknown): id is string {

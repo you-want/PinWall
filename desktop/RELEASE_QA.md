@@ -103,9 +103,10 @@ Current local note:
 - [ ] Quota monitor can be enabled/disabled.
 - [ ] Care reminder toggles and parameters persist.
 - [ ] Care reminders explain that they appear as top-right notifications instead of desktop cards.
-- [ ] Widget extension section only presents local install as the production path.
-- [ ] Marketplace is clearly marked experimental and is not presented as a release-ready store.
-- [ ] Installed widgets show their requested permissions.
+- [ ] Widget extension section presents the Official Widget Hub as the primary path.
+- [ ] Local folder install remains available only as an advanced trusted-source path.
+- [ ] Marketplace is not presented as a release-ready store.
+- [ ] Official and installed widgets show requested permissions with plain-language explanations.
 - [ ] Network, system, cards, and AI permissions are visually distinguishable from low-risk permissions.
 
 ## Unified Care Reminders
@@ -124,12 +125,26 @@ Current local note:
 - [ ] Dismissing or auto-dismissing a notification does not delete user notes.
 - [ ] User-created note reminders still keep their original note after notification.
 
+## Official Widget Hub
+
+This is the main widget path for 0.1.3.
+
+- [ ] All five official widgets are listed: Clock, Weather, Pomodoro, System Monitor, and Music Control.
+- [ ] Install Clock from the Official Widget Hub without choosing a folder.
+- [ ] Install Weather and confirm the high-risk `network` permission prompt appears before install.
+- [ ] Install System Monitor and confirm the high-risk `system` permission prompt appears before install.
+- [ ] Installed widgets appear on the main wall immediately.
+- [ ] Installed widgets survive app quit and restart.
+- [ ] Installed widgets can be toggled off and on.
+- [ ] Installed widgets can be removed.
+- [ ] Removing all optional cards and widgets does not leave an empty side panel.
+
 ## Widget Local Install
 
-This is an experimental feature for 0.1.x.
+This is an advanced trusted-source path for 0.1.3.
 
-- [ ] Install one official local widget directory from `../widgets`.
-- [ ] The widget appears on the desktop.
+- [ ] Install one trusted local widget directory from `../widgets`.
+- [ ] The widget appears on the main wall.
 - [ ] The widget can be toggled off and on.
 - [ ] The widget can be removed.
 - [ ] Installing a widget with an invalid id is rejected.

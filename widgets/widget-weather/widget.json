@@ -2,18 +2,19 @@
   "id": "com.pinwall.weather",
   "name": "天气小组件",
   "description": "实时天气与未来预报",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "PinWall Team",
   "entry": "index.html",
-  "icon": "icon.png",
+  "icon": "icon.svg",
   "type": "official",
   "category": "utility",
   "permissions": ["storage", "theme", "i18n", "network"],
-  "defaultSize": { "width": 260, "height": 200 },
-  "minSize": { "width": 200, "height": 160 },
-  "maxSize": { "width": 400, "height": 350 },
+  "defaultSize": { "width": 260, "height": 220 },
+  "minSize": { "width": 200, "height": 180 },
+  "maxSize": { "width": 400, "height": 380 },
   "settings": [
     { "key": "city", "label": "城市", "type": "text", "default": "" },
-    { "key": "unit", "label": "温度单位", "type": "select", "options": ["celsius", "fahrenheit"], "default": "celsius" }
+    { "key": "unit", "label": "温度单位", "type": "select", "options": ["celsius", "fahrenheit"], "default": "celsius" },
+    { "key": "refreshMinutes", "label": "刷新间隔(分钟)", "type": "number", "default": 30, "min": 5, "max": 120 }
   ]
 }

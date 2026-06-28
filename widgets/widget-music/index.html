@@ -11,7 +11,7 @@
       background: transparent;
       height: 100vh;
       overflow: hidden;
-      color: #1a1a1a;
+      color: rgba(255,255,255,0.92);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -38,10 +38,15 @@
       justify-content: center;
       font-size: 24px;
       flex-shrink: 0;
-      animation: pulse-art 3s ease-in-out infinite;
+      overflow: hidden;
     }
     .album-art.playing { animation: pulse-art 2s ease-in-out infinite; }
     .album-art.paused { animation: none; }
+    .album-art img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
     @keyframes pulse-art {
       0%, 100% { transform: scale(1); }
       50% { transform: scale(1.03); }
@@ -62,7 +67,7 @@
     }
     .artist-name {
       font-size: 12px;
-      color: #6b7280;
+      color: rgba(255,255,255,0.52);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -76,9 +81,9 @@
       width: 100%;
       height: 4px;
       border-radius: 2px;
-      background: rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.08);
       overflow: hidden;
-      cursor: pointer;
+      position: relative;
     }
     .progress-fill {
       height: 100%;
@@ -90,7 +95,7 @@
       display: flex;
       justify-content: space-between;
       font-size: 10px;
-      color: #9ca3af;
+      color: rgba(255,255,255,0.42);
       font-variant-numeric: tabular-nums;
     }
     .controls {
@@ -104,7 +109,7 @@
       border: none;
       cursor: pointer;
       font-size: 20px;
-      color: #4b5563;
+      color: rgba(255,255,255,0.7);
       transition: all 0.15s;
       padding: 4px;
       border-radius: 50%;
@@ -122,68 +127,104 @@
       font-size: 18px;
     }
     .ctrl-btn.play:hover { background: #4f46e5; }
+    .ctrl-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
     .volume-section {
       display: flex;
       align-items: center;
       gap: 8px;
     }
-    .volume-icon { font-size: 14px; color: #9ca3af; }
+    .volume-icon { font-size: 14px; color: rgba(255,255,255,0.45); cursor: pointer; }
     .volume-bar {
       flex: 1;
       height: 3px;
       border-radius: 2px;
-      background: rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.08);
       overflow: hidden;
+      cursor: pointer;
+      position: relative;
     }
     .volume-fill {
       height: 100%;
       border-radius: 2px;
-      background: #9ca3af;
+      background: rgba(255,255,255,0.45);
       transition: width 0.2s;
     }
     .idle-state {
       text-align: center;
-      color: #9ca3af;
+      color: rgba(255,255,255,0.46);
       font-size: 13px;
-      padding: 20px 0;
+      padding: 24px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
     }
-    .idle-state .icon { font-size: 32px; margin-bottom: 8px; }
+    .idle-state .icon {
+      font-size: 32px;
+      opacity: 0.6;
+    }
+    .idle-state .hint {
+      font-size: 11px;
+      color: rgba(255,255,255,0.32);
+    }
   </style>
 </head>
 <body>
   <div class="music-player" id="player">
     <div class="idle-state">
       <div class="icon">🎵</div>
-      <div>等待音乐播放...</div>
+      <div id="idle-text">等待音乐播放...</div>
     </div>
   </div>
 
   <script>
+    // i18n messages
+    const MESSAGES = {
+      zh: {
+        waiting: '等待音乐播放...',
+        hint: '在系统中播放音乐后显示',
+        unknownArtist: '未知艺术家',
+        charging: '充电中',
+        notCharging: '未充电',
+      },
+      en: {
+        waiting: 'Waiting for music...',
+        hint: 'Play music in your system to see it here',
+        unknownArtist: 'Unknown Artist',
+        charging: 'Charging',
+        notCharging: 'Not charging',
+      },
+    };
+
+    let locale = 'zh';
+    function t(key) {
+      const m = MESSAGES[locale] || MESSAGES.zh;
+      return m[key] || key;
+    }
+
+    // State
     let state = {
       isPlaying: false,
       trackName: '',
       artistName: '',
-      albumName: '',
+      albumArt: '',
       position: 0,
       duration: 0,
       volume: 0.7,
+      hasTrack: false,
     };
 
+    let pollInterval = null;
+    let progressInterval = null;
+    let lastPollTime = 0;
+
+    // Bridge
     let bridgeId = 0;
     const pending = new Map();
-
-    window.addEventListener('message', (e) => {
-      const msg = e.data;
-      if (msg?.type === 'event' && msg.event === 'pinwall:ready') {
-        pollMediaInfo();
-        setInterval(pollMediaInfo, 3000);
-      }
-      if (msg?.type === 'response' && pending.has(msg.id)) {
-        const p = pending.get(msg.id);
-        pending.delete(msg.id);
-        msg.success ? p.resolve(msg.data) : p.reject(new Error(msg.error));
-      }
-    });
 
     function bridge(module, method, args) {
       return new Promise((resolve, reject) => {
@@ -196,25 +237,89 @@
       });
     }
 
+    // Message handler
+    window.addEventListener('message', (e) => {
+      const msg = e.data;
+
+      if (msg?.type === 'response' && pending.has(msg.id)) {
+        const p = pending.get(msg.id);
+        pending.delete(msg.id);
+        msg.success ? p.resolve(msg.data) : p.reject(new Error(msg.error));
+        return;
+      }
+
+      if (msg?.type === 'event') {
+        if (msg.event === 'pinwall:ready') {
+          if (msg.payload?.locale) locale = msg.payload.locale;
+          startPolling();
+        }
+        if (msg.event === 'pinwall:locale:changed') {
+          locale = msg.payload?.locale || 'zh';
+          renderCurrentState();
+        }
+        // Media state change push from host
+        if (msg.event === 'system:media:changed') {
+          if (msg.payload) {
+            updateMediaState(msg.payload);
+          }
+        }
+      }
+    });
+
     function formatTime(sec) {
-      if (!sec || sec <= 0) return '0:00';
+      if (!sec || sec < 0) return '0:00';
+      sec = Math.floor(sec);
       const m = Math.floor(sec / 60);
-      const s = Math.floor(sec % 60);
+      const s = sec % 60;
       return `${m}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function updateMediaState(info) {
+      const prevHasTrack = state.hasTrack;
+      const prevPlaying = state.isPlaying;
+      const prevPosition = state.position;
+
+      state = {
+        ...state,
+        isPlaying: !!info.isPlaying,
+        trackName: info.trackName || '',
+        artistName: info.artistName || '',
+        albumArt: info.albumArt || '',
+        position: info.position || 0,
+        duration: info.duration || 0,
+        volume: info.volume != null ? info.volume : state.volume,
+        hasTrack: !!(info.trackName && info.trackName.length > 0),
+      };
+      lastPollTime = Date.now();
+
+      if (state.hasTrack !== prevHasTrack) {
+        renderCurrentState();
+      } else {
+        renderPlayer();
+      }
+
+      // Smooth progress interpolation
+      if (state.isPlaying) {
+        startProgressTicker();
+      } else {
+        stopProgressTicker();
+      }
     }
 
     async function pollMediaInfo() {
       try {
         const info = await bridge('system', 'getMediaInfo', []);
-        if (info && info.trackName) {
-          state = { ...state, ...info };
-          renderPlayer();
+        if (info) {
+          updateMediaState(info);
         } else {
-          renderIdle();
+          state = { ...state, hasTrack: false, isPlaying: false };
+          renderCurrentState();
         }
       } catch {
-        // If media info not available, show idle
-        renderIdle();
+        // Bridge unavailable - keep current state
+        if (!state.hasTrack) {
+          renderCurrentState();
+        }
       }
     }
 
@@ -223,7 +328,8 @@
       container.innerHTML = `
         <div class="idle-state">
           <div class="icon">🎵</div>
-          <div>等待音乐播放...</div>
+          <div>${escapeHtml(t('waiting'))}</div>
+          <div class="hint">${escapeHtml(t('hint'))}</div>
         </div>
       `;
     }
@@ -231,19 +337,24 @@
     function renderPlayer() {
       const container = document.getElementById('player');
       const progressPct = state.duration > 0 ? (state.position / state.duration * 100) : 0;
+      const clampedPct = Math.min(100, Math.max(0, progressPct));
+
+      const albumArtContent = state.albumArt
+        ? `<img src="${escapeHtml(state.albumArt)}" alt="" />`
+        : '🎵';
 
       container.innerHTML = `
         <div class="now-playing">
-          <div class="album-art ${state.isPlaying ? 'playing' : 'paused'}">🎵</div>
+          <div class="album-art ${state.isPlaying ? 'playing' : 'paused'}">${albumArtContent}</div>
           <div class="track-info">
             <div class="track-name">${escapeHtml(state.trackName)}</div>
-            <div class="artist-name">${escapeHtml(state.artistName || '未知艺术家')}</div>
+            <div class="artist-name">${escapeHtml(state.artistName || t('unknownArtist'))}</div>
           </div>
         </div>
 
         <div class="progress-section">
           <div class="progress-bar">
-            <div class="progress-fill" style="width: ${progressPct}%"></div>
+            <div class="progress-fill" style="width: ${clampedPct}%"></div>
           </div>
           <div class="time-info">
             <span>${formatTime(state.position)}</span>
@@ -252,24 +363,63 @@
         </div>
 
         <div class="controls">
-          <button class="ctrl-btn" onclick="control('previous')">⏮</button>
-          <button class="ctrl-btn play" onclick="control('${state.isPlaying ? 'pause' : 'play'}')">
+          <button class="ctrl-btn" onclick="control('previous')" title="Previous">⏮</button>
+          <button class="ctrl-btn play" onclick="control('${state.isPlaying ? 'pause' : 'play'}')" title="${state.isPlaying ? 'Pause' : 'Play'}">
             ${state.isPlaying ? '⏸' : '▶'}
           </button>
-          <button class="ctrl-btn" onclick="control('next')">⏭</button>
+          <button class="ctrl-btn" onclick="control('next')" title="Next">⏭</button>
         </div>
 
         <div class="volume-section">
-          <span class="volume-icon">${state.volume > 0.5 ? '🔊' : state.volume > 0 ? '🔉' : '🔇'}</span>
-          <div class="volume-bar">
+          <span class="volume-icon" onclick="toggleMute()" title="Mute">${state.volume > 0.5 ? '🔊' : state.volume > 0 ? '🔉' : '🔇'}</span>
+          <div class="volume-bar" onclick="setVolume(event)">
             <div class="volume-fill" style="width: ${state.volume * 100}%"></div>
           </div>
         </div>
       `;
     }
 
+    function renderCurrentState() {
+      if (state.hasTrack) {
+        renderPlayer();
+      } else {
+        renderIdle();
+        stopProgressTicker();
+      }
+    }
+
     function control(action) {
       bridge('system', 'mediaControl', [action]).catch(() => {});
+
+      // Optimistic update
+      if (action === 'play') {
+        state.isPlaying = true;
+        startProgressTicker();
+      } else if (action === 'pause') {
+        state.isPlaying = false;
+        stopProgressTicker();
+      }
+      renderPlayer();
+    }
+
+    function setVolume(event) {
+      const bar = event.currentTarget;
+      const rect = bar.getBoundingClientRect();
+      const pct = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+      state.volume = pct;
+      bridge('system', 'setVolume', [pct]).catch(() => {});
+      renderPlayer();
+    }
+
+    function toggleMute() {
+      if (state.volume > 0) {
+        state._prevVolume = state.volume;
+        state.volume = 0;
+      } else {
+        state.volume = state._prevVolume || 0.5;
+      }
+      bridge('system', 'setVolume', [state.volume]).catch(() => {});
+      renderPlayer();
     }
 
     function escapeHtml(str) {
@@ -277,6 +427,42 @@
       div.textContent = str || '';
       return div.innerHTML;
     }
+
+    function startProgressTicker() {
+      if (progressInterval) return;
+      progressInterval = setInterval(() => {
+        if (state.isPlaying && state.duration > 0) {
+          const elapsed = (Date.now() - lastPollTime) / 1000;
+          const estimated = state.position + elapsed;
+          if (estimated <= state.duration) {
+            const pct = Math.min(100, (estimated / state.duration) * 100);
+            const fill = document.querySelector('.progress-fill');
+            if (fill) fill.style.width = pct + '%';
+            const timeEls = document.querySelectorAll('.time-info span');
+            if (timeEls[0]) timeEls[0].textContent = formatTime(estimated);
+          }
+        }
+      }, 1000);
+    }
+
+    function stopProgressTicker() {
+      if (progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+      }
+    }
+
+    function startPolling() {
+      pollMediaInfo();
+      if (pollInterval) clearInterval(pollInterval);
+      pollInterval = setInterval(pollMediaInfo, 3000);
+    }
+
+    // Cleanup
+    window.addEventListener('beforeunload', () => {
+      if (pollInterval) clearInterval(pollInterval);
+      stopProgressTicker();
+    });
 
     // Initial render
     renderIdle();

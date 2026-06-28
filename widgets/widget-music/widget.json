@@ -5,7 +5,7 @@
   "version": "1.0.0",
   "author": "PinWall Team",
   "entry": "index.html",
-  "icon": "icon.png",
+  "icon": "icon.svg",
   "type": "official",
   "category": "entertainment",
   "permissions": ["theme", "i18n", "system"],

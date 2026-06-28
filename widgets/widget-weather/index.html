@@ -11,7 +11,7 @@
       background: transparent;
       height: 100vh;
       overflow: hidden;
-      color: #1a1a1a;
+      color: rgba(255,255,255,0.92);
     }
     .weather-widget {
       padding: 16px;
@@ -20,29 +20,68 @@
       gap: 12px;
       height: 100%;
     }
+
+    /* City header */
+    .city-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .city-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.72);
+    }
+    .update-time {
+      font-size: 10px;
+      color: rgba(255,255,255,0.32);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Current weather */
     .current {
       display: flex;
       align-items: center;
       gap: 12px;
     }
     .current .icon {
-      font-size: 40px;
+      font-size: 44px;
       line-height: 1;
+      flex-shrink: 0;
     }
     .current .temp {
-      font-size: 36px;
+      font-size: 38px;
       font-weight: 200;
       letter-spacing: -1px;
     }
     .current .info {
-      font-size: 12px;
-      color: #6b7280;
+      font-size: 11px;
+      color: rgba(255,255,255,0.52);
       margin-top: 2px;
+      line-height: 1.5;
     }
+
+    /* Details row */
+    .details {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .detail-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.48);
+    }
+    .detail-item .d-icon {
+      font-size: 12px;
+    }
+
+    /* Forecast */
     .forecast {
       display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
+      gap: 6px;
     }
     .forecast-item {
       display: flex;
@@ -50,142 +89,424 @@
       align-items: center;
       gap: 4px;
       font-size: 11px;
-      color: #6b7280;
-      background: rgba(0,0,0,0.04);
+      color: rgba(255,255,255,0.58);
+      background: rgba(255,255,255,0.06);
       border-radius: 8px;
-      padding: 6px 10px;
+      padding: 8px 10px;
       flex: 1;
-      min-width: 60px;
+      min-width: 54px;
     }
-    .forecast-item .ficon { font-size: 18px; }
-    .forecast-item .ftemp { font-weight: 600; color: #374151; }
-    .loading { text-align: center; color: #9ca3af; font-size: 13px; padding: 40px 0; }
-    .error { text-align: center; color: #ef4444; font-size: 13px; padding: 20px 0; }
-    .city-name { font-size: 12px; font-weight: 600; color: #4b5563; }
+    .forecast-item .fday {
+      font-weight: 600;
+      color: rgba(255,255,255,0.52);
+    }
+    .forecast-item .ficon { font-size: 20px; }
+    .forecast-item .ftemp {
+      font-weight: 600;
+      color: rgba(255,255,255,0.84);
+      font-variant-numeric: tabular-nums;
+      font-size: 11px;
+    }
+
+    /* States */
+    .loading {
+      text-align: center;
+      color: rgba(255,255,255,0.46);
+      font-size: 13px;
+      padding: 40px 0;
+    }
+    .loading-skeleton {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+    }
+    .skeleton-line {
+      height: 14px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.06);
+      animation: shimmer 1.5s infinite;
+    }
+    .skeleton-line.w60 { width: 60%; }
+    .skeleton-line.w40 { width: 40%; }
+    .skeleton-line.w80 { width: 80%; }
+    .skeleton-line.h40 { height: 40px; width: 50%; }
+    @keyframes shimmer {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+    .error {
+      text-align: center;
+      color: rgba(255,255,255,0.62);
+      font-size: 13px;
+      padding: 24px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .error .error-icon { font-size: 28px; opacity: 0.6; }
+    .error .error-msg {
+      font-size: 12px;
+      color: rgba(255,255,255,0.42);
+    }
+    .retry-btn {
+      margin-top: 4px;
+      padding: 6px 16px;
+      border-radius: 14px;
+      border: none;
+      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.7);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .retry-btn:hover { background: rgba(255,255,255,0.16); }
   </style>
 </head>
 <body>
   <div class="weather-widget" id="weather">
-    <div class="loading">加载中...</div>
+    <div class="loading">...</div>
   </div>
 
   <script>
-    let config = { city: '', unit: 'celsius' };
-    let locale = 'zh';
-
-    window.addEventListener('message', (e) => {
-      const msg = e.data;
-      if (msg?.type === 'event' && msg.event === 'pinwall:ready') {
-        if (msg.payload?.settings) config = { ...config, ...msg.payload.settings };
-        if (msg.payload?.locale) locale = msg.payload.locale;
-        fetchWeather();
-      }
-    });
-
-    const WEATHER_ICONS = {
-      '01d': '☀️', '01n': '🌙', '02d': '⛅', '02n': '☁️',
-      '03d': '☁️', '03n': '☁️', '04d': '☁️', '04n': '☁️',
-      '09d': '🌧️', '09n': '🌧️', '10d': '🌦️', '10n': '🌧️',
-      '11d': '⛈️', '11n': '⛈️', '13d': '❄️', '13n': '❄️',
-      '50d': '🌫️', '50n': '🌫️',
+    // i18n
+    const MESSAGES = {
+      zh: {
+        humidity: '湿度',
+        wind: '风速',
+        feelsLike: '体感',
+        visibility: '能见度',
+        loading: '加载中...',
+        error: '天气获取失败',
+        retry: '重试',
+        justNow: '刚刚',
+        minutesAgo: '{n}分钟前',
+        windUnit: 'km/h',
+        visUnit: 'km',
+      },
+      en: {
+        humidity: 'Humidity',
+        wind: 'Wind',
+        feelsLike: 'Feels',
+        visibility: 'Visibility',
+        loading: 'Loading...',
+        error: 'Failed to fetch weather',
+        retry: 'Retry',
+        justNow: 'just now',
+        minutesAgo: '{n}m ago',
+        windUnit: 'km/h',
+        visUnit: 'km',
+      },
     };
 
-    async function fetchWeather() {
-      const container = document.getElementById('weather');
-      try {
-        // Using wttr.in as a free weather API (no key needed)
-        const city = config.city || 'auto';
-        const url = `https://wttr.in/${encodeURIComponent(city)}?format=j1`;
-        
-        // Use PinWall network bridge if available
-        let data;
-        try {
-          const response = await sendBridgeRequest('network', 'get', [url]);
-          data = response?.data;
-        } catch {
-          // Fallback to direct fetch
-          const res = await fetch(url);
-          data = await res.json();
-        }
-
-        if (!data?.current_condition) {
-          container.innerHTML = '<div class="error">无法获取天气数据</div>';
-          return;
-        }
-
-        const current = data.current_condition[0];
-        const area = data.nearest_area?.[0];
-        const cityName = area?.areaName?.[0]?.value || config.city || '当前位置';
-        
-        const tempC = current.temp_C;
-        const tempF = current.temp_F;
-        const temp = config.unit === 'fahrenheit' ? tempF : tempC;
-        const unitSymbol = config.unit === 'fahrenheit' ? '°F' : '°C';
-        
-        const desc = current.weatherDesc?.[0]?.value || '';
-        const code = current.weatherCode || '01d';
-        const icon = WEATHER_ICONS[code] || '🌤️';
-        const humidity = current.humidity;
-        const wind = current.windspeedKmph;
-
-        // Forecast (next 3 days)
-        const forecasts = (data.weather || []).slice(1, 4).map(day => {
-          const dayCode = day.hourly?.[4]?.weatherCode || '01d';
-          return {
-            day: new Date(day.date).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en', { weekday: 'short' }),
-            icon: WEATHER_ICONS[dayCode] || '🌤️',
-            high: config.unit === 'fahrenheit' ? day.maxtempF : day.maxtempC,
-            low: config.unit === 'fahrenheit' ? day.mintempF : day.mintempC,
-          };
+    let locale = 'zh';
+    function t(key, params) {
+      const m = MESSAGES[locale] || MESSAGES.zh;
+      let str = m[key] || key;
+      if (params) {
+        Object.keys(params).forEach(k => {
+          str = str.replace(`{${k}}`, params[k]);
         });
-
-        container.innerHTML = `
-          <div class="city-name">${cityName}</div>
-          <div class="current">
-            <div class="icon">${icon}</div>
-            <div>
-              <div class="temp">${temp}${unitSymbol}</div>
-              <div class="info">${desc} · 湿度 ${humidity}% · 风速 ${wind}km/h</div>
-            </div>
-          </div>
-          ${forecasts.length > 0 ? `
-          <div class="forecast">
-            ${forecasts.map(f => `
-              <div class="forecast-item">
-                <span>${f.day}</span>
-                <span class="ficon">${f.icon}</span>
-                <span class="ftemp">${f.high}° / ${f.low}°</span>
-              </div>
-            `).join('')}
-          </div>` : ''}
-        `;
-      } catch (err) {
-        container.innerHTML = `<div class="error">天气获取失败: ${err.message || err}</div>`;
       }
+      return str;
     }
 
-    // Bridge request helper
-    let _bridgeId = 0;
-    const _pending = new Map();
-    
-    function sendBridgeRequest(module, method, args) {
+    // Config
+    let config = { city: '', unit: 'celsius', refreshMinutes: 30 };
+    let refreshInterval = null;
+    let lastFetchTime = null;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+
+    // Bridge
+    let bridgeId = 0;
+    const pending = new Map();
+
+    function bridge(module, method, args) {
       return new Promise((resolve, reject) => {
-        const id = `w_${++_bridgeId}`;
-        _pending.set(id, { resolve, reject });
+        const id = `w_${++bridgeId}`;
+        pending.set(id, { resolve, reject });
         window.parent.postMessage({ type: 'request', id, module, method, args }, '*');
         setTimeout(() => {
-          if (_pending.has(id)) { _pending.delete(id); reject(new Error('timeout')); }
+          if (pending.has(id)) { pending.delete(id); reject(new Error('timeout')); }
         }, 8000);
       });
     }
 
+    // Single message handler
     window.addEventListener('message', (e) => {
       const msg = e.data;
-      if (msg?.type === 'response' && _pending.has(msg.id)) {
-        const p = _pending.get(msg.id);
-        _pending.delete(msg.id);
+
+      if (msg?.type === 'response' && pending.has(msg.id)) {
+        const p = pending.get(msg.id);
+        pending.delete(msg.id);
         msg.success ? p.resolve(msg) : p.reject(new Error(msg.error));
+        return;
       }
+
+      if (msg?.type === 'event') {
+        if (msg.event === 'pinwall:ready') {
+          if (msg.payload?.settings) config = { ...config, ...msg.payload.settings };
+          if (msg.payload?.locale) locale = msg.payload.locale;
+          fetchWeather();
+          startAutoRefresh();
+        }
+        if (msg.event === 'pinwall:settings:changed') {
+          config = { ...config, ...msg.payload };
+          retryCount = 0;
+          fetchWeather();
+        }
+        if (msg.event === 'pinwall:locale:changed') {
+          locale = msg.payload?.locale || 'zh';
+          fetchWeather();
+        }
+      }
+    });
+
+    // wttr.in weather code to icon mapping (WMO codes)
+    const WTTR_ICONS = {
+      113: '☀️',  // Clear/Sunny
+      116: '⛅',  // Partly cloudy
+      119: '☁️',  // Cloudy
+      122: '☁️',  // Overcast
+      143: '🌫️',  // Mist
+      176: '🌦️',  // Patchy rain possible
+      179: '🌨️',  // Patchy snow possible
+      182: '🌨️',  // Patchy sleet possible
+      185: '🌨️',  // Patchy freezing drizzle
+      200: '⛈️',  // Thundery outbreaks
+      227: '🌨️',  // Blowing snow
+      230: '🌨️',  // Blizzard
+      248: '🌫️',  // Fog
+      260: '🌫️',  // Freezing fog
+      263: '🌧️',  // Patchy light drizzle
+      266: '🌧️',  // Patchy drizzle
+      281: '🌧️',  // Freezing drizzle
+      284: '🌧️',  // Heavy freezing drizzle
+      293: '🌧️',  // Patchy light rain
+      296: '🌧️',  // Light rain
+      299: '🌧️',  // Moderate rain at times
+      302: '🌧️',  // Moderate rain
+      305: '🌧️',  // Heavy rain at times
+      308: '🌧️',  // Heavy rain
+      311: '🌨️',  // Light freezing rain
+      314: '🌨️',  // Moderate/heavy freezing rain
+      317: '🌨️',  // Light sleet
+      320: '🌨️',  // Moderate/heavy sleet
+      323: '❄️',  // Patchy light snow
+      326: '❄️',  // Light snow
+      329: '❄️',  // Patchy moderate snow
+      332: '❄️',  // Moderate snow
+      335: '❄️',  // Patchy heavy snow
+      338: '❄️',  // Heavy snow
+      350: '🌨️',  // Ice pellets
+      353: '🌦️',  // Light rain shower
+      356: '🌧️',  // Moderate/heavy rain shower
+      359: '🌧️',  // Torrential rain shower
+      362: '🌨️',  // Light sleet showers
+      365: '🌨️',  // Moderate/heavy sleet showers
+      368: '🌨️',  // Light snow showers
+      371: '❄️',  // Moderate/heavy snow showers
+      374: '🌨️',  // Light ice pellets
+      377: '🌨️',  // Moderate/heavy ice pellets
+      386: '⛈️',  // Light rain with thunder
+      389: '⛈️',  // Heavy rain with thunder
+      392: '⛈️',  // Light snow with thunder
+      395: '⛈️',  // Heavy snow with thunder
+    };
+
+    function getWeatherIcon(code) {
+      return WTTR_ICONS[code] || '🌤️';
+    }
+
+    function formatUpdateTime() {
+      if (!lastFetchTime) return '';
+      const diff = Math.floor((Date.now() - lastFetchTime) / 60000);
+      if (diff < 1) return t('justNow');
+      return t('minutesAgo', { n: diff });
+    }
+
+    function showLoading() {
+      const container = document.getElementById('weather');
+      container.innerHTML = `
+        <div class="loading-skeleton">
+          <div class="skeleton-line w40"></div>
+          <div style="display:flex;gap:12px;align-items:center;">
+            <div class="skeleton-line h40"></div>
+            <div class="skeleton-line w60"></div>
+          </div>
+          <div class="skeleton-line w80"></div>
+        </div>
+      `;
+    }
+
+    function showError(errMsg) {
+      const container = document.getElementById('weather');
+      container.innerHTML = `
+        <div class="error">
+          <div class="error-icon">🌐</div>
+          <div>${t('error')}</div>
+          <div class="error-msg">${escapeHtml(errMsg || '')}</div>
+          <button class="retry-btn" onclick="retryFetch()">${t('retry')}</button>
+        </div>
+      `;
+    }
+
+    function retryFetch() {
+      retryCount = 0;
+      fetchWeather();
+    }
+
+    async function fetchWeather() {
+      const container = document.getElementById('weather');
+
+      // Show loading skeleton only on first load
+      if (!lastFetchTime) {
+        showLoading();
+      }
+
+      try {
+        const city = config.city || 'auto';
+        const url = `https://wttr.in/${encodeURIComponent(city)}?format=j1`;
+
+        let data;
+        try {
+          // Try via PinWall network bridge (avoids CORS)
+          const response = await bridge('network', 'get', [url]);
+          data = response?.data || response;
+        } catch {
+          // Fallback to direct fetch
+          try {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            data = await res.json();
+          } catch (fetchErr) {
+            throw fetchErr;
+          }
+        }
+
+        if (!data?.current_condition) {
+          throw new Error('Invalid response format');
+        }
+
+        retryCount = 0;
+        lastFetchTime = Date.now();
+        renderWeather(data);
+      } catch (err) {
+        retryCount++;
+        if (retryCount <= MAX_RETRIES) {
+          // Exponential backoff: 2s, 4s, 8s
+          const delay = Math.pow(2, retryCount) * 1000;
+          setTimeout(fetchWeather, delay);
+        } else {
+          showError(err.message || String(err));
+        }
+      }
+    }
+
+    function renderWeather(data) {
+      const container = document.getElementById('weather');
+      const current = data.current_condition[0];
+      const area = data.nearest_area?.[0];
+      const cityName = area?.areaName?.[0]?.value || config.city || (locale === 'zh' ? '当前位置' : 'Current');
+
+      const tempC = parseInt(current.temp_C, 10);
+      const tempF = parseInt(current.temp_F, 10);
+      const temp = config.unit === 'fahrenheit' ? tempF : tempC;
+      const unitSymbol = config.unit === 'fahrenheit' ? '°F' : '°C';
+
+      const feelsLikeC = parseInt(current.FeelsLikeC, 10);
+      const feelsLikeF = parseInt(current.FeelsLikeF, 10);
+      const feelsLike = config.unit === 'fahrenheit' ? feelsLikeF : feelsLikeC;
+
+      const desc = current.weatherDesc?.[0]?.value || '';
+      const code = parseInt(current.weatherCode, 10);
+      const icon = getWeatherIcon(code);
+      const humidity = current.humidity;
+      const windKmph = current.windspeedKmph;
+      const visibility = current.visibility;
+
+      // Forecast (next 3 days)
+      const localeStr = locale === 'zh' ? 'zh-CN' : 'en-US';
+      const forecasts = (data.weather || []).slice(1, 4).map(day => {
+        // Use noon hourly data (index 4 = 1200) for daytime icon
+        const noonCode = parseInt(day.hourly?.[4]?.weatherCode || day.hourly?.[0]?.weatherCode || '113', 10);
+        return {
+          day: new Date(day.date).toLocaleDateString(localeStr, { weekday: 'short' }),
+          icon: getWeatherIcon(noonCode),
+          high: config.unit === 'fahrenheit' ? day.maxtempF : day.maxtempC,
+          low: config.unit === 'fahrenheit' ? day.mintempF : day.mintempC,
+        };
+      });
+
+      container.innerHTML = `
+        <div class="city-header">
+          <span class="city-name">${escapeHtml(cityName)}</span>
+          <span class="update-time">${formatUpdateTime()}</span>
+        </div>
+
+        <div class="current">
+          <div class="icon">${icon}</div>
+          <div>
+            <div class="temp">${temp}${unitSymbol}</div>
+            <div class="info">${escapeHtml(desc)}</div>
+          </div>
+        </div>
+
+        <div class="details">
+          <div class="detail-item">
+            <span class="d-icon">🌡️</span>
+            <span>${t('feelsLike')} ${feelsLike}${unitSymbol}</span>
+          </div>
+          <div class="detail-item">
+            <span class="d-icon">💧</span>
+            <span>${t('humidity')} ${humidity}%</span>
+          </div>
+          <div class="detail-item">
+            <span class="d-icon">💨</span>
+            <span>${t('wind')} ${windKmph} ${t('windUnit')}</span>
+          </div>
+          ${visibility ? `
+          <div class="detail-item">
+            <span class="d-icon">👁️</span>
+            <span>${t('visibility')} ${visibility} ${t('visUnit')}</span>
+          </div>
+          ` : ''}
+        </div>
+
+        ${forecasts.length > 0 ? `
+        <div class="forecast">
+          ${forecasts.map(f => `
+            <div class="forecast-item">
+              <span class="fday">${escapeHtml(f.day)}</span>
+              <span class="ficon">${f.icon}</span>
+              <span class="ftemp">${f.high}° / ${f.low}°</span>
+            </div>
+          `).join('')}
+        </div>` : ''}
+      `;
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str || '';
+      return div.innerHTML;
+    }
+
+    function startAutoRefresh() {
+      if (refreshInterval) clearInterval(refreshInterval);
+      const intervalMs = (config.refreshMinutes || 30) * 60 * 1000;
+      refreshInterval = setInterval(() => {
+        retryCount = 0;
+        fetchWeather();
+      }, intervalMs);
+    }
+
+    // Cleanup
+    window.addEventListener('beforeunload', () => {
+      if (refreshInterval) clearInterval(refreshInterval);
     });
   </script>
 </body>
