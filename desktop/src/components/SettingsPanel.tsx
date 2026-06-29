@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useI18n } from "../i18n";
-import type { Settings, AIConfig, QuotaMonitorConfig, QuotaMonitorModel, CareTone, WidgetManifest, WidgetPermission } from "../types";
+import type { Settings, AIConfig, QuotaMonitorConfig, QuotaMonitorModel, CareTone, WidgetManifest, WidgetPermission, UpdateChannel } from "../types";
 import {
   AUTO_CHANGE_INTERVALS,
   DEFAULT_GLOBAL_SHORTCUT,
@@ -22,6 +22,9 @@ import {
   hasHighRiskWidgetPermissions,
   WIDGET_PERMISSION_RISK,
 } from "../data/widgetPermissions";
+import { UpdateCard, UpdateDialog } from "./update";
+import { useAppUpdater } from "../hooks/useAppUpdater";
+import { version } from "../../package.json";
 
 const PROVIDER_PRESETS = [
   {
@@ -58,6 +61,8 @@ interface SettingsPanelProps {
   onLaunchOnStartupChange?: (enabled: boolean) => void;
   onCareToneChange?: (tone: CareTone) => void;
   onCareSettingsChange?: (partial: Partial<Settings>) => void;
+  onAutoCheckUpdatesChange?: (enabled: boolean) => void;
+  onUpdateChannelChange?: (channel: UpdateChannel) => void;
 }
 
 export function SettingsPanel({
@@ -71,10 +76,22 @@ export function SettingsPanel({
   onLaunchOnStartupChange,
   onCareToneChange,
   onCareSettingsChange,
+  onAutoCheckUpdatesChange,
+  onUpdateChannelChange,
 }: SettingsPanelProps) {
   const { t, lang, setLang } = useI18n();
   const [activeTab, setActiveTab] = useState<SettingsTab>("basics");
   const [statusMessage, setStatusMessage] = useState("");
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+
+  const {
+    state: updateState,
+    checkForUpdates,
+    downloadAndInstall,
+    skipVersion,
+    dismissVersion,
+    getReleaseUrl,
+  } = useAppUpdater(version);
 
   const [aiConfig, setAIConfig] = useState<AIConfig>(settings.ai ?? {
     enabled: false,
@@ -259,6 +276,17 @@ export function SettingsPanel({
               </div>
             </div>
           </div>
+
+          <UpdateCard
+            state={updateState}
+            autoCheckUpdates={settings.autoCheckUpdates ?? true}
+            updateChannel={settings.updateChannel ?? "stable"}
+            lastCheckAt={settings.lastUpdateCheckAt ?? 0}
+            onCheckUpdates={checkForUpdates}
+            onToggleAutoCheck={(enabled) => onAutoCheckUpdatesChange?.(enabled)}
+            onChannelChange={(channel) => onUpdateChannelChange?.(channel)}
+            onShowUpdateDialog={() => setShowUpdateDialog(true)}
+          />
         </>
       );
     }
@@ -631,6 +659,24 @@ export function SettingsPanel({
         </div>
         {renderSection()}
       </main>
+
+      <UpdateDialog
+        state={updateState}
+        isOpen={showUpdateDialog}
+        onUpdateNow={() => {
+          setShowUpdateDialog(false);
+          downloadAndInstall();
+        }}
+        onSkip={() => {
+          setShowUpdateDialog(false);
+          skipVersion();
+        }}
+        onLater={() => {
+          setShowUpdateDialog(false);
+          dismissVersion();
+        }}
+        getReleaseUrl={getReleaseUrl}
+      />
     </div>
   );
 }

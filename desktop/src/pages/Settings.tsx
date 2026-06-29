@@ -3,9 +3,9 @@ import { webviewWindow } from "@tauri-apps/api";
 import { emit } from "@tauri-apps/api/event";
 import { useI18n } from "../i18n";
 import { SettingsPanel } from "../components/SettingsPanel";
-import type { Settings as SettingsType, AIConfig, QuotaMonitorConfig, CareTone } from "../types";
+import type { Settings as SettingsType, AIConfig, QuotaMonitorConfig, CareTone, UpdateChannel } from "../types";
 import { DEFAULT_GLOBAL_SHORTCUT } from "../types";
-import { getSettings, saveSettings, updateAIConfig, updateQuotaMonitorConfig, updateHolidayEnabledCn, updateHolidayEnabledIntl, updateGlobalShortcut, updateCareTone, updateCareSettings } from "../services/storage";
+import { getSettings, saveSettings, updateAIConfig, updateQuotaMonitorConfig, updateHolidayEnabledCn, updateHolidayEnabledIntl, updateGlobalShortcut, updateCareTone, updateCareSettings, updateAutoCheckUpdates, updateUpdateChannel } from "../services/storage";
 import { setLaunchOnStartup, syncLaunchOnStartupSetting } from "../services/autostart";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -106,6 +106,26 @@ function Settings() {
     }
   }, []);
 
+  const handleAutoCheckUpdatesChange = useCallback(async (enabled: boolean) => {
+    try {
+      const updated = await updateAutoCheckUpdates(enabled);
+      setSettings(updated);
+      await emit("settings:changed");
+    } catch (err) {
+      console.error("Failed to update auto check updates:", err);
+    }
+  }, []);
+
+  const handleUpdateChannelChange = useCallback(async (channel: UpdateChannel) => {
+    try {
+      const updated = await updateUpdateChannel(channel);
+      setSettings(updated);
+      await emit("settings:changed");
+    } catch (err) {
+      console.error("Failed to update update channel:", err);
+    }
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -143,6 +163,8 @@ function Settings() {
       onLaunchOnStartupChange={handleLaunchOnStartupChange}
       onCareToneChange={handleCareToneChange}
       onCareSettingsChange={handleCareSettingsChange}
+      onAutoCheckUpdatesChange={handleAutoCheckUpdatesChange}
+      onUpdateChannelChange={handleUpdateChannelChange}
     />
   );
 }
