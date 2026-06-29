@@ -5,6 +5,7 @@ import Wall from "./pages/Wall";
 import Settings from "./pages/Settings";
 import Notification from "./pages/Notification";
 import { useI18n } from "./i18n";
+import { autoCheckForUpdates } from "./services/updater";
 import "./App.css";
 
 async function getWindowLabel(): Promise<string> {
@@ -26,6 +27,12 @@ function WindowRouter() {
   useEffect(() => {
     getWindowLabel().then(setWindowLabel);
   }, []);
+
+  useEffect(() => {
+    if (windowLabel === "main") {
+      autoCheckForUpdates();
+    }
+  }, [windowLabel]);
 
   if (windowLabel === null) {
     return <div className="loading">{t.loading}</div>;

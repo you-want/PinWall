@@ -30,6 +30,12 @@ const defaultSettings: Settings = {
   eyeCareInterval: 20,
   weatherCareEnabled: true,
   weatherCity: "",
+  // ── App Update defaults ──
+  autoCheckUpdates: true,
+  updateChannel: "stable",
+  skippedVersion: "",
+  lastUpdateCheckAt: 0,
+  lastUpdatePromptedVersion: "",
 };
 
 export async function getSettings(): Promise<Settings> {
@@ -65,6 +71,12 @@ export async function getSettings(): Promise<Settings> {
     if (parsed.eyeCareInterval === undefined) parsed.eyeCareInterval = 20;
     if (parsed.weatherCareEnabled === undefined) parsed.weatherCareEnabled = true;
     if (parsed.weatherCity === undefined) parsed.weatherCity = "";
+    // App Update backward compat
+    if (parsed.autoCheckUpdates === undefined) parsed.autoCheckUpdates = true;
+    if (!parsed.updateChannel) parsed.updateChannel = "stable";
+    if (!parsed.skippedVersion) parsed.skippedVersion = "";
+    if (parsed.lastUpdateCheckAt === undefined) parsed.lastUpdateCheckAt = 0;
+    if (!parsed.lastUpdatePromptedVersion) parsed.lastUpdatePromptedVersion = "";
     return parsed;
   } catch {
     return { ...defaultSettings };
@@ -218,6 +230,43 @@ export async function updateCareTone(tone: import("../types").CareTone): Promise
 export async function updateCareSettings(partial: Partial<Settings>): Promise<Settings> {
   const settings = await getSettings();
   Object.assign(settings, partial);
+  await saveSettings(settings);
+  return settings;
+}
+
+// ── App Update settings ─────────────────────────────────
+
+export async function updateAutoCheckUpdates(enabled: boolean): Promise<Settings> {
+  const settings = await getSettings();
+  settings.autoCheckUpdates = enabled;
+  await saveSettings(settings);
+  return settings;
+}
+
+export async function updateUpdateChannel(channel: string): Promise<Settings> {
+  const settings = await getSettings();
+  settings.updateChannel = channel;
+  await saveSettings(settings);
+  return settings;
+}
+
+export async function updateSkippedVersion(version: string): Promise<Settings> {
+  const settings = await getSettings();
+  settings.skippedVersion = version;
+  await saveSettings(settings);
+  return settings;
+}
+
+export async function updateLastUpdateCheckAt(timestamp: number): Promise<Settings> {
+  const settings = await getSettings();
+  settings.lastUpdateCheckAt = timestamp;
+  await saveSettings(settings);
+  return settings;
+}
+
+export async function updateLastUpdatePromptedVersion(version: string): Promise<Settings> {
+  const settings = await getSettings();
+  settings.lastUpdatePromptedVersion = version;
   await saveSettings(settings);
   return settings;
 }

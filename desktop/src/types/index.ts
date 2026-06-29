@@ -54,7 +54,51 @@ export interface Settings {
   weatherCareEnabled?: boolean; // 天气关怀开关，默认 true
   weatherCity?: string; // 天气城市
   lastWeatherCardDate?: string; // YYYY-MM-DD, tracks last weather card generation
+  // ── App Update features ──
+  autoCheckUpdates?: boolean; // 自动检测更新开关，默认 true
+  updateChannel?: string; // 更新通道，默认 "stable"
+  skippedVersion?: string; // 跳过的版本号
+  lastUpdateCheckAt?: number; // 上次检查更新时间戳
+  lastUpdatePromptedVersion?: string; // 上次提示的版本号
 }
+
+export type UpdateChannel = "stable" | "beta";
+
+export type UpdateStatus =
+  | "idle"
+  | "checking"
+  | "up-to-date"
+  | "available"
+  | "downloading"
+  | "installing"
+  | "pending-restart"
+  | "failed";
+
+export interface UpdateInfo {
+  version: string;
+  date: string;
+  body: string;
+  size?: number;
+}
+
+export interface UpdateProgress {
+  downloadedBytes: number;
+  totalBytes: number;
+  percentage: number;
+}
+
+export interface UpdateState {
+  status: UpdateStatus;
+  info?: UpdateInfo;
+  progress?: UpdateProgress;
+  error?: string;
+  currentVersion: string;
+}
+
+export const UPDATE_CHANNELS: { value: UpdateChannel; label: string; desc: string }[] = [
+  { value: "stable", label: "Stable", desc: "稳定版" },
+  { value: "beta", label: "Beta", desc: "测试版" },
+];
 
 export const DEFAULT_GLOBAL_SHORTCUT = "CommandOrControl+Shift+Space";
 

@@ -69,5 +69,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/rain9/pinwall/releases/download/latest/{{target}}-update.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IGZpbGU6c3ByaW5nLXNpZ25hdHVyZS5zaWcK"
+    }
   }
 }
