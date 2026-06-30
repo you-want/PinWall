@@ -105,6 +105,10 @@ jobs:
         with:
           args: --target ${{ matrix.target }}
           projectPath: desktop
+          certificatePassword: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          certificate: ${{ secrets.APPLE_CERTIFICATE }}
+          appleId: ${{ secrets.APPLE_ID }}
+          appleIdPassword: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
 
       - name: Debug - list bundle output
         run: |
@@ -188,6 +192,12 @@ jobs:
           # Unmount DMGs
           hdiutil detach aarch64-mount -quiet
           hdiutil detach x86_64-mount -quiet
+
+          # Re-sign the universal binary if signing identity is available
+          if [ -n "${{ secrets.APPLE_CERTIFICATE }}" ]; then
+            echo "Re-signing universal binary..."
+            codesign --force --deep --sign "${{ secrets.APPLE_SIGNING_IDENTITY }}" "Universal-$APP_NAME"
+          fi
 
           # Create universal DMG
           hdiutil create -volname "PinWall" \

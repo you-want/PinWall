@@ -68,12 +68,20 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "macOS": {
+      "signingIdentity": "Apple Development: YOUR_NAME (YOUR_TEAM_ID)",
+      "entitlements": "tauri.entitlements",
+      "exceptionDomain": "",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "notarize": true
+    }
   },
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/rain9/pinwall/releases/download/latest/{{target}}-update.json"
+        "https://github.com/you-want/PinWall/releases/download/latest/{{target}}-update.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IGZpbGU6c3ByaW5nLXNpZ25hdHVyZS5zaWcK"
     }
