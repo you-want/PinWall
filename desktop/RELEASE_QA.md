@@ -75,8 +75,9 @@ Current local note:
 
 ## Desktop Behavior
 
-- [ ] Clicking blank desktop/window area sends PinWall back behind normal desktop interactions.
-- [ ] Floating buttons and cards remain interactive when the app is summoned.
+- [ ] Default/bottom state: the main window stays on the desktop layer, and blank areas click through to desktop icons or lower windows.
+- [ ] Summoned/top state: clicking a blank area is captured by PinWall and sends the main window back to the default/bottom state.
+- [ ] Summoned/top state: clicking cards, floating buttons, widgets, stack panels, or modals does not send the main window back.
 - [ ] `Cmd+Shift+Space` toggles the main window state.
 - [ ] `Cmd+Shift+A` arranges cards.
 - [ ] `Cmd+Shift+B` opens the breathing guide.

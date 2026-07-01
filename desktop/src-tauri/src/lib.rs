@@ -50,6 +50,7 @@ pub fn run() {
             commands::quit_app,
             window_layer::send_to_background,
             window_layer::summon_main,
+            window_layer::is_main_summoned,
             window_layer::set_cursor_passthrough,
             background::import_background_images,
             background::delete_background_image_file,
