@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { webviewWindow } from "@tauri-apps/api";
 
@@ -27,6 +26,7 @@ import { useRestReminder } from "../hooks/useRestReminder";
 import { useOffWorkReminder } from "../hooks/useOffWorkReminder";
 import { useEyeCareReminder } from "../hooks/useEyeCareReminder";
 import { useMoodCheckin } from "../hooks/useMoodCheckin";
+import { useDesktopClickThrough } from "../hooks/useDesktopClickThrough";
 import type { CardType } from "../types";
 import { useWidgetStore } from "../stores/widgetStore";
 
@@ -37,6 +37,7 @@ type NewCardState =
 function Wall() {
   const { t } = useI18n();
   const [settings, setSettings] = useState<Settings | null>(null);
+  const hasSettings = !!settings;
   const [newCardModal, setNewCardModal] = useState<NewCardState>({ open: false });
   const [showBreathing, setShowBreathing] = useState(false);
   const newCardPositionRef = useRef({ x: 0, y: 0 });
@@ -70,6 +71,7 @@ function Wall() {
   useOffWorkReminder();
   useEyeCareReminder();
   useMoodCheckin();
+  useDesktopClickThrough(hasSettings);
 
   const { results: quotaResults, loading: quotaLoading, refresh: quotaRefresh } =
     useQuotaMonitor(settings?.quotaMonitor);
@@ -107,19 +109,6 @@ function Wall() {
       }
     });
   }, [syncWidgets]);
-
-  useEffect(() => {
-    const handleMouseDown = async (e: MouseEvent) => {
-      if (e.button !== 0) return;
-      const el = document.elementFromPoint(e.clientX, e.clientY);
-      const isBlankArea = !el || !el.closest("[data-interactive]");
-      if (isBlankArea) {
-        await invoke('send_to_background');
-      }
-    };
-    document.addEventListener('mousedown', handleMouseDown);
-    return () => document.removeEventListener('mousedown', handleMouseDown);
-  }, []);
 
   const openNewCardModal = useCallback(() => {
     const centerX = window.innerWidth / 2 - 190;
@@ -175,7 +164,6 @@ function Wall() {
     setNewCardModal({ open: false });
   }, []);
 
-  const hasSettings = !!settings;
   const quotaConfig = settings?.quotaMonitor;
   const showQuotaCard = !!(quotaConfig?.enabled && quotaConfig.models.length > 0);
   const showWeatherCard = !!settings?.weatherCareEnabled;

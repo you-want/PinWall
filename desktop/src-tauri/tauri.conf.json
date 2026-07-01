@@ -73,9 +73,7 @@
       "signingIdentity": "Apple Development: YOUR_NAME (YOUR_TEAM_ID)",
       "entitlements": "tauri.entitlements",
       "exceptionDomain": "",
-      "hardenedRuntime": true,
-      "gatekeeperAssess": false,
-      "notarize": true
+      "hardenedRuntime": true
     }
   },
   "plugins": {

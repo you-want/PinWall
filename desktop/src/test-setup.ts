@@ -14,7 +14,13 @@ vi.mock('@tauri-apps/api', () => ({
 }));
 
 vi.mock('@tauri-apps/api/core', () => ({
-  invoke: vi.fn(),
+  invoke: vi.fn(() => Promise.resolve(false)),
+}));
+
+vi.mock('@tauri-apps/api/window', () => ({
+  getCurrentWindow: vi.fn(() => ({
+    setIgnoreCursorEvents: vi.fn(() => Promise.resolve()),
+  })),
 }));
 
 vi.mock('@tauri-apps/plugin-dialog', () => ({
