@@ -35,12 +35,12 @@ pnpm tauri:build:app
 当前桌面端通过 GitHub Actions 自动打包并发布到 GitHub Releases。
 
 ```bash
-# 发布 0.1.1
-git tag v0.1.1
-git push origin v0.1.1
+# 发布当前版本（版本号必须与 package.json 和 Tauri 配置一致）
+git tag v0.1.3
+git push origin v0.1.3
 ```
 
-发布流程见 [RELEASE_PROCESS.md](./RELEASE_PROCESS.md)，发布说明保存在 [releases/v0.1.1.md](./releases/v0.1.1.md)。
+发布流程见 [RELEASE_PROCESS.md](./RELEASE_PROCESS.md)，正式发布说明保存在 [`releases/`](./releases/)。
 
 ## 技术栈
 
@@ -58,7 +58,7 @@ git push origin v0.1.1
 3. 将健康提醒、背景、自定义外观作为增强能力。
 4. Widget、Marketplace、开发者门户先作为实验方向，不抢占 0.1 主线。
 
-详细规划见 [DESKTOP_ROADMAP.md](./DESKTOP_ROADMAP.md)。
+具体开发约定与生产化优先级见 [AGENTS.md](./AGENTS.md)。
 
 ## 项目结构
 

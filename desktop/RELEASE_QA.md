@@ -35,12 +35,7 @@ cd desktop
 pnpm tauri build
 ```
 
-The full bundle should produce a DMG under `desktop/src-tauri/target/release/bundle/dmg/`. If the app bundle succeeds but DMG creation fails with a local `hdiutil` error, treat it as a packaging-environment issue and verify the full DMG path in GitHub Actions before publishing.
-
-Current local note:
-
-- `pnpm tauri:build:app` succeeds and produces `PinWall.app`.
-- A local full `pnpm tauri build` reached the DMG stage but failed at `hdiutil create` with `设备未配置`. The app bundle itself was produced successfully. Re-check DMG creation on GitHub Actions or another macOS packaging environment before publishing.
+The full bundle should produce a DMG under `desktop/src-tauri/target/release/bundle/dmg/`. A successful `.app` build does not replace DMG verification; public releases must confirm the final artifacts in GitHub Actions.
 
 ## Fresh Install
 
