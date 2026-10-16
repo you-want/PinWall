@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { createTauriStore } from "@tauri-store/zustand";
+import { createAppStore } from "../services/appStore";
 
 export interface MoodEntry {
   date: string;       // YYYY-MM-DD
@@ -36,7 +36,6 @@ export const useMoodStore = create<MoodState>((set, get) => ({
   },
 }));
 
-export const moodTauriHandler = createTauriStore("mood", useMoodStore, {
-  autoStart: true,
+export const moodTauriHandler = createAppStore("mood", useMoodStore, {
   saveOnChange: true,
 });

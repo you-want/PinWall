@@ -35,6 +35,7 @@ vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn().mockImplementation((cmd: string, args?: any) => {
     if (cmd === 'read_widget_storage') return Promise.resolve({ testKey: 'testValue' });
     if (cmd === 'write_widget_storage') return Promise.resolve();
+    if (cmd === 'get_app_version') return Promise.resolve('0.1.3');
     if (cmd === 'get_system_info') {
       if (args?.category === 'getBattery') return Promise.resolve({ level: 0.85, charging: false });
       if (args?.category === 'getMemoryInfo') return Promise.resolve({ total: 17179869184, used: 8589934592, free: 8589934592 });
@@ -281,8 +282,10 @@ describe('widgetBridge', () => {
 
   describe('network module (with permission)', () => {
     beforeEach(() => {
+      const mockHeaders = new Map<string, string>([['content-type', 'application/json']]);
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
         status: 200,
+        headers: { get: (k: string) => mockHeaders.get(k) ?? null },
         json: vi.fn().mockResolvedValue({ ok: true }),
       }));
     });
@@ -301,6 +304,7 @@ describe('widgetBridge', () => {
         method: 'GET',
         headers: {},
         credentials: 'omit',
+        redirect: 'manual',
       });
     });
 
@@ -328,6 +332,7 @@ describe('widgetBridge', () => {
         },
         body: JSON.stringify({ hello: 'world' }),
         credentials: 'omit',
+        redirect: 'manual',
       });
     });
 
@@ -381,7 +386,7 @@ describe('widgetBridge', () => {
       const res = await handleBridgeRequest(req, manifest);
 
       expect(res.success).toBe(true);
-      expect(res.data).toBe('0.1.1');
+      expect(res.data).toBe('0.1.3');
     });
 
     it('returns app locale', async () => {

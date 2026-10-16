@@ -2,11 +2,12 @@ import { check, type DownloadEvent } from "@tauri-apps/plugin-updater";
 import type { UpdateInfo, UpdateProgress, UpdateState, UpdateStatus } from "../../types";
 import { getSettings, updateLastUpdateCheckAt, updateSkippedVersion, updateLastUpdatePromptedVersion } from "../storage";
 
-const RELEASE_URL = "https://github.com/rain9/pinwall/releases";
+import { IN_APP_UPDATES_ENABLED, RELEASE_URL } from "./policy";
+import { version } from "../../../package.json";
 
 let currentState: UpdateState = {
   status: "idle",
-  currentVersion: "__APP_VERSION__",
+  currentVersion: version,
 };
 
 let stateListeners: Set<(state: UpdateState) => void> = new Set();
@@ -51,6 +52,7 @@ export function subscribeToUpdates(listener: (state: UpdateState) => void): () =
 }
 
 export async function checkForUpdates(manual = false): Promise<UpdateState> {
+  if (!IN_APP_UPDATES_ENABLED) return getUpdateState();
   try {
     console.log("[Updater] Starting checkForUpdates, manual:", manual);
     setStatus("checking");
@@ -111,6 +113,7 @@ export async function checkForUpdates(manual = false): Promise<UpdateState> {
 }
 
 export async function downloadAndInstall(): Promise<UpdateState> {
+  if (!IN_APP_UPDATES_ENABLED) return getUpdateState();
   try {
     setStatus("downloading");
     
@@ -185,6 +188,7 @@ export function getReleaseUrl(): string {
 }
 
 export async function autoCheckForUpdates(): Promise<void> {
+  if (!IN_APP_UPDATES_ENABLED) return;
   try {
     const settings = await getSettings();
     

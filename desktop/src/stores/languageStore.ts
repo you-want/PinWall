@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { createTauriStore } from "@tauri-store/zustand";
+import { createAppStore } from "../services/appStore";
 
 export type Lang = "zh" | "en";
 
@@ -22,7 +22,6 @@ export const useLanguageStore = create<LanguageState>((set) => ({
   setLang: (lang) => set({ lang }),
 }));
 
-export const languageTauriHandler = createTauriStore("language", useLanguageStore, {
-  autoStart: true,
+export const languageTauriHandler = createAppStore("language", useLanguageStore, {
   saveOnChange: true,
 });

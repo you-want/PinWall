@@ -4,6 +4,7 @@ import { useLanguageStore } from "../stores/languageStore";
 import { getToneMessage, restReminder } from "../data/careTones";
 import type { CareTone } from "../types";
 import { showSystemReminder } from "../services/systemReminderService";
+import { reminderScheduler } from "../services/reminderScheduler";
 
 /**
  * Tracks how long the app has been running and periodically
@@ -15,7 +16,7 @@ export function useRestReminder() {
 
   useEffect(() => {
     // Check every minute
-    const interval = setInterval(async () => {
+    const unsubscribe = reminderScheduler.subscribe(async () => {
       try {
         const settings = await getSettings();
         if (!settings.restReminderEnabled) return;
@@ -49,6 +50,6 @@ export function useRestReminder() {
       }
     }, 60_000);
 
-    return () => clearInterval(interval);
+    return unsubscribe;
   }, []);
 }

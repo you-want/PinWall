@@ -25,6 +25,7 @@ import {
 import { UpdateCard, UpdateDialog } from "./update";
 import { useAppUpdater } from "../hooks/useAppUpdater";
 import { version } from "../../package.json";
+import { NoteBackup } from "./NoteBackup";
 
 const PROVIDER_PRESETS = [
   {
@@ -287,6 +288,7 @@ export function SettingsPanel({
             onChannelChange={(channel) => onUpdateChannelChange?.(channel)}
             onShowUpdateDialog={() => setShowUpdateDialog(true)}
           />
+          <NoteBackup />
         </>
       );
     }
@@ -503,6 +505,7 @@ export function SettingsPanel({
           description={lang === "zh" ? "AI、额度监控和本地 Widget。后续版本再开放市场生态。" : "AI, quota monitor, and local widgets. Marketplace comes later."}
           summary={lang === "zh" ? "默认折叠高级配置" : "Advanced config stays collapsed"}
         />
+        <p className="text-xs text-white/55 mb-4">{t.credentials_storage}</p>
 
         <div className="ap-group">
           <div className="ap-group-label">{t.ai_settings_title}</div>
@@ -719,7 +722,7 @@ function ToggleRow({
         {description && <div className="mt-1 text-xs text-white/45">{description}</div>}
       </div>
       <label className="ap-switch">
-        <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+        <input type="checkbox" aria-label={label} checked={checked} onChange={(e) => onChange(e.target.checked)} />
         <span className="ap-switch-track"><span className="ap-switch-thumb" /></span>
       </label>
     </div>

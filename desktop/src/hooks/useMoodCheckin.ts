@@ -5,6 +5,7 @@ import { useLanguageStore } from "../stores/languageStore";
 import { getToneMessage, moodCheckinPrompt } from "../data/careTones";
 import { DEFAULT_MOOD_CHECKIN_TIMES, type CareTone } from "../types";
 import { showSystemReminder } from "../services/systemReminderService";
+import { reminderScheduler } from "../services/reminderScheduler";
 
 /**
  * Checks at configured mood check-in times and shows a mood prompt notification
@@ -14,7 +15,7 @@ export function useMoodCheckin() {
   const lastPromptRef = useRef("");
 
   useEffect(() => {
-    const interval = setInterval(async () => {
+    const unsubscribe = reminderScheduler.subscribe(async () => {
       try {
         const settings = await getSettings();
         if (!settings.moodCheckinEnabled) return;
@@ -64,6 +65,6 @@ export function useMoodCheckin() {
       }
     }, 60_000);
 
-    return () => clearInterval(interval);
+    return unsubscribe;
   }, []);
 }

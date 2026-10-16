@@ -4,6 +4,7 @@ import { useCardStore } from "../stores/cardStore";
 import { useLanguageStore } from "../stores/languageStore";
 import { getToneMessage, hydrationReminder, hydrationCelebration } from "../data/careTones";
 import type { CareTone } from "../types";
+import { reminderScheduler } from "../services/reminderScheduler";
 
 /**
  * Periodically reminds the user to drink water if they have a hydration card
@@ -46,7 +47,7 @@ export function useHydrationReminder() {
     })();
 
     // Check every 30 minutes if user needs a hydration reminder
-    const interval = setInterval(async () => {
+    const unsubscribe = reminderScheduler.subscribe(async () => {
       try {
         const settings = await getSettings();
         const cards = useCardStore.getState().cards;
@@ -85,6 +86,6 @@ export function useHydrationReminder() {
       }
     }, 30 * 60_000);
 
-    return () => clearInterval(interval);
+    return unsubscribe;
   }, []);
 }

@@ -29,7 +29,8 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
   const { setPosition, bringToFront, setSize, uninstallWidget, updateSettings } =
     useWidgetStore();
   const iframeSrc = getWidgetFrameUrl(manifest);
-  const targetOrigin = entryHtml ? "*" : new URL(iframeSrc).origin;
+  const frameOrigin = new URL(iframeSrc).origin;
+  const targetOrigin = entryHtml || frameOrigin === "null" ? "*" : frameOrigin;
 
   useEffect(() => {
     let cancelled = false;
@@ -118,11 +119,12 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
 
     const onLoad = () => {
       sendReady();
-      window.setTimeout(sendReady, 120);
+      window.clearTimeout(readyTimer);
+      readyTimer = window.setTimeout(sendReady, 120);
     };
 
     iframe.addEventListener("load", onLoad);
-    const readyTimer = window.setTimeout(sendReady, 120);
+    let readyTimer = window.setTimeout(sendReady, 120);
     return () => {
       window.clearTimeout(readyTimer);
       iframe.removeEventListener("load", onLoad);

@@ -1,5 +1,8 @@
 import { useI18n } from "../../i18n";
 import type { UpdateState, UpdateChannel } from "../../types";
+import { useState } from "react";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { IN_APP_UPDATES_ENABLED, RELEASE_URL } from "../../services/updater/policy";
 
 interface UpdateCardProps {
   state: UpdateState;
@@ -23,6 +26,22 @@ export function UpdateCard({
   onShowUpdateDialog,
 }: UpdateCardProps) {
   const { t, lang } = useI18n();
+  const [openFailed, setOpenFailed] = useState(false);
+
+  if (!IN_APP_UPDATES_ENABLED) return (
+    <div className="ap-group">
+      <div className="ap-group-label">{t.update_title}</div>
+      <div className="ap-card ap-field">
+        <p className="ap-row-label">{t.update_current_version}: v{state.currentVersion}</p>
+        <p className="mt-2 text-xs text-white/60">{t.update_manual_only}</p>
+        <button className="ap-btn mt-3" onClick={() => {
+          setOpenFailed(false);
+          void openUrl(RELEASE_URL).catch(() => setOpenFailed(true));
+        }}>{t.update_btn_open_download}</button>
+        {openFailed && <p className="mt-2 text-xs text-white/60" role="alert">{t.update_open_failed} {RELEASE_URL}</p>}
+      </div>
+    </div>
+  );
 
   const formatLastCheck = (timestamp: number) => {
     if (!timestamp) return t.update_status_idle;

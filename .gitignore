@@ -29,6 +29,13 @@ lerna-debug.log*
 !.env.example
 !.env.template
 
+# E2E Tests
+**/playwright-report/
+**/test-results/
+desktop/beta-artifacts/
+desktop/check-tauri.mjs
+desktop/debug-playwright.mjs
+
 # Python
 __pycache__/
 *.py[cod]

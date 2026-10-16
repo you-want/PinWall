@@ -4,6 +4,7 @@ import { useLanguageStore } from "../stores/languageStore";
 import { getToneMessage, offWorkReminder, overtimeCare } from "../data/careTones";
 import type { CareTone } from "../types";
 import { showSystemReminder } from "../services/systemReminderService";
+import { reminderScheduler } from "../services/reminderScheduler";
 
 /**
  * Checks the current time against the user's configured off-work time.
@@ -15,7 +16,7 @@ export function useOffWorkReminder() {
   const overtimeCountRef = useRef(0);
 
   useEffect(() => {
-    const interval = setInterval(async () => {
+    const unsubscribe = reminderScheduler.subscribe(async () => {
       try {
         const settings = await getSettings();
         if (!settings.offWorkReminderEnabled) return;
@@ -81,6 +82,6 @@ export function useOffWorkReminder() {
       }
     }, 60_000);
 
-    return () => clearInterval(interval);
+    return unsubscribe;
   }, []);
 }

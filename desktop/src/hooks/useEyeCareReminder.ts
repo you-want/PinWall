@@ -4,6 +4,7 @@ import { useLanguageStore } from "../stores/languageStore";
 import { getToneMessage, eyeCareReminder } from "../data/careTones";
 import type { CareTone } from "../types";
 import { showSystemReminder } from "../services/systemReminderService";
+import { reminderScheduler } from "../services/reminderScheduler";
 
 /**
  * Lightweight eye care reminder based on the 20-20-20 rule.
@@ -14,7 +15,7 @@ export function useEyeCareReminder() {
   const lastFiredRef = useRef(Date.now());
 
   useEffect(() => {
-    const interval = setInterval(async () => {
+    const unsubscribe = reminderScheduler.subscribe(async () => {
       try {
         const settings = await getSettings();
         if (!settings.eyeCareEnabled) return;
@@ -45,6 +46,6 @@ export function useEyeCareReminder() {
       }
     }, 60_000);
 
-    return () => clearInterval(interval);
+    return unsubscribe;
   }, []);
 }

@@ -1,32 +1,32 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/tauri';
 
 test.describe('PinWall E2E Tests', () => {
   test('page loads', async ({ page }) => {
-    await page.goto('http://localhost:1930');
+    await page.goto('/');
     await expect(page.locator('.app-container')).toBeVisible();
   });
 
   test('renders wall content after startup', async ({ page }) => {
-    await page.goto('http://localhost:1930');
+    await page.goto('/');
     await expect(page.locator('.loading')).not.toBeVisible();
     await expect(page.locator('.empty-hint, .pin-card, .wall-side-panel').first()).toBeVisible();
   });
 
   test('floating buttons are visible', async ({ page }) => {
-    await page.goto('http://localhost:1930');
+    await page.goto('/');
     const floatingButtons = page.locator('.floating-buttons');
     await expect(floatingButtons).toBeVisible();
   });
 
   test('new card modal opens when clicking + button', async ({ page }) => {
-    await page.goto('http://localhost:1930');
+    await page.goto('/');
     const addButton = page.locator('.floating-add-btn');
     await addButton.click();
     await expect(page.locator('.modal-overlay-v2')).toBeVisible();
   });
 
   test('new card modal has title and content inputs', async ({ page }) => {
-    await page.goto('http://localhost:1930');
+    await page.goto('/');
     await page.locator('.floating-add-btn').click();
 
     const titleInput = page.locator('#card-title');
@@ -38,7 +38,7 @@ test.describe('PinWall E2E Tests', () => {
   });
 
   test('new card modal has color dots', async ({ page }) => {
-    await page.goto('http://localhost:1930');
+    await page.goto('/');
     await page.locator('.floating-add-btn').click();
 
     const colorDots = page.locator('.color-dot-v2');
@@ -46,7 +46,7 @@ test.describe('PinWall E2E Tests', () => {
   });
 
   test('new card modal has create and cancel buttons', async ({ page }) => {
-    await page.goto('http://localhost:1930');
+    await page.goto('/');
     await page.locator('.floating-add-btn').click();
 
     const createBtn = page.locator('.btn-v2-primary');
@@ -57,7 +57,7 @@ test.describe('PinWall E2E Tests', () => {
   });
 
   test('cancel button closes modal', async ({ page }) => {
-    await page.goto('http://localhost:1930');
+    await page.goto('/');
     await page.locator('.floating-add-btn').click();
     await expect(page.locator('.modal-overlay-v2')).toBeVisible();
 
@@ -66,7 +66,7 @@ test.describe('PinWall E2E Tests', () => {
   });
 
   test('modal closes when clicking overlay', async ({ page }) => {
-    await page.goto('http://localhost:1930');
+    await page.goto('/');
     await page.locator('.floating-add-btn').click();
     await expect(page.locator('.modal-overlay-v2')).toBeVisible();
 
@@ -75,7 +75,7 @@ test.describe('PinWall E2E Tests', () => {
   });
 
   test('can type in title input', async ({ page }) => {
-    await page.goto('http://localhost:1930');
+    await page.goto('/');
     await page.locator('.floating-add-btn').click();
 
     const titleInput = page.locator('#card-title');
@@ -85,7 +85,7 @@ test.describe('PinWall E2E Tests', () => {
   });
 
   test('can type in content textarea', async ({ page }) => {
-    await page.goto('http://localhost:1930');
+    await page.goto('/');
     await page.locator('.floating-add-btn').click();
 
     const contentTextarea = page.locator('#card-content');
@@ -94,7 +94,7 @@ test.describe('PinWall E2E Tests', () => {
   });
 
   test('color dot selection works', async ({ page }) => {
-    await page.goto('http://localhost:1930');
+    await page.goto('/');
     await page.locator('.floating-add-btn').click();
 
     const colorDots = page.locator('.color-dot-v2');
@@ -103,7 +103,7 @@ test.describe('PinWall E2E Tests', () => {
   });
 
   test('card type tabs are visible', async ({ page }) => {
-    await page.goto('http://localhost:1930');
+    await page.goto('/');
     await page.locator('.floating-add-btn').click();
 
     const typeTabs = page.locator('.type-tab');
@@ -111,7 +111,7 @@ test.describe('PinWall E2E Tests', () => {
   });
 
   test('create button is visible and enabled', async ({ page }) => {
-    await page.goto('http://localhost:1930');
+    await page.goto('/');
     await page.locator('.floating-add-btn').click();
 
     const createBtn = page.locator('.btn-v2-primary');

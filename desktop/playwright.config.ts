@@ -14,7 +14,8 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:1930',
+    baseURL: 'http://localhost:1932',
+    locale: 'en-US',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -28,9 +29,9 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'pnpm dev',
-    port: 1930,
-    reuseExistingServer: !process.env.CI,
+    command: 'pnpm dev --port 1932',
+    port: 1932,
+    reuseExistingServer: false,
     timeout: 30000,
   },
 });
