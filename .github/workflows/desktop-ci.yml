@@ -3,7 +3,7 @@ name: Desktop CI
 on:
   push:
     branches:
-      - main
+      - '**'
     paths:
       - 'desktop/**'
       - '.github/workflows/desktop-ci.yml'
@@ -35,7 +35,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
           cache-dependency-path: desktop/pnpm-lock.yaml
 
@@ -47,9 +47,28 @@ jobs:
       - name: Run frontend unit tests
         run: pnpm test:run
 
+      - name: Test beta release validation
+        run: node --test scripts/release-preflight.test.mjs
+
       - name: Build frontend bundle
         run: pnpm build
 
+      - name: Install browser for UI regression tests
+        run: pnpm exec playwright install chromium
+
+      - name: Run browser UI and persistence regression tests
+        run: pnpm test:e2e
+
+      - name: Upload browser test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-playwright-report
+          path: |
+            desktop/playwright-report/
+            desktop/test-results/
+          retention-days: 7
+
       - name: Run Rust tests
-        run: cargo test
+        run: cargo test --locked
         working-directory: desktop/src-tauri

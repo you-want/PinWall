@@ -1,254 +1,158 @@
 name: Release
 
+# Stable releases stay disabled until signing/notarization and updater validation.
+# Beta automation creates a draft; it never publishes or replaces Latest.
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*-beta.*'
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag, for example v0.1.1'
+        description: 'Existing beta tag, for example v0.1.4-beta.1'
         required: true
         type: string
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: beta-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   preflight:
-    name: Preflight
+    name: Verify beta source and tests
     runs-on: macos-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      commit: ${{ steps.commit.outputs.sha }}
     defaults:
       run:
         working-directory: desktop
-
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-          cache-dependency-path: desktop/pnpm-lock.yaml
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Verify release version
+      - name: Validate requested tag
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            TAG="${{ inputs.tag }}"
-          fi
-          VERSION="${TAG#v}"
-          node -e "const fs=require('fs'); const pkg=require('./package.json'); const tauri=require('./src-tauri/tauri.conf.json'); if (pkg.version !== '$VERSION') throw new Error('package.json version mismatch: '+pkg.version+' !== $VERSION'); if (tauri.version !== '$VERSION') throw new Error('tauri.conf.json version mismatch: '+tauri.version+' !== $VERSION');"
-          grep -q '^version = "'$VERSION'"' src-tauri/Cargo.toml
-          test -f "releases/${TAG}.md"
-
-      - name: Run frontend unit tests
-        run: pnpm test:run
-
-      - name: Build frontend bundle
-        run: pnpm build
-
-      - name: Run Rust tests
-        run: cargo test
-        working-directory: desktop/src-tauri
-
-  build-macos:
-    needs: preflight
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: aarch64-apple-darwin
-            arch: aarch64
-          - target: x86_64-apple-darwin
-            arch: x86_64
-
-    runs-on: macos-latest
-    defaults:
-      run:
-        working-directory: desktop
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-          cache-dependency-path: desktop/pnpm-lock.yaml
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-
-      - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
-
-      - uses: tauri-apps/tauri-action@v0
-        with:
-          args: --target ${{ matrix.target }}
-          projectPath: desktop
-          certificatePassword: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          certificate: ${{ secrets.APPLE_CERTIFICATE }}
-          appleId: ${{ secrets.APPLE_ID }}
-          appleIdPassword: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-
-      - name: Debug - list bundle output
-        run: |
-          echo "=== bundle dir ==="
-          find src-tauri/target/release/bundle -maxdepth 3 2>/dev/null || echo "not found at release"
-          find src-tauri/target/${{ matrix.target }}/release/bundle -maxdepth 3 2>/dev/null || echo "not found at target"
-
-      - name: Upload DMG artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-${{ matrix.arch }}
-          path: |
-            desktop/src-tauri/target/release/bundle/dmg/*.dmg
-            desktop/src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
-
-  macos-universal:
-    needs: build-macos
-    runs-on: macos-latest
-
-    steps:
-      - name: Download aarch64 artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-aarch64
-          path: macos-aarch64
-
-      - name: Download x86_64 artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-x86_64
-          path: macos-x86_64
-
-      - name: Create universal binary and DMG
-        run: |
-          set -euo pipefail
-
-          # Find DMG files
-          AARCH64_DMG=$(find macos-aarch64 -name "*.dmg" | head -1)
-          X86_64_DMG=$(find macos-x86_64 -name "*.dmg" | head -1)
-
-          echo "aarch64 DMG: $AARCH64_DMG"
-          echo "x86_64 DMG: $X86_64_DMG"
-
-          if [ -z "$AARCH64_DMG" ] || [ -z "$X86_64_DMG" ]; then
-            echo "ERROR: DMG files not found"
-            find macos-aarch64 macos-x86_64 -type f
+          if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-beta\.(0|[1-9][0-9]*)$ ]]; then
+            echo 'Only vX.Y.Z-beta.N draft releases are enabled.' >&2
             exit 1
           fi
-
-          # Mount DMGs and extract .app
-          mkdir -p aarch64-mount x86_64-mount
-
-          hdiutil attach "$AARCH64_DMG" -mountpoint aarch64-mount -nobrowse -quiet
-          hdiutil attach "$X86_64_DMG" -mountpoint x86_64-mount -nobrowse -quiet
-
-          # Find .app inside mounted DMGs
-          AARCH64_APP=$(find aarch64-mount -name "*.app" -type d -maxdepth 1 | head -1)
-          X86_64_APP=$(find x86_64-mount -name "*.app" -type d -maxdepth 1 | head -1)
-
-          echo "aarch64 .app: $AARCH64_APP"
-          echo "x86_64 .app: $X86_64_APP"
-
-          APP_NAME=$(basename "$AARCH64_APP")
-
-          # Detect actual binary name inside Contents/MacOS/
-          BINARY_NAME=$(ls "$AARCH64_APP/Contents/MacOS/" | head -1)
-          echo "Binary name: $BINARY_NAME"
-
-          # Copy aarch64 .app as base for universal
-          cp -R "$AARCH64_APP" "Universal-$APP_NAME"
-
-          # Merge binaries with lipo
-          lipo -create \
-            "$AARCH64_APP/Contents/MacOS/$BINARY_NAME" \
-            "$X86_64_APP/Contents/MacOS/$BINARY_NAME" \
-            -output "Universal-$APP_NAME/Contents/MacOS/$BINARY_NAME"
-
-          echo "Universal binary:"
-          lipo -info "Universal-$APP_NAME/Contents/MacOS/$BINARY_NAME"
-
-          # Unmount DMGs
-          hdiutil detach aarch64-mount -quiet
-          hdiutil detach x86_64-mount -quiet
-
-          # Re-sign the universal binary if signing identity is available
-          if [ -n "${{ secrets.APPLE_CERTIFICATE }}" ]; then
-            echo "Re-signing universal binary..."
-            codesign --force --deep --sign "${{ secrets.APPLE_SIGNING_IDENTITY }}" "Universal-$APP_NAME"
-          fi
-
-          # Create universal DMG
-          hdiutil create -volname "PinWall" \
-            -srcfolder "Universal-$APP_NAME" \
-            -ov -format UDZO \
-            "PinWall-universal.dmg"
-
-          echo "Done! Universal DMG:"
-          ls -lh PinWall-universal.dmg
-
-      - name: Upload universal DMG
-        uses: actions/upload-artifact@v4
+        working-directory: .
+      - uses: actions/checkout@v4
         with:
-          name: macos-universal
-          path: PinWall-universal.dmg
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: desktop/pnpm-lock.yaml
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Pin the verified source commit
+        id: commit
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - run: pnpm install --frozen-lockfile
+      - run: node --test scripts/release-preflight.test.mjs
+      - name: Verify release version and notes
+        id: version
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: node scripts/release-preflight.mjs "$RELEASE_TAG"
+      - run: pnpm test:run
+      - run: pnpm build
+      - run: pnpm exec playwright install chromium
+      - run: pnpm test:e2e
+      - run: cargo test --locked
+        working-directory: desktop/src-tauri
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: beta-test-failures
+          path: |
+            desktop/playwright-report/
+            desktop/test-results/
+          retention-days: 7
 
-  publish:
-    needs: macos-universal
-    runs-on: ubuntu-latest
-
+  build-macos:
+    name: Build universal macOS beta
+    needs: preflight
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: desktop
     steps:
       - uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
         with:
-          path: artifacts
-
-      - name: List artifacts
-        run: find artifacts -type f
-
-      - name: Resolve release tag
-        id: release
+          ref: ${{ needs.preflight.outputs.commit }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: desktop/pnpm-lock.yaml
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - run: pnpm install --frozen-lockfile
+      # Tauri merges architectures before signing; never splice signed DMGs.
+      - run: pnpm tauri build --target universal-apple-darwin --bundles dmg --ci
+      - name: Verify app signature and both architectures
         run: |
-          TAG="${GITHUB_REF_NAME}"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            TAG="${{ inputs.tag }}"
-          fi
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
+          set -euo pipefail
+          APP=src-tauri/target/universal-apple-darwin/release/bundle/macos/PinWall.app
+          codesign --verify --deep --strict "$APP"
+          lipo -verify_arch arm64 x86_64 "$APP/Contents/MacOS/desktop"
+      - name: Stage release files and checksums
+        run: |
+          set -euo pipefail
+          mkdir -p beta-artifacts
+          cp src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg beta-artifacts/
+          cd beta-artifacts
+          shasum -a 256 *.dmg > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ steps.release.outputs.tag }}
-          files: |
-            artifacts/macos-universal/*.dmg
-            artifacts/macos-aarch64/*.dmg
-            artifacts/macos-x86_64/*.dmg
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-          body_path: desktop/releases/${{ steps.release.outputs.tag }}.md
+          name: macos-beta
+          path: desktop/beta-artifacts/
+          if-no-files-found: error
+          retention-days: 14
+
+  draft:
+    name: Prepare draft prerelease
+    needs: [preflight, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.preflight.outputs.commit }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-beta
+          path: beta-artifacts
+      - name: Create or update an unpublished draft
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.preflight.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --json isDraft > release-state.json 2>/dev/null; then
+            node -e 'if (!require("./release-state.json").isDraft) throw new Error("Refusing to modify an already published release")'
+            gh release edit "$RELEASE_TAG" --draft --prerelease --latest=false --notes-file "desktop/releases/$RELEASE_TAG.md"
+            gh release upload "$RELEASE_TAG" beta-artifacts/* --clobber
+          else
+            gh release create "$RELEASE_TAG" beta-artifacts/* --verify-tag --draft --prerelease --latest=false --title "PinWall $RELEASE_TAG (Internal Beta)" --notes-file "desktop/releases/$RELEASE_TAG.md"
+          fi

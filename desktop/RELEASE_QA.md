@@ -4,12 +4,18 @@ This checklist is the release gate for the desktop product mainline. It focuses 
 
 ## Automated Gate
 
+Current candidate: `0.1.4-beta.1`. Release automation creates a draft prerelease only; stable publishing and in-app updates are disabled. Follow `BETA_TESTING.md` for installation and the maintainer handoff.
+
 Run these before any manual release pass:
 
 ```bash
 cd desktop
 pnpm test:run
+node --test scripts/release-preflight.test.mjs
+node scripts/release-preflight.mjs v0.1.4-beta.1
 pnpm build
+pnpm exec playwright install chromium
+pnpm test:e2e
 cd src-tauri
 cargo test
 ```
@@ -26,6 +32,7 @@ Expected result:
 - Frontend unit tests pass.
 - Production bundle builds.
 - Rust tests pass.
+- Browser E2E passes using the isolated test IPC adapter on port 1932. This verifies UI/reload flows, not native filesystem or window behavior.
 - Tauri produces a macOS app under `desktop/src-tauri/target/release/bundle/macos/`.
 
 For public distribution, run the full bundle command and confirm the DMG is produced:
@@ -51,6 +58,9 @@ The full bundle should produce a DMG under `desktop/src-tauri/target/release/bun
 - [ ] Create a note from the floating button.
 - [ ] Create a note with `Cmd+Shift+N`.
 - [ ] Edit title and content.
+- [ ] Edit a note from the title-bar icon and from the context menu; save title, content and color.
+- [ ] Cancel and Esc discard edits; Cmd/Ctrl+Enter saves; focus stays inside the editor and returns on close.
+- [ ] Edit an existing reminder's time and toggle it off/on; content-only edits do not re-fire completed reminders.
 - [ ] Create a note with empty content and confirm fallback content is shown.
 - [ ] Drag a note and confirm it stays where dropped.
 - [ ] Bring an overlapped note to front by clicking it.
@@ -82,9 +92,37 @@ The full bundle should produce a DMG under `desktop/src-tauri/target/release/bun
 
 - [ ] Notes survive app quit and restart.
 - [ ] Note positions survive app quit and restart.
+- [ ] Drag at least two notes to custom positions, quit and restart: neither is automatically arranged on startup.
+- [ ] The explicit Arrange action still arranges visible notes when requested.
 - [ ] Reminder settings survive app quit and restart.
 - [ ] Settings changes survive app quit and restart.
 - [ ] Removing a note persists after restart.
+- [ ] In an isolated test profile, concurrent settings changes in main and settings windows preserve both fields after restart.
+- [ ] Export notes through the native save dialog; cancelling either file dialog makes no changes.
+- [ ] Restore a backup after confirmation: matching local IDs win, positions survive, imported reminders are disabled, and a second import adds zero notes.
+- [ ] Invalid, oversized and future-version backups show an error without changing the live store.
+- [ ] In an isolated test profile, corrupt settings/cards stop startup, preserve the original and create a `.corrupt-backup` copy. Restore verified files and retry.
+- [ ] Future-version settings/cards show an upgrade message and remain untouched.
+- [ ] Before a successful restore, the previous card state is saved as `.before-restore`; a write failure leaves the current state intact.
+- [ ] Exported JSON contains only note fields, with no settings, API keys or widget code.
+- [ ] In an isolated profile, interrupt a routine card save: the previous JSON remains readable, the draft stays visible, and Retry saving persists it before quit/restart.
+- [ ] While a save is pending or failed, restore notes in settings: the open wall gains restored notes and keeps pending edits; retry merges disjoint fields and does not revive remotely deleted notes.
+- [ ] Rapid dragging and editing do not replay an older position/content after a later commit or window focus refresh.
+- [ ] Quit immediately after an edit and reopen: confirm the native save completed; repeat from tray quit and during a system shutdown test.
+
+Settings and all card commits use native atomic replacement; other five stores still use the existing plugin. The failure banner retains a draft in memory, so do not quit before a successful retry. An in-app corruption repair flow remains pending. Browser tests cover mocked failures and cross-page synchronization; test native file dialogs, window synchronization and actual quit/restart explicitly.
+
+## Keychain Migration (macOS, Isolated Profile)
+
+- [ ] With fake AI and quota keys in legacy settings, allow Keychain access: keys remain usable after restart, settings schema becomes 2, and the live JSON contains no keys.
+- [ ] Deny initial Keychain access: legacy JSON stays byte-for-byte intact and settings show recovery guidance; unlock/allow and reload to finish migration.
+- [ ] Lock Keychain after migration, reopen settings, then unlock: reads recover without replacing settings or keys; notes still start and can be edited.
+- [ ] Change/delete keys or remove a quota model: restart confirms the new values; no old bundle is removed before the settings commit succeeds.
+- [ ] Inject a settings write failure after Keychain creation: previous settings/keys remain usable and the uncommitted bundle is cleaned up.
+- [ ] Notification settings reads contain no credentials and do not prompt for Keychain access.
+- [ ] Historical backups are handled deliberately: migration does not silently edit old files that may still contain plaintext keys.
+
+Automated vault tests use an in-memory adapter and temporary files. They do not exercise real Keychain permissions, lock/unlock or code-signing identity changes. Non-macOS secret storage is unsupported in this iteration.
 
 ## Settings
 
