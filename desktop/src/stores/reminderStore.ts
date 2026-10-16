@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { createTauriStore } from "@tauri-store/zustand";
+import { createAppStore } from "../services/appStore";
 import type { SystemReminderKind } from "../types";
 
 export interface SystemReminderRecord {
@@ -77,8 +77,6 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
   },
 }));
 
-export const tauriHandler = createTauriStore("reminders", useReminderStore, {
-  autoStart: true,
+export const tauriHandler = createAppStore("reminders", useReminderStore, {
   saveOnChange: true,
 });
-

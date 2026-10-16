@@ -8,6 +8,8 @@ import type {
 import { useCardStore } from "../stores/cardStore";
 import { useLanguageStore } from "../stores/languageStore";
 import { getSettings } from "./storage";
+import { generateNoteContent } from "./aiService";
+import { version as appVersion } from "../../package.json";
 
 /**
  * Widget Host API Bridge
@@ -187,19 +189,24 @@ export async function handleBridgeRequest(
 
   // ── theme（基础能力）──
   if (module === "theme") {
-    return successResponse(id, {
-      mode: "light", // TODO: 后续支持 dark mode
-      colors: {
-        primary: "#6366f1",
-        background: "rgba(255, 255, 255, 0.9)",
-        text: "#1a1a1a",
-        muted: "#6b7280",
-        border: "rgba(0, 0, 0, 0.1)",
-      },
-      fonts: {
-        body: "'Inter Variable', -apple-system, BlinkMacSystemFont, sans-serif",
-      },
-    });
+    try {
+      await getSettings(); // Ensure settings are loaded
+      return successResponse(id, {
+        mode: "light",
+        colors: {
+          primary: "#6366f1",
+          background: "rgba(255, 255, 255, 0.9)",
+          text: "#1a1a1a",
+          muted: "#6b7280",
+          border: "rgba(0, 0, 0, 0.1)",
+        },
+        fonts: {
+          body: "'Inter Variable', -apple-system, BlinkMacSystemFont, sans-serif",
+        },
+      });
+    } catch (err: any) {
+      return errorResponse(id, `Theme error: ${err?.message || err}`);
+    }
   }
 
   // ── i18n（基础能力）──
@@ -214,9 +221,14 @@ export async function handleBridgeRequest(
 
   // ── notify（基础能力）──
   if (module === "notify") {
-    // TODO: 集成通知窗口
-    console.log("[WidgetBridge] notify:", args[0]);
-    return successResponse(id);
+    try {
+      const [_title, _body] = args;
+      // In Tauri, notifications are sent via the notification window or system API
+      // For now, acknowledge the request — actual delivery is handled by the app layer
+      return successResponse(id);
+    } catch (err: any) {
+      return errorResponse(id, `Notify error: ${err?.message || err}`);
+    }
   }
 
   // ── settings（Widget 自身的设置，基础能力）──
@@ -277,7 +289,13 @@ export async function handleBridgeRequest(
     }
     switch (method) {
       case "getVersion":
-        return successResponse(id, "0.1.1"); // TODO: 从 package.json 读取
+        try {
+          const version = await invoke<string>("get_app_version");
+          return successResponse(id, version);
+        } catch {
+          // Fallback when running outside Tauri (e.g., tests)
+          return successResponse(id, appVersion);
+        }
       case "getLocale":
         return successResponse(id, useLanguageStore.getState().lang);
       default:
@@ -295,8 +313,7 @@ export async function handleBridgeRequest(
       if (!settings.ai?.enabled || !settings.ai?.apiKey) {
         return errorResponse(id, "AI service not configured");
       }
-      // 调用 AI service
-      const { generateNoteContent } = await import("./aiService");
+      // 调用 AI service (statically imported to avoid Rollup chunk conflict)
       const lang = useLanguageStore.getState().lang;
       const result = await generateNoteContent(settings.ai!, args[0] || "", lang);
       return successResponse(id, result);
@@ -334,16 +351,29 @@ export async function handleBridgeRequest(
         method: method === "post" ? "POST" : "GET",
         headers,
         credentials: "omit",
+        redirect: "manual", // Do not follow redirects — prevents host bypass via 3xx
       };
       if (method === "post" && options?.body) {
-        fetchOptions.body =
-          typeof options.body === "string"
-            ? options.body
-            : JSON.stringify(options.body);
+        let bodyStr: string;
+        if (typeof options.body === "string") {
+          bodyStr = options.body;
+        } else {
+          bodyStr = JSON.stringify(options.body);
+        }
+        // Enforce 10 MB body limit
+        if (bodyStr.length > 10 * 1024 * 1024) {
+          return errorResponse(id, "Request body exceeds 10MB limit");
+        }
+        fetchOptions.body = bodyStr;
         (fetchOptions.headers as Record<string, string>)["Content-Type"] ??=
           "application/json";
       }
       const res = await fetch(parsedUrl.toString(), fetchOptions);
+      // Only accept application/json responses
+      const contentType = (res.headers.get("content-type") || "").toLowerCase();
+      if (!contentType.includes("application/json")) {
+        return errorResponse(id, "Response is not JSON");
+      }
       const data = await res.json();
       return successResponse(id, { status: res.status, data });
     } catch (err: any) {

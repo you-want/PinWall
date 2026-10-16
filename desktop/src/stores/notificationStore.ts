@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { createTauriStore } from "@tauri-store/zustand";
+import { createAppStore } from "../services/appStore";
 import type { PinCardData, ReminderNotification } from "../types";
 
 type NotificationState = {
@@ -43,6 +43,5 @@ export const useNotificationStore = create<NotificationState>((set) => ({
   clearViewCard: () => set({ viewCardId: null }),
 }));
 
-export const tauriHandler = createTauriStore("notification", useNotificationStore, {
-  autoStart: true,
+export const tauriHandler = createAppStore("notification", useNotificationStore, {
 });

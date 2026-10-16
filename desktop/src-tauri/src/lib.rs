@@ -1,6 +1,9 @@
 mod background;
+mod cards_storage;
 mod commands;
+mod credentials;
 mod i18n;
+mod persistence;
 mod tray;
 mod widgets;
 mod window_layer;
@@ -12,6 +15,7 @@ use tray::CurrentShortcut;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(cards_storage::CardsStorage::default())
         .setup(|app| {
             // 隐藏 Dock 图标，仅通过托盘图标交互
             #[cfg(target_os = "macos")]
@@ -44,10 +48,18 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_zustand::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             commands::greet,
+            commands::get_app_version,
             commands::quit_app,
+            persistence::settings_read,
+            persistence::settings_compare_and_swap,
+            persistence::prepare_local_storage,
+            persistence::export_note_backup,
+            persistence::read_note_backup,
+            persistence::restore_note_backup,
+            cards_storage::cards_read,
+            cards_storage::cards_patch,
             window_layer::send_to_background,
             window_layer::summon_main,
             window_layer::is_main_summoned,

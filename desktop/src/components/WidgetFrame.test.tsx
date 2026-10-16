@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { WidgetFrame } from '@/components/WidgetFrame';
 import { useWidgetStore } from '@/stores/widgetStore';
 import type { WidgetInstance } from '@/types';
@@ -42,6 +42,7 @@ function createInstance(overrides: Partial<WidgetInstance> = {}): WidgetInstance
 }
 
 describe('WidgetFrame', () => {
+  afterEach(() => vi.useRealTimers());
   beforeEach(() => {
     useWidgetStore.setState({ widgets: [], _zIndexCounter: 50 });
   });
@@ -67,5 +68,21 @@ describe('WidgetFrame', () => {
     await waitFor(() =>
       expect(screen.getByTitle('Clock').getAttribute('srcdoc')).toContain('Clock')
     );
+  });
+
+  it('sends to opaque asset origins and cancels the load retry on unmount', async () => {
+    vi.useFakeTimers();
+    const instance = createInstance();
+    instance.manifest.type = 'community';
+    const { unmount } = render(<WidgetFrame instance={instance} />);
+    const iframe = screen.getByTitle('Clock') as HTMLIFrameElement;
+    const post = vi.spyOn(iframe.contentWindow!, 'postMessage');
+    await act(async () => { await vi.advanceTimersByTimeAsync(120); });
+    expect(post).toHaveBeenCalledWith(expect.objectContaining({ event: 'pinwall:ready' }), '*');
+    fireEvent.load(iframe);
+    const count = post.mock.calls.length;
+    unmount();
+    await act(async () => { await vi.advanceTimersByTimeAsync(120); });
+    expect(post).toHaveBeenCalledTimes(count);
   });
 });

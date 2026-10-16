@@ -29,6 +29,7 @@ import { useMoodCheckin } from "../hooks/useMoodCheckin";
 import { useDesktopClickThrough } from "../hooks/useDesktopClickThrough";
 import type { CardType } from "../types";
 import { useWidgetStore } from "../stores/widgetStore";
+import { CardSaveNotice } from "../components/CardSaveNotice";
 
 type NewCardState =
   | { open: false }
@@ -37,6 +38,7 @@ type NewCardState =
 function Wall() {
   const { t } = useI18n();
   const [settings, setSettings] = useState<Settings | null>(null);
+  const [settingsReadFailed, setSettingsReadFailed] = useState(false);
   const hasSettings = !!settings;
   const [newCardModal, setNewCardModal] = useState<NewCardState>({ open: false });
   const [showBreathing, setShowBreathing] = useState(false);
@@ -77,8 +79,12 @@ function Wall() {
     useQuotaMonitor(settings?.quotaMonitor);
 
   const refresh = useCallback(async () => {
-    const savedSettings = await getSettings();
-    setSettings(savedSettings);
+    try {
+      setSettings(await getSettings());
+      setSettingsReadFailed(false);
+    } catch {
+      setSettingsReadFailed(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -86,10 +92,7 @@ function Wall() {
       .then(setSettings)
       .catch(() => refresh());
 
-    let unlisten: (() => void) | null = null;
-    listen("settings:changed", () => refresh()).then((fn) => {
-      unlisten = fn;
-    });
+    const unlisten = listen("settings:changed", () => void refresh());
 
     const handleFocus = () => {
       refresh();
@@ -97,7 +100,7 @@ function Wall() {
     window.addEventListener("focus", handleFocus);
 
     return () => {
-      unlisten?.();
+      void unlisten.then(stop => stop());
       window.removeEventListener("focus", handleFocus);
     };
   }, [refresh]);
@@ -126,17 +129,19 @@ function Wall() {
   }, []);
 
   const handleCreateCardShortcut = useCallback((e: KeyboardEvent) => {
-    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "n") {
+    if (e.target instanceof Element && e.target.closest('[role="dialog"]')) return;
+    const key = e.key.toLowerCase();
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && key === "n") {
       e.preventDefault();
       openNewCardModal();
     }
     // Breathing guide shortcut: Cmd+Shift+B
-    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "b") {
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && key === "b") {
       e.preventDefault();
       setShowBreathing(true);
     }
     // Arrange cards shortcut: Cmd+Shift+A
-    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "a") {
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && key === "a") {
       e.preventDefault();
       handleArrangeCards();
     }
@@ -198,7 +203,9 @@ function Wall() {
             </div>
           )}
 
+          {settingsReadFailed && <div className="settings-storage-error" role="alert">{t.settings_save_failed}</div>}
           <FloatingButtons onNewCard={openNewCardModal} onSettings={openSettingsWindow} onArrange={handleArrangeCards} />
+          <CardSaveNotice />
 
           {(showQuotaCard || showWeatherCard || hasEnabledWidgets) && (
             <aside className="wall-side-panel" data-testid="wall-side-panel">

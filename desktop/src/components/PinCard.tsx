@@ -1,4 +1,6 @@
 import React, { useState, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
+import { Pencil } from "lucide-react";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { useI18n } from "../i18n";
 import { useLanguageStore } from "../stores/languageStore";
@@ -6,6 +8,7 @@ import { getSettings } from "../services/storage";
 import { polishContent, condenseContent } from "../services/aiService";
 import { useCardStore } from "../stores/cardStore";
 import { MoodCard } from "./MoodCard";
+import { NewCardModal } from "./NewCardModal";
 import type { PinCardData } from "../types";
 
 interface PinCardProps {
@@ -47,6 +50,7 @@ export function PinCard({
   const { t } = useI18n();
   const [isDragging, setIsDragging] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [aiLoading, setAiLoading] = useState<"polish" | "condense" | null>(null);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
@@ -54,7 +58,7 @@ export function PinCard({
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
-      if ((e.target as HTMLElement).closest(".control")) {
+      if ((e.target as HTMLElement).closest("button")) {
         e.stopPropagation();
         return;
       }
@@ -218,6 +222,7 @@ export function PinCard({
     <div
       ref={cardRef}
       data-interactive="true"
+      data-card-id={card.id}
       className={`pin-card ${isDragging ? "dragging" : ""} ${card.collapsed ? "collapsed" : ""} ${isFullscreen ? "fullscreen" : ""}`}
       style={{
         left: isFullscreen ? 0 : card.x,
@@ -246,6 +251,15 @@ export function PinCard({
           />
         </div>
         <div className={`card-title ${isDragging ? "dragging" : ""}`}>{card.title}</div>
+        <button
+          className="card-edit-btn"
+          type="button"
+          aria-label={`${t.edit_card}: ${card.title}`}
+          title={t.edit_card}
+          onClick={() => setIsEditing(true)}
+        >
+          <Pencil size={14} aria-hidden="true" />
+        </button>
       </div>
 
       {(!card.collapsed || isFullscreen) && (
@@ -305,6 +319,9 @@ export function PinCard({
           style={{ left: contextMenu.x, top: contextMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
+          <button className="menu-item" onClick={() => { closeContextMenu(); setIsEditing(true); }}>
+            <span className="menu-label">{t.edit_card}</span>
+          </button>
           <button className="menu-item" onClick={handleAIPolish} disabled={!!aiLoading}>
             <span className="menu-label">✨ {t.ai_polish}</span>
           </button>
@@ -312,6 +329,21 @@ export function PinCard({
             <span className="menu-label">📝 {t.ai_condense}</span>
           </button>
         </div>
+      )}
+      {isEditing && createPortal(
+        <NewCardModal
+          x={card.x}
+          y={card.y}
+          initialCard={card}
+          onCancel={() => setIsEditing(false)}
+          onConfirm={(title, content, colorIndex, _cardType, reminderEnabled, reminderTime) => {
+            useCardStore.getState().editCard(card.id, {
+              title, content, colorIndex, reminderEnabled, reminderTime,
+            });
+            setIsEditing(false);
+          }}
+        />,
+        document.body,
       )}
     </div>
   );

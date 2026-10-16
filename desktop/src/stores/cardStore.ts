@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { createTauriStore } from "@tauri-store/zustand";
+import { createCardPersistence, type CardSaveStatus } from "../services/cardPersistence";
 import { getTranslations } from "../i18n";
 import { useLanguageStore } from "./languageStore";
 import { getNextGridPosition } from "../utils/gridLayout";
@@ -23,7 +23,8 @@ function createCardId(): string {
 }
 
 // 向后兼容迁移：旧卡片推断类型
-function migrateCard(card: any): PinCardData {
+function migrateCard(card: PinCardData): PinCardData {
+  card = { ...card };
   if (!card.cardType) {
     card.cardType = card.reminderEnabled ? "reminder" : "note";
   }
@@ -33,6 +34,7 @@ function migrateCard(card: any): PinCardData {
 }
 
 type CardState = {
+  schemaVersion: number;
   cards: PinCardData[];
   zIndexMap: Record<string, number>;
   _zIndexCounter: number;
@@ -54,6 +56,9 @@ type CardState = {
   ) => void;
   updateReminder: (id: string, reminderEnabled: boolean, reminderTime: number | null) => void;
   updateContent: (id: string, content: string) => void;
+  editCard: (id: string, changes: Pick<PinCardData,
+    "title" | "content" | "colorIndex" | "reminderEnabled" | "reminderTime"
+  >) => void;
   upsertSystemCard: (input: {
     kind: SystemCardKind;
     title: string;
@@ -72,6 +77,7 @@ type CardState = {
 };
 
 export const useCardStore = create<CardState>((set, get) => ({
+  schemaVersion: 1,
   cards: [],
   zIndexMap: {},
   _zIndexCounter: 100,
@@ -169,6 +175,22 @@ export const useCardStore = create<CardState>((set, get) => ({
       cards: s.cards.map((card) =>
         card.id === id ? { ...card, content, updatedAt: Date.now() } : card
       ),
+    }));
+  },
+
+  editCard: (id, changes) => {
+    set((s) => ({
+      cards: s.cards.map((card) => {
+        if (card.id !== id) return card;
+        const scheduleChanged = card.reminderEnabled !== changes.reminderEnabled ||
+          card.reminderTime !== changes.reminderTime;
+        return {
+          ...card,
+          ...changes,
+          reminderFired: scheduleChanged ? false : card.reminderFired,
+          updatedAt: Date.now(),
+        };
+      }),
     }));
   },
 
@@ -278,22 +300,16 @@ export const useCardStore = create<CardState>((set, get) => ({
   },
 }));
 
-// createTauriStore 自动处理：
-// 1. 持久化到本地磁盘（状态变化时自动保存）
-// 2. 跨窗口状态同步
-export const tauriHandler = createTauriStore("cards", useCardStore, {
-  autoStart: true,
-  saveOnChange: true,
-  // 内部字段不参与持久化和跨窗口同步
-  filterKeys: ["_zIndexCounter"],
-  filterKeysStrategy: "omit",
-});
+export const useCardSaveStatus = create<{ status: CardSaveStatus }>(() => ({ status: "saved" }));
+// Cards use a native atomic transaction; the plugin never loads or overwrites their file.
+export const tauriHandler = createCardPersistence(useCardStore, undefined,
+  status => useCardSaveStatus.setState({ status }));
 
 // 向后兼容迁移：在 store 初始化后执行一次
 export function migrateCardsIfNeeded() {
   const cards = useCardStore.getState().cards;
   const needsMigration = cards.some(
-    (c: any) => !c.cardType || c.checkinDone === undefined || c.lastCheckinDate === undefined
+    (c) => !c.cardType || c.checkinDone === undefined || c.lastCheckinDate === undefined
   );
   if (needsMigration) {
     const migrated = cards.map(migrateCard);

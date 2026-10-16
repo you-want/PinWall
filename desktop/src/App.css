@@ -3,6 +3,17 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
 
+.settings-storage-error {
+  position: fixed;
+  inset: 12px 12px auto;
+  z-index: 1000;
+  padding: 12px;
+  border-radius: 10px;
+  background: #562b2b;
+  color: #fff;
+  font-size: 12px;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 * {
@@ -694,9 +705,17 @@ html, body, #root {
 
 .ap-switch input {
   position: absolute;
+  inset: 0;
   opacity: 0;
-  width: 0;
-  height: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  cursor: pointer;
+}
+
+.ap-switch input:focus-visible + .ap-switch-track {
+  outline: 2px solid #7fb8ff;
+  outline-offset: 3px;
 }
 
 .ap-switch-track {
@@ -1460,6 +1479,39 @@ html, body, #root {
 
 .card-title.dragging {
   cursor: grabbing;
+}
+
+.card-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+}
+
+.card-edit-btn:hover { background: rgba(0, 0, 0, 0.07); }
+.card-edit-btn:focus-visible, .modal-v2 :focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
+.reminder-toggle { display: flex; align-items: center; gap: 8px; }
+.startup-error {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.95);
+  pointer-events: auto;
 }
 
 .card-body {
@@ -2547,7 +2599,7 @@ html, body, #root {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 20000;
   pointer-events: auto;
   animation: overlayFadeIn 0.18s ease-out;
 }

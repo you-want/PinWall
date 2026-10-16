@@ -151,6 +151,41 @@ describe('useCardStore', () => {
     });
   });
 
+  describe('editCard', () => {
+    it('edits fields atomically while preserving identity, layout and completed reminder', () => {
+      const card = createReminderCard({ x: 321, y: 456, reminderFired: true });
+      useCardStore.setState({ cards: [card] });
+      useCardStore.getState().editCard(card.id, {
+        title: 'Updated', content: '', colorIndex: 3,
+        reminderEnabled: card.reminderEnabled, reminderTime: card.reminderTime,
+      });
+      expect(useCardStore.getState().cards[0]).toMatchObject({
+        ...card, title: 'Updated', content: '', colorIndex: 3, updatedAt: expect.any(Number),
+      });
+    });
+
+    it('rearms a reminder only when its schedule changes', () => {
+      const card = createReminderCard({ reminderFired: true });
+      useCardStore.setState({ cards: [card] });
+      const reminderTime = Date.now() + 3_600_000;
+      useCardStore.getState().editCard(card.id, {
+        title: card.title, content: card.content, colorIndex: card.colorIndex,
+        reminderEnabled: true, reminderTime,
+      });
+      expect(useCardStore.getState().cards[0]).toMatchObject({
+        reminderTime, reminderEnabled: true, reminderFired: false,
+      });
+    });
+
+    it('does not recreate a card deleted while the editor was open', () => {
+      useCardStore.getState().editCard('deleted', {
+        title: 'Draft', content: 'Draft', colorIndex: 0,
+        reminderEnabled: false, reminderTime: null,
+      });
+      expect(useCardStore.getState().cards).toEqual([]);
+    });
+  });
+
   describe('upsertSystemCard', () => {
     it('updates an existing system card instead of creating duplicates', async () => {
       useCardStore.getState().upsertSystemCard({

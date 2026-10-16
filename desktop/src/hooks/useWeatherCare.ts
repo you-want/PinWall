@@ -1,11 +1,12 @@
 import { useEffect, useRef } from "react";
-import { getSettings, saveSettings } from "../services/storage";
+import { getSettings, updateCareSettings } from "../services/storage";
 import { detectCurrentWeatherLocation, getWeather, getWeatherByCoords } from "../services/weatherService";
 import { generateWeatherCare } from "../services/aiService";
 import { useLanguageStore } from "../stores/languageStore";
 import { getToneMessage, weatherCold, weatherRain, weatherHot, weatherSunny } from "../data/careTones";
 import type { CareTone } from "../types";
 import { showSystemReminder } from "../services/systemReminderService";
+import { reminderScheduler } from "../services/reminderScheduler";
 
 /**
  * Before off-work time, fetch weather for the configured or detected city
@@ -45,9 +46,7 @@ export function useWeatherCare() {
         if (!weather) return;
 
         if (!manualCity && weather.city) {
-          const latest = await getSettings();
-          latest.weatherCity = weather.city;
-          await saveSettings(latest);
+          await updateCareSettings({ weatherCity: weather.city });
         }
 
         const tone = (settings.careTone ?? "warm") as CareTone;
@@ -88,9 +87,7 @@ export function useWeatherCare() {
           lifecycle: "one-time",
         });
 
-        const s = await getSettings();
-        s.lastWeatherCardDate = today;
-        await saveSettings(s);
+        await updateCareSettings({ lastWeatherCardDate: today });
       } catch (err) {
         console.error("[useWeatherCare] error:", err);
       } finally {
@@ -99,8 +96,7 @@ export function useWeatherCare() {
     };
 
     checkWeatherCare();
-    const interval = setInterval(checkWeatherCare, 60_000);
-    return () => clearInterval(interval);
+    return reminderScheduler.subscribe(checkWeatherCare, 60_000);
   }, []);
 }
 

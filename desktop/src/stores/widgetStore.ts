@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { createTauriStore } from "@tauri-store/zustand";
+import { createAppStore } from "../services/appStore";
 import type { WidgetInstance, WidgetManifest, WidgetSize } from "../types";
 
 type WidgetState = {
@@ -160,8 +160,7 @@ export const useWidgetStore = create<WidgetState>((set, get) => ({
   },
 }));
 
-export const widgetTauriHandler = createTauriStore("widgets", useWidgetStore, {
-  autoStart: true,
+export const widgetTauriHandler = createAppStore("widgets", useWidgetStore, {
   saveOnChange: true,
   filterKeys: ["_zIndexCounter"],
   filterKeysStrategy: "omit",

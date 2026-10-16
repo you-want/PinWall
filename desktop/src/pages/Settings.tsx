@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { webviewWindow } from "@tauri-apps/api";
-import { emit } from "@tauri-apps/api/event";
+import { listen } from "@tauri-apps/api/event";
 import { useI18n } from "../i18n";
 import { SettingsPanel } from "../components/SettingsPanel";
 import type { Settings as SettingsType, AIConfig, QuotaMonitorConfig, CareTone, UpdateChannel } from "../types";
 import { DEFAULT_GLOBAL_SHORTCUT } from "../types";
-import { getSettings, saveSettings, updateAIConfig, updateQuotaMonitorConfig, updateHolidayEnabledCn, updateHolidayEnabledIntl, updateGlobalShortcut, updateCareTone, updateCareSettings, updateAutoCheckUpdates, updateUpdateChannel } from "../services/storage";
+import { getSettings, updateAutoChangeSettings, updateAIConfig, updateQuotaMonitorConfig, updateHolidayEnabledCn, updateHolidayEnabledIntl, updateGlobalShortcut, updateCareTone, updateCareSettings, updateAutoCheckUpdates, updateUpdateChannel } from "../services/storage";
 import { setLaunchOnStartup, syncLaunchOnStartupSetting } from "../services/autostart";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -13,11 +13,38 @@ function Settings() {
   const { t } = useI18n();
   const [settings, setSettings] = useState<SettingsType | null>(null);
 
-  useEffect(() => {
-    syncLaunchOnStartupSetting()
-      .then(setSettings)
-      .catch(() => getSettings().then(setSettings));
+  const [saveFailed, setSaveFailed] = useState(false);
+  const [credentialFailed, setCredentialFailed] = useState(false);
+  const reportFailure = useCallback((error: unknown) => {
+    setSaveFailed(true);
+    setCredentialFailed(typeof error === "string" && error.startsWith("credentials_"));
   }, []);
+
+  const loadSettings = useCallback(async () => {
+    try {
+      setSettings(await syncLaunchOnStartupSetting());
+      setSaveFailed(false);
+    } catch (error: unknown) {
+      reportFailure(error);
+    }
+  }, [reportFailure]);
+
+  useEffect(() => { void loadSettings(); }, [loadSettings]);
+  useEffect(() => {
+    const unlisten = listen("settings:changed", () => {
+      getSettings().then(setSettings).catch(reportFailure);
+    });
+    return () => { void unlisten.then(stop => stop()); };
+  }, [reportFailure]);
+
+  const save = useCallback(async (operation: () => Promise<SettingsType>) => {
+    try {
+      setSettings(await operation());
+      setSaveFailed(false);
+    } catch (error: unknown) {
+      reportFailure(error);
+    }
+  }, [reportFailure]);
 
   const handleClose = useCallback(async () => {
     try {
@@ -28,103 +55,30 @@ function Settings() {
     }
   }, []);
 
-  const handleAutoChange = useCallback(async (enabled: boolean, interval: number) => {
-    const s = await getSettings();
-    s.autoChangeEnabled = enabled;
-    s.autoChangeInterval = interval;
-    await saveSettings(s);
-    setSettings(s);
-  }, []);
+  const handleAutoChange = (enabled: boolean, interval: number) => save(() => updateAutoChangeSettings(enabled, interval));
+  const handleAIConfigChange = (config: AIConfig) => save(() => updateAIConfig(config));
+  const handleQuotaMonitorChange = (config: QuotaMonitorConfig) => save(() => updateQuotaMonitorConfig(config));
+  const handleHolidayEnabledCnChange = (enabled: boolean) => save(() => updateHolidayEnabledCn(enabled));
+  const handleHolidayEnabledIntlChange = (enabled: boolean) => save(() => updateHolidayEnabledIntl(enabled));
+  const handleLaunchOnStartupChange = (enabled: boolean) => save(() => setLaunchOnStartup(enabled));
+  const handleCareToneChange = (tone: CareTone) => save(() => updateCareTone(tone));
+  const handleCareSettingsChange = (partial: Partial<SettingsType>) => save(() => updateCareSettings(partial));
+  const handleAutoCheckUpdatesChange = (enabled: boolean) => save(() => updateAutoCheckUpdates(enabled));
+  const handleUpdateChannelChange = (channel: UpdateChannel) => save(() => updateUpdateChannel(channel));
 
-  const handleAIConfigChange = useCallback(async (config: AIConfig) => {
-    const s = await updateAIConfig(config);
-    setSettings(s);
-  }, []);
-
-  const handleQuotaMonitorChange = useCallback(async (config: QuotaMonitorConfig) => {
-    const s = await updateQuotaMonitorConfig(config);
-    setSettings(s);
-  }, []);
-
-  const handleHolidayEnabledCnChange = useCallback(async (enabled: boolean) => {
-    const s = await updateHolidayEnabledCn(enabled);
-    setSettings(s);
-  }, []);
-
-  const handleHolidayEnabledIntlChange = useCallback(async (enabled: boolean) => {
-    const s = await updateHolidayEnabledIntl(enabled);
-    setSettings(s);
-  }, []);
-
-  const handleShortcutChange = useCallback(async (newShortcut: string) => {
-    const s = await getSettings();
-    const oldShortcut = s.globalShortcut ?? DEFAULT_GLOBAL_SHORTCUT;
-
-    if (oldShortcut === newShortcut) return;
-
+  const handleShortcutChange = (newShortcut: string) => save(async () => {
+    const current = await getSettings();
+    const oldShortcut = current.globalShortcut ?? DEFAULT_GLOBAL_SHORTCUT;
+    if (oldShortcut === newShortcut) return current;
+    await invoke("update_shortcut_display", { oldShortcut, newShortcut });
     try {
-      // Delegate to Rust: unregister old, register new, update tray display
-      await invoke("update_shortcut_display", {
-        oldShortcut,
-        newShortcut,
-      });
-      // Save to settings
-      const updated = await updateGlobalShortcut(newShortcut);
-      setSettings(updated);
-    } catch (err) {
-      console.error("Failed to update shortcut:", err);
+      return await updateGlobalShortcut(newShortcut);
+    } catch (error: unknown) {
+      // Keep the registered shortcut consistent if persistence fails.
+      await invoke("update_shortcut_display", { oldShortcut: newShortcut, newShortcut: oldShortcut });
+      throw error;
     }
-  }, []);
-
-  const handleLaunchOnStartupChange = useCallback(async (enabled: boolean) => {
-    try {
-      const updated = await setLaunchOnStartup(enabled);
-      setSettings(updated);
-      await emit("settings:changed");
-    } catch (err) {
-      console.error("Failed to update launch on startup:", err);
-    }
-  }, []);
-
-  const handleCareToneChange = useCallback(async (tone: CareTone) => {
-    try {
-      const updated = await updateCareTone(tone);
-      setSettings(updated);
-      await emit("settings:changed");
-    } catch (err) {
-      console.error("Failed to update care tone:", err);
-    }
-  }, []);
-
-  const handleCareSettingsChange = useCallback(async (partial: Partial<SettingsType>) => {
-    try {
-      const updated = await updateCareSettings(partial);
-      setSettings(updated);
-      await emit("settings:changed");
-    } catch (err) {
-      console.error("Failed to update care settings:", err);
-    }
-  }, []);
-
-  const handleAutoCheckUpdatesChange = useCallback(async (enabled: boolean) => {
-    try {
-      const updated = await updateAutoCheckUpdates(enabled);
-      setSettings(updated);
-      await emit("settings:changed");
-    } catch (err) {
-      console.error("Failed to update auto check updates:", err);
-    }
-  }, []);
-
-  const handleUpdateChannelChange = useCallback(async (channel: UpdateChannel) => {
-    try {
-      const updated = await updateUpdateChannel(channel);
-      setSettings(updated);
-      await emit("settings:changed");
-    } catch (err) {
-      console.error("Failed to update update channel:", err);
-    }
-  }, []);
+  });
 
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
@@ -145,12 +99,14 @@ function Settings() {
         color: "rgba(255,255,255,0.5)",
         fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
       }}>
-        {t.loading}
+        {saveFailed ? <div role="alert"><p>{credentialFailed ? t.credentials_unavailable : t.settings_save_failed}</p><button className="btn-v2" onClick={() => void loadSettings()}>{t.startup_retry}</button></div> : t.loading}
       </div>
     );
   }
 
   return (
+    <>
+    {saveFailed && <div className="settings-storage-error" role="alert">{credentialFailed ? t.credentials_unavailable : t.settings_save_failed}</div>}
     <SettingsPanel
       settings={settings}
       onClose={handleClose}
@@ -166,6 +122,7 @@ function Settings() {
       onAutoCheckUpdatesChange={handleAutoCheckUpdatesChange}
       onUpdateChannelChange={handleUpdateChannelChange}
     />
+    </>
   );
 }
 

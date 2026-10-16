@@ -55,7 +55,7 @@ pub fn import_background_images(
 
 #[tauri::command]
 pub fn delete_background_image_file(app: tauri::AppHandle, path: String) -> Result<(), String> {
-    use std::path::{Path, PathBuf};
+    use std::path::PathBuf;
     use tauri::Manager;
 
     let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
@@ -73,9 +73,14 @@ pub fn delete_background_image_file(app: tauri::AppHandle, path: String) -> Resu
         .ok_or_else(|| "invalid file path".to_string())?
         .to_string();
 
+    // Reject bare filenames — parent would be empty, and canonicalizing "" gives CWD
     let target_parent = target
         .parent()
-        .unwrap_or_else(|| Path::new(""))
+        .ok_or_else(|| "invalid file path".to_string())?;
+    if target_parent.as_os_str().is_empty() {
+        return Err("invalid file path".to_string());
+    }
+    let target_parent = target_parent
         .canonicalize()
         .map_err(|e| e.to_string())?;
     let target_normalized = target_parent.join(target_file_name);
