@@ -1,8 +1,9 @@
 import { test, expect } from './fixtures/tauri';
+import packageInfo from '../package.json' with { type: 'json' };
 
 test('beta settings show the version and manual download instructions', async ({ page }) => {
   await page.goto('/?window=settings');
-  await expect(page.getByText('Current Version: v0.1.4-beta.1', { exact: true })).toBeVisible();
+  await expect(page.getByText(`Current Version: v${packageInfo.version}`, { exact: true })).toBeVisible();
   await expect(page.getByText(/This beta uses manual downloads/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Check for Updates', exact: true })).toHaveCount(0);
 });

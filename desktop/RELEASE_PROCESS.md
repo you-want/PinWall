@@ -1,13 +1,13 @@
 # PinWall Desktop Release Process
 
-当前候选版本为 `0.1.4-beta.1`，仅进行 macOS 内测；详细人工步骤见 [BETA_TESTING.md](./BETA_TESTING.md)。旧版本发布说明保留在 `releases/`。
+当前候选版本为 `0.1.4-beta.2`，仅进行 macOS 内测；详细人工步骤见 [BETA_TESTING.md](./BETA_TESTING.md)。旧版本发布说明保留在 `releases/`。
 
 ## 自动化边界
 
 - 推送分支或创建 PR 会触发 Desktop CI（Node 22、单测、前端构建、浏览器回归、Rust 测试），不会公开发布安装包。
 - Release workflow 只接受 `vX.Y.Z-beta.N` 标签。稳定标签不触发发布，手动 dispatch 也拒绝稳定版本。
 - 自动化在标签代码上校验 package.json、Tauri 配置、Cargo.toml、Cargo.lock 版本和 release notes；全部测试通过后，将同一个已验证 SHA 交给构建和草稿任务。
-- Tauri 使用 `--target universal-apple-darwin` 合并两个架构后签名，生成 universal DMG，校验签名和 arm64/x86_64，并附 SHA256SUMS.txt。不会拆开已签名 DMG 再拼二进制。
+- Tauri 使用 `--target universal-apple-darwin` 合并两个架构后签名，使用 `--bundles app,dmg` 保留应用和生成 universal DMG（只指定 dmg 会在结束时清理临时 .app），校验签名和 arm64/x86_64，并附 SHA256SUMS.txt。不会拆开已签名 DMG 再拼二进制。
 - 最终仅创建 **Draft + Pre-release**，不会自动公开，不设为 Latest。重复运行只更新同名草稿，拒绝改动已经公开的 Release。
 - 当前使用 ad-hoc 签名，没有公证。应用内 updater 插件未注册、前端入口改为手动下载，公钥占位和无效 endpoint 已移除。恢复 updater 前必须完整验证签名发布链。
 
@@ -25,7 +25,7 @@
 
 ```bash
 node --test scripts/release-preflight.test.mjs
-node scripts/release-preflight.mjs v0.1.4-beta.1
+node scripts/release-preflight.mjs v0.1.4-beta.2
 pnpm test:run
 pnpm build
 pnpm test:e2e
@@ -41,8 +41,8 @@ cargo test --locked
 
 ```bash
 git push origin werther-71
-git tag v0.1.4-beta.1
-git push origin v0.1.4-beta.1
+git tag v0.1.4-beta.2
+git push origin v0.1.4-beta.2
 ```
 
 如果标签已存在，不重建、不移动、不 force push；用新版本 beta.N。GitHub Actions 中可对同一标签 Re-run failed jobs；手动 dispatch 必须输入已存在的 beta 标签，工作流检出该标签，避免用默认分支源码给其他标签打包。

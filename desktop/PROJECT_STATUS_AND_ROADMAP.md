@@ -2,7 +2,7 @@
 
 > 2026-10-15 更新：本文下方保留 2026-08-05 的审计快照。第一轮已实现便签编辑、启动加载错误处理、保留卡片位置及浏览器测试适配，21 条 E2E 已通过并加入 Desktop CI。当前实施记录、验证范围及尚待完成的原生手工验收见 [NEXT_ITERATION.md](./NEXT_ITERATION.md)；本文原有 E2E 失败结论不再代表当前工作区。
 
-> 2026-10-16 更新：已接入原生日常保存、便签备份、设置事务、macOS Keychain 和共享提醒心跳；候选版本为 `0.1.4-beta.1`。本轮只生成草稿预发布，移除了 updater 占位配置，暂用手动更新。内测人工操作见 [BETA_TESTING.md](./BETA_TESTING.md)，最新测试记录见 [NEXT_ITERATION.md](./NEXT_ITERATION.md)。以下历史问题不能代替当前版本的验收结论。
+> 2026-10-16 更新：已接入原生日常保存、便签备份、设置事务、macOS Keychain 和共享提醒心跳；候选版本为 `0.1.4-beta.2`（修复 beta.1 的 DMG 构建后 .app 被清理问题）。本轮只生成草稿预发布，移除了 updater 占位配置，暂用手动更新。内测人工操作见 [BETA_TESTING.md](./BETA_TESTING.md)，最新测试记录见 [NEXT_ITERATION.md](./NEXT_ITERATION.md)。以下历史问题不能代替当前版本的验收结论。
 
 审计日期：2026-08-05
 审计范围：`desktop/` 桌面端（React + Tauri v2 + Rust）

@@ -36,12 +36,12 @@ pnpm tauri:build:app
 
 ## 发布
 
-当前候选版本为 **0.1.4-beta.1**。GitHub Actions 仅接受 beta 标签，生成 universal DMG 和 **草稿预发布**，不会自动公开或替换 Latest。人工操作步骤见 [BETA_TESTING.md](./BETA_TESTING.md)。
+当前候选版本为 **0.1.4-beta.2**。GitHub Actions 仅接受 beta 标签，生成 universal DMG 和 **草稿预发布**，不会自动公开或替换 Latest。人工操作步骤见 [BETA_TESTING.md](./BETA_TESTING.md)。
 
 ```bash
 # 在本轮代码已提交/推送后触发草稿构建（已有标签不要重复创建或覆盖）
-git tag v0.1.4-beta.1
-git push origin v0.1.4-beta.1
+git tag v0.1.4-beta.2
+git push origin v0.1.4-beta.2
 ```
 
 发布流程见 [RELEASE_PROCESS.md](./RELEASE_PROCESS.md)，正式发布说明保存在 [`releases/`](./releases/)。

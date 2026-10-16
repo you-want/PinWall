@@ -4,7 +4,7 @@ This checklist is the release gate for the desktop product mainline. It focuses 
 
 ## Automated Gate
 
-Current candidate: `0.1.4-beta.1`. Release automation creates a draft prerelease only; stable publishing and in-app updates are disabled. Follow `BETA_TESTING.md` for installation and the maintainer handoff.
+Current candidate: `0.1.4-beta.2`. Release automation creates a draft prerelease only; stable publishing and in-app updates are disabled. Follow `BETA_TESTING.md` for installation and the maintainer handoff.
 
 Run these before any manual release pass:
 
@@ -12,7 +12,7 @@ Run these before any manual release pass:
 cd desktop
 pnpm test:run
 node --test scripts/release-preflight.test.mjs
-node scripts/release-preflight.mjs v0.1.4-beta.1
+node scripts/release-preflight.mjs v0.1.4-beta.2
 pnpm build
 pnpm exec playwright install chromium
 pnpm test:e2e

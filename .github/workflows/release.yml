@@ -106,7 +106,8 @@ jobs:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
       - run: pnpm install --frozen-lockfile
       # Tauri merges architectures before signing; never splice signed DMGs.
-      - run: pnpm tauri build --target universal-apple-darwin --bundles dmg --ci
+      # Keep the .app for verification: dmg-only builds clean it up afterwards.
+      - run: pnpm tauri build --target universal-apple-darwin --bundles app,dmg --ci
       - name: Verify app signature and both architectures
         run: |
           set -euo pipefail
