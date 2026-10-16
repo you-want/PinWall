@@ -1,6 +1,6 @@
 # PinWall Desktop Release Process
 
-当前候选版本为 `0.1.4-beta.2`，仅进行 macOS 内测；详细人工步骤见 [BETA_TESTING.md](./BETA_TESTING.md)。旧版本发布说明保留在 `releases/`。
+当前候选版本为 `0.1.4-beta.3`，仅进行 macOS 内测；详细人工步骤见 [BETA_TESTING.md](./BETA_TESTING.md)。旧版本发布说明保留在 `releases/`。
 
 ## 自动化边界
 
@@ -25,7 +25,7 @@
 
 ```bash
 node --test scripts/release-preflight.test.mjs
-node scripts/release-preflight.mjs v0.1.4-beta.2
+node scripts/release-preflight.mjs v0.1.4-beta.3
 pnpm test:run
 pnpm build
 pnpm test:e2e
@@ -41,8 +41,8 @@ cargo test --locked
 
 ```bash
 git push origin werther-71
-git tag v0.1.4-beta.2
-git push origin v0.1.4-beta.2
+git tag v0.1.4-beta.3
+git push origin v0.1.4-beta.3
 ```
 
 如果标签已存在，不重建、不移动、不 force push；用新版本 beta.N。GitHub Actions 中可对同一标签 Re-run failed jobs；手动 dispatch 必须输入已存在的 beta 标签，工作流检出该标签，避免用默认分支源码给其他标签打包。

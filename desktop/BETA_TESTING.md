@@ -1,23 +1,23 @@
-# 0.1.4-beta.2 内测操作单
+# 0.1.4-beta.3 内测操作单
 
-日期：2026-10-16。`beta.1` 因 DMG 构建清理了待校验的应用而未完成发布，本版修复该流程；旧标签保留。此文档面向项目维护者，按顺序执行即可。当前只生成草稿预发布；实机验收通过后才考虑分享测试包。完整发布门禁见 `RELEASE_QA.md`。
+日期：2026-10-16。`beta.1` 因临时应用被清理、`beta.2` 因 lipo 参数顺序错误而未完成发布；本版修复这两处发布流程，旧标签保留。此文档面向项目维护者，按顺序执行即可。当前只生成草稿预发布；实机验收通过后才考虑分享测试包。完整发布门禁见 `RELEASE_QA.md`。
 
 ## 1. 检查提交和 CI（约 5 分钟）
 
 1. 打开 https://github.com/you-want/PinWall/compare/main...werther-71 。如果已有该分支 PR，进入现有 PR；否则点击 **Create pull request**。
-2. 标题填写 `Prepare PinWall 0.1.4-beta.2 internal beta`。描述可使用仓库 `desktop/releases/v0.1.4-beta.2.md`，并说明真实 macOS 验收仍未完成。PR 不加 AI 或其他人的协作者署名。
+2. 标题填写 `Prepare PinWall 0.1.4-beta.3 internal beta`。描述可使用仓库 `desktop/releases/v0.1.4-beta.3.md`，并说明真实 macOS 验收仍未完成。PR 不加 AI 或其他人的协作者署名。
 3. 等 **Desktop CI / Test and build desktop** 全绿。红灯时打开失败 step，把错误上下文反馈，不跳过门禁。
 4. 暂不点击 Merge。合并前完成下方内测；合并时可使用 **Squash and merge**，最终提交作者保持你本人，不添加其他协作者 trailer。已有 Git 历史不改写。
 
 ## 2. 取得内测包
 
-1. 打开 https://github.com/you-want/PinWall/actions ，找到标签 `v0.1.4-beta.2` 对应的 **Release** 运行。
+1. 打开 https://github.com/you-want/PinWall/actions ，找到标签 `v0.1.4-beta.3` 对应的 **Release** 运行。
 2. 按顺序确认 **Verify beta source and tests → Build universal macOS beta → Prepare draft prerelease** 全绿。
 3. 在该运行底部 **Artifacts** 下载 `macos-beta`，解压后取得 `.dmg` 和 `SHA256SUMS.txt`。需要登录有仓库访问权限的 GitHub 账号，artifact 保留 14 天。
-4. 或以维护者身份打开 https://github.com/you-want/PinWall/releases ，进入 `0.1.4-beta.2` 的 **Draft** 下载附件。草稿只有仓库有权限的维护者可见，不要误以为测试者能打开草稿链接。
+4. 或以维护者身份打开 https://github.com/you-want/PinWall/releases ，进入 `0.1.4-beta.3` 的 **Draft** 下载附件。草稿只有仓库有权限的维护者可见，不要误以为测试者能打开草稿链接。
 5. 打开终端，在解压后的文件夹执行 `shasum -a 256 -c SHA256SUMS.txt`，应显示 `OK`。Finder 选中文件夹后可右键进入该文件夹的终端；不要修改文件名再校验。
 
-若没有标签对应运行：先确认本轮代码已推送，执行 `git ls-remote origin refs/tags/v0.1.4-beta.2` 查看是否已有标签。没有标签时，在确认的提交上执行 `git tag v0.1.4-beta.2` 和 `git push origin v0.1.4-beta.2`。已有标签不覆盖、不移动；失败构建在 Actions 页面使用 **Re-run failed jobs**。若代码需要修正，递增 beta 编号并使用新标签发布修正版本。
+若没有标签对应运行：先确认本轮代码已推送，执行 `git ls-remote origin refs/tags/v0.1.4-beta.3` 查看是否已有标签。没有标签时，在确认的提交上执行 `git tag v0.1.4-beta.3` 和 `git push origin v0.1.4-beta.3`。已有标签不覆盖、不移动；失败构建在 Actions 页面使用 **Re-run failed jobs**。若代码需要修正，递增 beta 编号并使用新标签发布修正版本。
 
 本机也可构建 `cd desktop` 后执行 `pnpm tauri:build:app`，产物为 `src-tauri/target/release/bundle/macos/PinWall.app`。本机包仅包含当前架构；它不能替代 CI universal 包和两台架构的实测。
 
@@ -34,7 +34,7 @@
 1. 打开已校验的 DMG，把 PinWall 拖入 Applications，确认替换时旧进程已经退出。
 2. 启动 Applications 中的 PinWall。本版为 ad-hoc 签名、未公证，macOS 可能阻止启动。
 3. 仅当文件来源及哈希确认无误时，在“系统设置 → 隐私与安全性”中使用系统提供的 **仍要打开**。如果系统只报告“已损坏”或没有该入口，记录完整提示并反馈；不要关闭 Gatekeeper 或执行全局安全绕过命令。
-4. 打开设置，确认显示 `0.1.4-beta.2`，更新区显示手动下载说明。
+4. 打开设置，确认显示 `0.1.4-beta.3`，更新区显示手动下载说明。
 
 ## 5. 核心验收（约 15–20 分钟）
 
@@ -55,7 +55,7 @@
 ## 6. 反馈格式
 
 ```text
-版本：0.1.4-beta.2
+版本：0.1.4-beta.3
 macOS 版本：
 芯片：Apple Silicon / Intel
 安装来源：CI artifact / Release 草稿 / 本机包

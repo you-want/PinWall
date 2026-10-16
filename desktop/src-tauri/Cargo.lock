@@ -745,7 +745,7 @@ dependencies = [
 
 [[package]]
 name = "desktop"
-version = "0.1.4-beta.2"
+version = "0.1.4-beta.3"
 dependencies = [
  "security-framework",
  "serde",
