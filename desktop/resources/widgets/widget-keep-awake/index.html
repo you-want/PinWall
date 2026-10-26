@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Keep Awake</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 18px; font: 13px/1.5 -apple-system, BlinkMacSystemFont, sans-serif; color: #f7f6f2; background: transparent; }
+    h1 { margin: 0 0 8px; font-size: 17px; font-weight: 600; }
+    p { margin: 8px 0; color: #c8c8cf; font-size: 12px; }
+    label { display: block; margin: 12px 0 5px; }
+    select, button { width: 100%; min-height: 36px; border-radius: 8px; font: inherit; }
+    select { background: #30343c; color: #fff; border: 1px solid #696b73; padding: 5px 8px; }
+    button { margin-top: 10px; border: 0; background: #f5d28b; color: #24262b; font-weight: 600; cursor: pointer; }
+    button:disabled { opacity: .55; cursor: default; }
+    :focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+    #status { min-height: 18px; font-variant-numeric: tabular-nums; }
+    #error { color: #ffb4ad; margin-top: 7px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1 id="title">Keep Awake</h1>
+  <p id="description"></p>
+  <label id="duration-label" for="duration">Duration</label>
+  <select id="duration"><option value="15">15 min</option><option value="25" selected>25 min</option><option value="60">60 min</option><option value="120">120 min</option><option value="480">480 min</option></select>
+  <p id="status" role="status"></p>
+  <button id="action" disabled>Start</button>
+  <div id="error" role="alert"></div>
+  <script>
+    const messages = {
+      en: { title: 'Keep Awake', description: 'Prevents idle sleep. Your display can turn off; closing the lid and manual sleep still work.', duration: 'Duration', minutes: 'min', start: 'Start', stop: 'Stop', idle: 'Not running', until: 'Awake until', failed: 'Could not update Keep Awake. Try again.', unsupported: 'Keep Awake is available on macOS only.', reinstall: 'Reinstall Keep Awake from Settings to match this app version.', loading: 'Connecting…' },
+      zh: { title: '防休眠', description: '阻止空闲休眠，屏幕仍可熄灭；合盖和手动休眠不受影响。', duration: '持续时间', minutes: '分钟', start: '开始', stop: '停止', idle: '未开启', until: '保持唤醒至', failed: '防休眠操作失败，请重试。', unsupported: '防休眠仅支持 macOS。', reinstall: '请从设置中重新安装防休眠，使插件与当前应用版本一致。', loading: '正在连接…' }
+    };
+    const elements = Object.fromEntries(['title', 'description', 'duration-label', 'duration', 'status', 'action', 'error'].map(id => [id, document.getElementById(id)]));
+    const pending = new Map();
+    let locale = 'en', count = 0, busy = false, ready = false, interval = null;
+    let state = { active: false, endsAt: null };
+    const words = () => messages[locale];
+    function render() {
+      const t = words(); document.documentElement.lang = locale;
+      elements.title.textContent = t.title; elements.description.textContent = t.description;
+      elements['duration-label'].textContent = t.duration;
+      for (const option of elements.duration.options) option.textContent = `${option.value} ${t.minutes}`;
+      elements.duration.disabled = busy || state.active;
+      elements.action.disabled = busy || !ready;
+      elements.action.textContent = state.active ? t.stop : t.start;
+      elements.status.textContent = !ready ? t.loading : state.active && state.endsAt
+        ? `${t.until} ${new Date(state.endsAt).toLocaleTimeString(locale === 'zh' ? 'zh-CN' : 'en-US', { hour: '2-digit', minute: '2-digit' })}` : t.idle;
+    }
+    function request(method, args = []) {
+      return new Promise((resolve, reject) => {
+        const id = `power_${++count}`;
+        const timer = setTimeout(() => { pending.delete(id); reject(new Error('timeout')); }, 8000);
+        pending.set(id, { resolve, reject, timer });
+        parent.postMessage({ type: 'request', version: 1, id, module: 'power', method, args }, '*');
+      });
+    }
+    async function update(method = 'status') {
+      if (busy) return;
+      busy = true; elements.error.textContent = ''; render();
+      try {
+        state = await request(method, method === 'start' ? [Number(elements.duration.value)] : []);
+      } catch (error) {
+        elements.error.textContent = error.message === 'power_unsupported' ? words().unsupported : error.message === 'power_reinstall_required' ? words().reinstall : words().failed;
+      } finally { busy = false; render(); }
+    }
+    function syncPolling() {
+      clearInterval(interval); interval = null;
+      if (ready && !document.hidden) interval = setInterval(() => update(), 5000);
+    }
+    addEventListener('message', event => {
+      if (event.source !== parent) return;
+      const message = event.data;
+      if (message?.type === 'response' && pending.has(message.id)) {
+        const item = pending.get(message.id); pending.delete(message.id); clearTimeout(item.timer);
+        message.success ? item.resolve(message.data) : item.reject(new Error(message.error));
+      } else if (message?.type === 'event' && message.event === 'pinwall:ready') {
+        locale = message.payload?.locale === 'zh' ? 'zh' : 'en'; ready = true;
+        render(); update(); syncPolling();
+      }
+    });
+    elements.action.addEventListener('click', () => update(state.active ? 'stop' : 'start'));
+    document.addEventListener('visibilitychange', () => { syncPolling(); if (!document.hidden && ready) update(); });
+    addEventListener('pagehide', () => { clearInterval(interval); for (const item of pending.values()) { clearTimeout(item.timer); item.reject(new Error('closed')); } pending.clear(); });
+    render();
+  </script>
+</body>
+</html>

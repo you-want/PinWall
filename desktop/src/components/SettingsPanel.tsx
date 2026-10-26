@@ -26,6 +26,7 @@ import { UpdateCard, UpdateDialog } from "./update";
 import { useAppUpdater } from "../hooks/useAppUpdater";
 import { version } from "../../package.json";
 import { NoteBackup } from "./NoteBackup";
+import { revokeWidgetPower } from "../services/widgetPower";
 
 const PROVIDER_PRESETS = [
   {
@@ -822,6 +823,16 @@ function WidgetExtensionsSection() {
     }
   };
 
+  const handleToggle = async (id: string, enabled: boolean) => {
+    try {
+      if (!enabled) await revokeWidgetPower(id);
+      toggleWidget(id, enabled);
+      setWidgetStatus("");
+    } catch {
+      setWidgetStatus(lang === "zh" ? "防休眠停止失败，开关保持开启，请重试。" : "Keep Awake could not stop. The widget remains enabled; please retry.");
+    }
+  };
+
   return (
     <div className="ap-group">
       <div className="ap-group-label">{lang === "zh" ? "官方小组件中心" : "Official Widget Hub"}</div>
@@ -832,8 +843,8 @@ function WidgetExtensionsSection() {
           </div>
           <div className="ap-widget-security-desc">
             {lang === "zh"
-              ? "官方小组件会显示请求的权限；网络、系统、便签和 AI 权限安装前需要确认。"
-              : "Official widgets show requested permissions. Network, system, cards, and AI permissions require confirmation before install."}
+              ? "官方小组件会显示请求的权限；网络、系统、防休眠、便签和 AI 权限安装前需要确认。防休眠安装后默认关闭，需要手动启用。"
+              : "Official widgets show requested permissions. Network, system, keep awake, cards, and AI permissions require confirmation before install. Keep Awake is disabled after installation until you enable it."}
           </div>
         </div>
         <div className="ap-divider" />
@@ -866,7 +877,7 @@ function WidgetExtensionsSection() {
                 manifest={w.manifest}
                 enabled={w.enabled}
                 lang={lang}
-                onToggle={(enabled) => toggleWidget(w.manifest.id, enabled)}
+                onToggle={(enabled) => void handleToggle(w.manifest.id, enabled)}
                 onUninstall={() => handleUninstall(w.manifest.id)}
               />
               {w !== widgets[widgets.length - 1] && <div className="ap-divider" />}
@@ -966,7 +977,7 @@ function InstalledWidgetRow({
           {lang === "zh" ? "移除" : "Remove"}
         </button>
         <label className="ap-switch">
-          <input type="checkbox" checked={enabled} onChange={(e) => onToggle(e.target.checked)} />
+          <input type="checkbox" aria-label={`${lang === "zh" ? "启用" : "Enable"} ${manifest.name}`} checked={enabled} onChange={(e) => onToggle(e.target.checked)} />
           <span className="ap-switch-track"><span className="ap-switch-thumb" /></span>
         </label>
       </div>

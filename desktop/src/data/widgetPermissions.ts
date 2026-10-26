@@ -11,6 +11,7 @@ export const WIDGET_PERMISSION_RISK: Record<WidgetPermission, WidgetPermissionRi
   events: "medium",
   network: "high",
   system: "high",
+  power: "high",
   cards: "high",
   ai: "high",
 };
@@ -33,6 +34,7 @@ export function getWidgetPermissionLabel(permission: WidgetPermission, lang: "zh
     app: "应用信息",
     ai: "AI",
     system: "系统状态",
+    power: "防休眠",
     network: "网络",
     i18n: "语言",
   };
@@ -45,6 +47,7 @@ export function getWidgetPermissionLabel(permission: WidgetPermission, lang: "zh
     app: "App Info",
     ai: "AI",
     system: "System",
+    power: "Keep awake",
     network: "Network",
     i18n: "Language",
   };
@@ -61,6 +64,7 @@ export function getWidgetPermissionDescription(permission: WidgetPermission, lan
     app: "读取应用基础信息。",
     ai: "使用 PinWall 已配置的 AI 能力。",
     system: "读取系统状态，例如 CPU、内存或电池。",
+    power: "在你设定的时长内阻止 Mac 因空闲休眠；不会阻止合盖或手动休眠。",
     network: "访问外部网络资源。",
     i18n: "读取当前语言以展示对应文案。",
   };
@@ -73,6 +77,7 @@ export function getWidgetPermissionDescription(permission: WidgetPermission, lan
     app: "Reads basic app information.",
     ai: "Uses PinWall's configured AI capability.",
     system: "Reads system status such as CPU, memory, or battery.",
+    power: "Prevents idle system sleep for a duration you choose. Closing the lid or sleeping manually still works.",
     network: "Accesses external network resources.",
     i18n: "Reads the current language for localized text.",
   };

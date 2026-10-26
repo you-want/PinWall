@@ -219,6 +219,7 @@ export type WidgetPermission =
   | "app"
   | "ai"
   | "system"
+  | "power"
   | "network"
   | "i18n";
 
@@ -271,6 +272,8 @@ export interface WidgetManifest {
   maxSize?: WidgetSize;
   settings?: WidgetSettingDefinition[];
   installedPath?: string;
+  /** New optional tools opt out of automatic activation; legacy widgets default to true. */
+  defaultEnabled?: boolean;
 }
 
 /** Widget 预设尺寸档位 */
@@ -291,11 +294,23 @@ export interface WidgetInstance {
 
 /** Widget Bridge 消息协议 */
 export interface WidgetBridgeRequest {
+  version?: 1;
   type: "request";
   id: string;                // 请求唯一 ID
   module: string;            // API 模块名（storage/cards/theme...）
   method: string;            // 方法名
   args?: any[];              // 参数
+}
+
+export type WidgetPowerAction =
+  | { method: "status" }
+  | { method: "start"; minutes: number }
+  | { method: "stop" };
+
+export interface WidgetPowerStatus {
+  supported: boolean;
+  active: boolean;
+  endsAt: number | null;
 }
 
 export interface WidgetBridgeResponse {

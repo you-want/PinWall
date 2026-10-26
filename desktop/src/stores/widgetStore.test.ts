@@ -35,6 +35,20 @@ describe('useWidgetStore', () => {
   });
 
   describe('installWidget', () => {
+    it('keeps opt-in plugins disabled on install, sync and reinstall', () => {
+      const manifest = createMockManifest({ id: 'com.pinwall.keep-awake', defaultEnabled: false });
+      useWidgetStore.getState().installWidget(manifest);
+      expect(useWidgetStore.getState().widgets[0].enabled).toBe(false);
+      useWidgetStore.getState().toggleWidget(manifest.id, true);
+      useWidgetStore.getState().syncWidgets([manifest]);
+      expect(useWidgetStore.getState().widgets[0].enabled).toBe(true);
+      useWidgetStore.getState().installWidget(manifest);
+      expect(useWidgetStore.getState().widgets[0].enabled).toBe(false);
+      useWidgetStore.setState({ widgets: [] });
+      useWidgetStore.getState().syncWidgets([manifest]);
+      expect(useWidgetStore.getState().widgets[0].enabled).toBe(false);
+    });
+
     it('installs a widget with default settings', () => {
       const manifest = createMockManifest();
       useWidgetStore.getState().installWidget(manifest);
