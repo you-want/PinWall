@@ -162,3 +162,9 @@
 - `codesign --verify --deep --strict` 通过；包内 manifest/HTML/icon 与源码逐字节一致。产物为本机 x86_64、ad-hoc、无 Team ID、未公证；没有创建发布标签、合并主分支或公开发布。
 
 本轮不是开放第三方原生市场；网络代理、插件存储迁移和原子安装等边界见契约文档。自动化和直接 IOKit smoke 不替代上述原生 UI 验收。
+
+### WidgetFrame 测试时序修复（2026-10-26）
+
+CI 暴露了 `srcDoc` 已提交但消息监听 effect 尚未就绪的测试竞态，布局测试也未等待异步加载结束。所有需要已加载组件的测试统一用异步 `act` 刷新加载、提交和 effect，再获取替换后的 iframe；每个用例重置 bridge/loader mock，结束后恢复 spy。新增可控延迟加载场景，验证占位 frame 和旧 frame 的消息被忽略、新 frame 正常接收。
+
+验证：`pnpm test:run` 为 28 个文件 / 217 个测试通过；WidgetFrame 的 6 个测试使用 `--sequence.shuffle --sequence.seed=1` 至 `10` 连续通过，输出无 `act` 警告；`pnpm build` 和 `git diff --check` 通过。本次只修改测试及验证记录，不涉及原生权限、运行时行为或数据迁移。

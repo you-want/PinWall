@@ -1,9 +1,11 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import type { ComponentProps } from 'react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { WidgetFrame } from '@/components/WidgetFrame';
 import { useWidgetStore } from '@/stores/widgetStore';
 import type { WidgetInstance } from '@/types';
 import { handleBridgeRequest } from '@/services/widgetBridge';
+import { loadWidgetEntryHtml } from '@/services/widgetLoader';
 
 vi.mock('@/services/widgetLoader', () => ({
   getWidgetFrameUrl: vi.fn(() => 'asset://localhost/widgets/com.pinwall.clock/index.html'),
@@ -42,15 +44,31 @@ function createInstance(overrides: Partial<WidgetInstance> = {}): WidgetInstance
   };
 }
 
+const entryHtml = '<!doctype html><html><body>Clock</body></html>';
+
+async function renderLoadedWidget(props: ComponentProps<typeof WidgetFrame>) {
+  // The srcDoc mutation alone does not guarantee passive bridge effects have run.
+  // Flush the loader promise, React commit and effects before accessing the new iframe.
+  const view = await act(async () => render(<WidgetFrame {...props} />));
+  const iframe = screen.getByTitle('Clock') as HTMLIFrameElement;
+  expect(iframe.getAttribute('srcdoc')).toContain('Clock');
+  return { ...view, iframe };
+}
+
 describe('WidgetFrame', () => {
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(loadWidgetEntryHtml).mockReset().mockResolvedValue(entryHtml);
+    vi.mocked(handleBridgeRequest).mockReset().mockResolvedValue({ type: 'response', id: 'r1', success: true });
     useWidgetStore.setState({ widgets: [], _zIndexCounter: 50 });
   });
 
-  it('renders as a docked right-panel widget without absolute positioning', () => {
-    render(<WidgetFrame instance={createInstance()} variant="side-panel" />);
+  it('renders as a docked right-panel widget without absolute positioning', async () => {
+    await renderLoadedWidget({ instance: createInstance(), variant: 'side-panel' });
 
     const frame = screen.getByTitle('Clock').closest('.widget-frame') as HTMLElement;
     expect(frame).toHaveClass('widget-frame-side');
@@ -60,22 +78,42 @@ describe('WidgetFrame', () => {
   });
 
   it('loads installed widgets into iframe srcDoc', async () => {
-    render(<WidgetFrame instance={createInstance({
+    await renderLoadedWidget({ instance: createInstance({
       manifest: {
         ...createInstance().manifest,
         installedPath: '/Users/test/PinWall/widgets/com.pinwall.clock',
       },
-    })} variant="side-panel" />);
+    }), variant: 'side-panel' });
+  });
 
-    await waitFor(() =>
-      expect(screen.getByTitle('Clock').getAttribute('srcdoc')).toContain('Clock')
-    );
+  it('attaches the bridge to the replacement iframe after a delayed load', async () => {
+    let resolveEntry!: (html: string) => void;
+    vi.mocked(loadWidgetEntryHtml).mockReturnValueOnce(new Promise(resolve => { resolveEntry = resolve; }));
+    const { unmount } = render(<WidgetFrame instance={createInstance()} />);
+    const placeholder = screen.getByTitle('Clock') as HTMLIFrameElement;
+    const previousWindow = placeholder.contentWindow;
+    const data = { type: 'request', id: 'r1', module: 'theme', method: 'get' };
+    await act(async () => {
+      window.dispatchEvent(new MessageEvent('message', { source: previousWindow, origin: 'null', data }));
+    });
+    expect(handleBridgeRequest).not.toHaveBeenCalled();
+
+    await act(async () => { resolveEntry(entryHtml); });
+    const iframe = screen.getByTitle('Clock') as HTMLIFrameElement;
+    expect(iframe).not.toBe(placeholder);
+    await act(async () => {
+      window.dispatchEvent(new MessageEvent('message', { source: previousWindow, origin: 'null', data }));
+    });
+    expect(handleBridgeRequest).not.toHaveBeenCalled();
+    await act(async () => {
+      window.dispatchEvent(new MessageEvent('message', { source: iframe.contentWindow, origin: 'null', data }));
+    });
+    expect(handleBridgeRequest).toHaveBeenCalledTimes(1);
+    unmount();
   });
 
   it('only routes valid requests from this opaque frame', async () => {
-    render(<WidgetFrame instance={createInstance()} />);
-    await waitFor(() => expect(screen.getByTitle('Clock').getAttribute('srcdoc')).toContain('Clock'));
-    const iframe = screen.getByTitle('Clock') as HTMLIFrameElement;
+    const { iframe } = await renderLoadedWidget({ instance: createInstance() });
     const data = { type: 'request', id: 'r1', module: 'theme', method: 'get' };
     await act(async () => {
       window.dispatchEvent(new MessageEvent('message', { source: window, origin: 'null', data }));
@@ -93,9 +131,7 @@ describe('WidgetFrame', () => {
   it('ignores duplicate requests and does not deliver late replies after disposal', async () => {
     let finish!: (value: { type: 'response'; id: string; success: boolean }) => void;
     vi.mocked(handleBridgeRequest).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
-    const { unmount } = render(<WidgetFrame instance={createInstance()} />);
-    await waitFor(() => expect(screen.getByTitle('Clock').getAttribute('srcdoc')).toContain('Clock'));
-    const iframe = screen.getByTitle('Clock') as HTMLIFrameElement;
+    const { unmount, iframe } = await renderLoadedWidget({ instance: createInstance() });
     const post = vi.spyOn(iframe.contentWindow!, 'postMessage');
     const event = () => new MessageEvent('message', { source: iframe.contentWindow, origin: 'null', data: { type: 'request', id: 'r1', module: 'theme', method: 'get' } });
     await act(async () => { window.dispatchEvent(event()); window.dispatchEvent(event()); });
@@ -109,9 +145,7 @@ describe('WidgetFrame', () => {
     vi.useFakeTimers();
     const instance = createInstance();
     instance.manifest.type = 'community';
-    const { unmount } = render(<WidgetFrame instance={instance} />);
-    await act(async () => { await Promise.resolve(); });
-    const iframe = screen.getByTitle('Clock') as HTMLIFrameElement;
+    const { unmount, iframe } = await renderLoadedWidget({ instance });
     const post = vi.spyOn(iframe.contentWindow!, 'postMessage');
     await act(async () => { await vi.advanceTimersByTimeAsync(120); });
     expect(post).toHaveBeenCalledWith(expect.objectContaining({ event: 'pinwall:ready' }), '*');
