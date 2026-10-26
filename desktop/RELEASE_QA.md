@@ -161,13 +161,13 @@ Automated vault tests use an in-memory adapter and temporary files. They do not 
 
 ## Official Widget Hub
 
-This is the main widget path for 0.1.3.
+This is the primary path for trusted, optional widgets.
 
-- [ ] All five official widgets are listed: Clock, Weather, Pomodoro, System Monitor, and Music Control.
+- [ ] All six official widgets are listed: Clock, Weather, Pomodoro, System Monitor, Music Control, and Keep Awake.
 - [ ] Install Clock from the Official Widget Hub without choosing a folder.
 - [ ] Install Weather and confirm the high-risk `network` permission prompt appears before install.
 - [ ] Install System Monitor and confirm the high-risk `system` permission prompt appears before install.
-- [ ] Installed widgets appear on the main wall immediately.
+- [ ] Enabled widgets appear on the main wall immediately; Keep Awake is disabled after installation until explicitly enabled.
 - [ ] Installed widgets survive app quit and restart.
 - [ ] Installed widgets can be toggled off and on.
 - [ ] Installed widgets can be removed.
@@ -186,6 +186,28 @@ This is an advanced trusted-source path for 0.1.3.
 - [ ] Installing a widget with a missing `entry` or `icon` file is rejected.
 - [ ] Installing a widget directory containing symlinks is rejected.
 - [ ] A widget with `network` permission cannot fetch `file://`, localhost, or private-network URLs through the bridge.
+
+## Keep Awake (Experimental, macOS)
+
+- [ ] Install from the Official Widget Hub; `power` is explained before confirmation, installation remains disabled, enabling shows an idle card.
+- [ ] Start for 15 minutes; `pmset -g assertions` shows `PinWall Keep Awake`. Stop removes the assertion; repeated Start does not extend an active session.
+- [ ] Check expiry using the explicit native smoke test below; the system releases without renderer polling.
+- [ ] Refresh, disable in the wall menu, disable from the separate settings window, update, and uninstall while active; each releases the assertion. Re-enable/reinstall starts idle.
+- [ ] A failed stop leaves the widget enabled and shows retry guidance; retry succeeds without losing other widget state.
+- [ ] Quit from the tray while active, verify no remaining PinWall assertion, then restart: notes restore and Keep Awake is idle.
+- [ ] Test system sleep/wake, screen locking, multiple displays and normal window hiding; verify the UI reflects actual status and core note/window behavior stays intact.
+- [ ] Check Chinese/English, keyboard controls and a narrow wall; unsupported platforms and outdated modified plugin files show useful guidance.
+- [ ] Verify installed modified HTML/manifest/icon and symlinked content cannot open a native power session; reinstall the bundled widget to recover.
+- [ ] Existing official widgets still render in WKWebView with the opaque sandbox; external-resource local widgets get understandable load/bridge errors.
+
+Explicit macOS IOKit smoke (creates short real assertions, no AppData writes):
+
+```bash
+cd desktop/src-tauri
+cargo test --offline power::tests::native_assertion_smoke -- --ignored --exact --nocapture
+```
+
+The smoke verifies acquisition, manual release and system timeout; browser tests use mocked native commands. Neither replaces the unchecked Tauri UI, multiwindow, exit or sleep/wake checks above. Local builds remain ad-hoc and unnotarized; this feature does not constitute a release.
 
 ## Visual And Performance Checks
 

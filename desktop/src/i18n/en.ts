@@ -1,4 +1,12 @@
 export const en = {
+  widget_load_failed: "Widget could not load. Refresh or reinstall it.",
+  widget_uninstall_failed: "Widget could not be removed. Please retry.",
+  widget_stop_failed: "Keep Awake could not stop. The widget remains enabled; retry disabling it.",
+  widget_refresh: "Refresh",
+  widget_settings: "Settings",
+  widget_size: "Size",
+  widget_disable: "Disable widget",
+  widget_remove: "Remove widget",
   update_manual_only: "This beta uses manual downloads. Back up your notes before installing another version. In-app updates will be available after signing and update verification are complete.",
   update_open_failed: "Could not open the browser. Copy this address:",
   cards_save_failed: "Notes have unsaved changes. Keep PinWall open and retry saving. The last saved file is preserved.",

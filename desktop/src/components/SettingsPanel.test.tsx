@@ -4,6 +4,7 @@ import { SettingsPanel } from '@/components/SettingsPanel';
 import { createMockSettings } from '@/__tests__';
 import { useWidgetStore } from '@/stores/widgetStore';
 import type { WidgetManifest } from '@/types';
+import { invoke } from '@tauri-apps/api/core';
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
@@ -171,6 +172,22 @@ describe('SettingsPanel', () => {
       expect(service.installWidgetFromPathWithResult).toHaveBeenCalledWith('/trusted/widget');
       expect(screen.getByText('Local Clock installed')).toBeInTheDocument();
     });
+  });
+
+  it('keeps power enabled when native revocation fails, and allows retry', async () => {
+    installWidget({ id: 'com.pinwall.keep-awake', name: 'Keep Awake', permissions: ['power'] });
+    renderSettings();
+    fireEvent.click(screen.getByRole('button', { name: 'Experimental' }));
+    const row = screen.getByText('Keep Awake', { exact: true }).closest('.ap-widget-installed-row') as HTMLElement;
+    const toggle = within(row).getByRole('checkbox');
+    vi.mocked(invoke).mockRejectedValueOnce('power_release_failed');
+    fireEvent.click(toggle);
+    await waitFor(() => expect(screen.getByText(/The widget remains enabled/)).toBeInTheDocument());
+    expect(toggle).toBeChecked();
+    expect(useWidgetStore.getState().widgets[0].enabled).toBe(true);
+    vi.mocked(invoke).mockResolvedValueOnce(undefined);
+    fireEvent.click(toggle);
+    await waitFor(() => expect(toggle).not.toBeChecked());
   });
 
   it('can auto-detect weather city from care settings', async () => {

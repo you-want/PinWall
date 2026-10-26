@@ -85,6 +85,37 @@ describe('widgetBridge', () => {
     vi.restoreAllMocks();
   });
 
+  describe('native power boundary', () => {
+    it('requires permission and a host-owned session', async () => {
+      const power = { request: vi.fn().mockResolvedValue({ supported: true, active: false, endsAt: null }), dispose: vi.fn(async () => undefined) };
+      const denied = await handleBridgeRequest(makeRequest('power', 'status'), createTestManifest([]), { power });
+      const noSession = await handleBridgeRequest(makeRequest('power', 'status'), createTestManifest(['power']));
+      expect(denied.success).toBe(false); expect(noSession.success).toBe(false);
+      expect(power.request).not.toHaveBeenCalled();
+      const accepted = await handleBridgeRequest(makeRequest('power', 'start', [25]), createTestManifest(['power']), { power });
+      expect(accepted.success).toBe(true);
+      expect(power.request).toHaveBeenCalledWith({ method: 'start', minutes: 25 });
+    });
+
+    it('rejects invalid arguments before invoking the power service', async () => {
+      const power = { request: vi.fn(), dispose: vi.fn(async () => undefined) };
+      for (const args of [[], [0], [481], [1.5], ['25'], [25, 'extra']]) {
+        const response = await handleBridgeRequest(makeRequest('power', 'start', args), createTestManifest(['power']), { power });
+        expect(response.success).toBe(false);
+      }
+      expect(power.request).not.toHaveBeenCalled();
+    });
+
+    it('does not allow malformed storage or card arguments to reach IO', async () => {
+      const { invoke } = await import('@tauri-apps/api/core');
+      vi.mocked(invoke).mockClear();
+      for (const request of [makeRequest('storage', 'set', ['__proto__', {}]), makeRequest('cards', 'create', [{ content: {} }])]) {
+        expect((await handleBridgeRequest(request, createTestManifest())).success).toBe(false);
+      }
+      expect(invoke).not.toHaveBeenCalled();
+    });
+  });
+
   describe('storage module', () => {
     it('handles storage.get', async () => {
       const manifest = createTestManifest();

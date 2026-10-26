@@ -17,13 +17,19 @@ export const test = base.extend({
 
     await page.context().addInitScript(() => {
       // New pages and embedded widgets also receive context scripts. Only adapt the app origin.
-      if (location.origin !== 'http://localhost:1932') return;
+      if (window !== window.top || location.origin !== 'http://localhost:1932') return;
       type Args = Record<string, unknown>;
       type Callback = (value: unknown) => void;
       const callbacks = new Map<number, Callback>();
       const listeners = new Map<string, Map<number, number>>();
       let nextId = 1;
       const prefix = 'pinwall-e2e:';
+      let powerToken: string | null = null;
+      let powerStatus = { supported: true, active: false, endsAt: null as number | null };
+      const powerLog = (method: string) => {
+        const key = `${prefix}power:log`;
+        localStorage.setItem(key, JSON.stringify([...JSON.parse(localStorage.getItem(key) ?? '[]'), method]));
+      };
       const settingsKey = `${prefix}file:pinwall-settings.json`;
       if (localStorage.getItem(settingsKey) === null) {
         localStorage.setItem(settingsKey, JSON.stringify({
@@ -227,7 +233,53 @@ export const test = base.extend({
             emit('main-layer-changed', false);
             return null;
           case 'list_installed_widgets':
-            return [];
+            return JSON.parse(localStorage.getItem(`${prefix}widgets:installed`) ?? '[]');
+          case 'install_official_widget': {
+            const pkg = JSON.parse(localStorage.getItem(`${prefix}widgets:package`) ?? 'null') as { manifest: Args; html: string } | null;
+            if (!pkg || pkg.manifest.id !== args.id) throw new Error('Unsupported test widget package');
+            const manifest = { ...pkg.manifest, installedPath: `/test/widgets/${args.id}` };
+            localStorage.setItem(`${prefix}widgets:installed`, JSON.stringify([manifest]));
+            return manifest;
+          }
+          case 'read_widget_entry_html': {
+            const installed = JSON.parse(localStorage.getItem(`${prefix}widgets:installed`) ?? '[]') as Args[];
+            const pkg = JSON.parse(localStorage.getItem(`${prefix}widgets:package`) ?? 'null') as { manifest: Args; html: string } | null;
+            if (!pkg || !installed.some(widget => widget.id === args.id)) throw new Error('Test widget is not installed');
+            return pkg.html;
+          }
+          case 'open_widget_power_session':
+            if (args.widgetId !== 'com.pinwall.keep-awake') throw 'power_permission_denied';
+            powerToken = `test-session-${nextId++}`;
+            powerStatus = { supported: true, active: false, endsAt: null };
+            powerLog('open'); return powerToken;
+          case 'widget_power_request': {
+            if (!powerToken || args.token !== powerToken) throw 'power_session_closed';
+            const action = args.action as { method: string; minutes?: number };
+            powerLog(action.method);
+            if (powerStatus.endsAt !== null && Date.now() >= powerStatus.endsAt) powerStatus = { supported: true, active: false, endsAt: null };
+            if (action.method === 'start') {
+              if (localStorage.getItem(`${prefix}power:failStart`) === 'true') throw 'power_acquire_failed';
+              if (!Number.isInteger(action.minutes) || Number(action.minutes) < 1 || Number(action.minutes) > 480) throw 'power_invalid_duration';
+              if (!powerStatus.active) powerStatus = { supported: true, active: true, endsAt: Date.now() + Number(action.minutes) * 60000 };
+            } else if (action.method === 'stop') powerStatus = { supported: true, active: false, endsAt: null };
+            else if (action.method !== 'status') throw new Error('Unknown test power action');
+            return powerStatus;
+          }
+          case 'close_widget_power_session':
+            powerLog('close');
+            if (args.token === powerToken) { powerToken = null; powerStatus = { supported: true, active: false, endsAt: null }; }
+            return null;
+          case 'revoke_widget_power':
+            if (args.widgetId !== 'com.pinwall.keep-awake') throw 'power_permission_denied';
+            if (localStorage.getItem(`${prefix}power:failStop`) === 'true') throw 'power_release_failed';
+            powerLog('revoke');
+            powerToken = null; powerStatus = { supported: true, active: false, endsAt: null };
+            return null;
+          case 'uninstall_widget':
+            if (args.id !== 'com.pinwall.keep-awake') throw new Error('Unsupported test widget uninstall');
+            localStorage.setItem(`${prefix}widgets:installed`, '[]');
+            powerToken = null; powerStatus = { supported: true, active: false, endsAt: null };
+            powerLog('uninstall'); return null;
           case 'plugin:window|get_all_windows':
             return ['main', 'settings', 'notification'];
           case 'plugin:window|set_ignore_cursor_events':

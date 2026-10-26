@@ -46,7 +46,7 @@ export const useWidgetStore = create<WidgetState>((set, get) => ({
       set((s) => ({
         widgets: s.widgets.map((w) =>
           w.manifest.id === manifest.id
-            ? { ...w, manifest, enabled: true, updatedAt: Date.now() }
+            ? { ...w, manifest, enabled: manifest.defaultEnabled ?? true, updatedAt: Date.now() }
             : w
         ),
       }));
@@ -57,7 +57,7 @@ export const useWidgetStore = create<WidgetState>((set, get) => ({
     const { _zIndexCounter } = get();
     const instance: WidgetInstance = {
       manifest,
-      enabled: true,
+      enabled: manifest.defaultEnabled ?? true,
       x: 50,
       y: 50,
       size: manifest.defaultSize,
@@ -145,7 +145,7 @@ export const useWidgetStore = create<WidgetState>((set, get) => ({
         counter++;
         return {
           manifest,
-          enabled: true,
+          enabled: manifest.defaultEnabled ?? true,
           x: 50,
           y: 50,
           size: manifest.defaultSize,

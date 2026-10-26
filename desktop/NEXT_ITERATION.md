@@ -139,3 +139,26 @@
 - 本机用 clang 生成临时 arm64+x86_64 样本验证：新命令通过，单架构样本被拒绝，旧命令可复现报错。没有通过弱化架构要求来修复发布。
 - 同步四处版本、当前候选文档和 beta.3 说明；本地发布预检 **3** 个测试、浏览器 **30** 个场景、YAML/shell 语法检查通过。
 - `pnpm tauri build --bundles app,dmg --ci`（含生产前端构建）通过；本机 x86_64 应用签名、DMG 完整性及 `0.1.4-beta.3` 包内版本检查通过。universal 和草稿仍须由标签对应 CI 验证，实机行为仍待人工验收。
+
+
+## 可选原生插件第一阶段（2026-10-26）
+
+分支：`feat/desktop-native-plugins`。Vorssaint 可行性报告已先保存并推送，当前实现属于 P2 实验能力，默认关闭，复用现有官方组件中心；不改变便签/设置 schema，不修改历史 Web 产品面。
+
+- [x] 新增独立实现的防休眠插件：安装后关闭，启用后仍需手动开始，支持限时运行和停止，不复制 GPL 源码。
+- [x] iframe 改为不透明 origin；宿主 CSP、消息来源/协议/参数/并发限制和卸载取消；内联时钟兼容性回归。
+- [x] Rust 窄权限电源会话：固定组件与内置文件校验、仅宿主持有 token、限制主窗口、设置窗口仅可撤销。
+- [x] IOKit 系统到期释放；重复开始不延时；刷新、停用、覆盖安装和卸载释放；释放失败保留状态可重试。
+- [x] 中英文状态和错误、安装权限解释、键盘控件及窄窗口检查；开发契约见 `NATIVE_PLUGINS.md`。
+- [ ] 真实 Tauri 多窗口停用、托盘退出、睡眠/唤醒、多显示器和完整核心桌面流程仍按 `RELEASE_QA.md` 手工验收。
+
+验证记录：
+
+- `pnpm test:run`：28 个文件 / 216 个测试通过。
+- `cargo test --offline`：55 个测试通过，原生 smoke 默认忽略。
+- 浏览器完整回归：33 个场景通过，进程正常退出（1.1 分钟）。使用 `/tmp/pinwall-playwright` 中与 Playwright 匹配的 Chromium 149，临时配置仅指定 Chromium channel 和仓库绝对路径，保留原有断言、错误门禁、失败视频及截图。命令：`PLAYWRIGHT_BROWSERS_PATH=/tmp/pinwall-playwright pnpm exec playwright test -c /tmp/pinwall-matched-playwright.config.ts --workers=2 --reporter=line --output=/tmp/pinwall-matched-e2e`。先前本机 Chrome 场景断言均通过但 worker 退出超时，未将该失败运行计为通过。
+- 显式 `cargo test --offline power::tests::native_assertion_smoke -- --ignored --exact --nocapture` 已在 macOS 15.8.1 (24H32)、x86_64 通过：真实断言获取、手动释放和系统自动到期。
+- `CARGO_NET_OFFLINE=true pnpm tauri:build:app`（含 TypeScript/Vite 生产构建）通过，主 JS 694.96 KB；原有大于 500 KB 的 chunk 提示仍存在。
+- `codesign --verify --deep --strict` 通过；包内 manifest/HTML/icon 与源码逐字节一致。产物为本机 x86_64、ad-hoc、无 Team ID、未公证；没有创建发布标签、合并主分支或公开发布。
+
+本轮不是开放第三方原生市场；网络代理、插件存储迁移和原子安装等边界见契约文档。自动化和直接 IOKit smoke 不替代上述原生 UI 验收。

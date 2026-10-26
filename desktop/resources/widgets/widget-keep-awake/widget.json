@@ -1,0 +1,15 @@
+{
+  "id": "com.pinwall.keep-awake",
+  "name": "防休眠 / Keep Awake",
+  "description": "按需阻止 Mac 空闲休眠 / Prevent idle sleep for a duration you choose",
+  "version": "1.0.0",
+  "author": "PinWall Team",
+  "entry": "index.html",
+  "icon": "icon.svg",
+  "type": "official",
+  "category": "utility",
+  "permissions": ["power", "i18n"],
+  "defaultEnabled": false,
+  "defaultSize": { "width": 260, "height": 300 },
+  "minSize": { "width": 200, "height": 280 }
+}

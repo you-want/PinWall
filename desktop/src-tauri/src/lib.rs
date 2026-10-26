@@ -4,6 +4,7 @@ mod commands;
 mod credentials;
 mod i18n;
 mod persistence;
+mod power;
 mod tray;
 mod widgets;
 mod window_layer;
@@ -16,6 +17,7 @@ use tray::CurrentShortcut;
 pub fn run() {
     tauri::Builder::default()
         .manage(cards_storage::CardsStorage::default())
+        .manage(power::PowerService::default())
         .setup(|app| {
             // 隐藏 Dock 图标，仅通过托盘图标交互
             #[cfg(target_os = "macos")]
@@ -76,8 +78,24 @@ pub fn run() {
             widgets::read_widget_storage,
             widgets::write_widget_storage,
             widgets::get_system_info,
+            power::open_widget_power_session,
+            power::widget_power_request,
+            power::close_widget_power_session,
+            power::revoke_widget_power,
         ])
+        .on_page_load(|webview, payload| {
+            if webview.label() == "main" && matches!(payload.event(), tauri::webview::PageLoadEvent::Started) {
+                if webview.state::<power::PowerService>().close_all().is_err() {
+                    eprintln!("[Power] Failed to release assertion on page reload");
+                }
+            }
+        })
         .on_window_event(|window, event| match event {
+            tauri::WindowEvent::Destroyed if window.label() == "main" => {
+                if window.state::<power::PowerService>().close_all().is_err() {
+                    eprintln!("[Power] Failed to release assertion on window destruction");
+                }
+            }
             tauri::WindowEvent::CloseRequested { api, .. } => {
                 // 所有窗口关闭时仅隐藏，不退出 APP
                 // 退出只能通过托盘菜单「退出」

@@ -26,6 +26,8 @@ pub struct WidgetManifest {
     pub settings: Option<Vec<serde_json::Value>>,
     #[serde(rename = "installedPath", default, skip_serializing_if = "Option::is_none")]
     pub installed_path: Option<String>,
+    #[serde(rename = "defaultEnabled", default, skip_serializing_if = "Option::is_none")]
+    pub default_enabled: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -103,6 +105,7 @@ fn validate_widget_permission(permission: &str) -> Result<(), String> {
         | "app"
         | "ai"
         | "system"
+        | "power"
         | "network"
         | "i18n" => Ok(()),
         _ => Err(format!("Widget permission is invalid: {}", permission)),
@@ -155,6 +158,7 @@ fn official_widget_dir_name(id: &str) -> Option<&'static str> {
         "com.pinwall.pomodoro" => Some("widget-pomodoro"),
         "com.pinwall.system-monitor" => Some("widget-system-monitor"),
         "com.pinwall.music" => Some("widget-music"),
+        "com.pinwall.keep-awake" => Some("widget-keep-awake"),
         _ => None,
     }
 }
@@ -166,7 +170,7 @@ fn official_widget_source(app: &tauri::AppHandle, id: &str) -> Result<PathBuf, S
 
     if let Ok(resource_dir) = app.path().resource_dir() {
         let bundled = resource_dir
-            .join("official-widgets")
+            .join(if id == crate::power::WIDGET_ID { "native-widgets" } else { "official-widgets" })
             .join(dir_name);
         if bundled.exists() {
             return Ok(bundled);
@@ -174,7 +178,7 @@ fn official_widget_source(app: &tauri::AppHandle, id: &str) -> Result<PathBuf, S
     }
 
     let dev_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../widgets")
+        .join(if id == crate::power::WIDGET_ID { "../resources/widgets" } else { "../../widgets" })
         .join(dir_name);
     if dev_path.exists() {
         return Ok(dev_path);
@@ -269,6 +273,7 @@ fn install_widget_from_source(app: &tauri::AppHandle, source: PathBuf) -> Result
 
     // 目标目录
     let dest = widgets_dir(app)?.join(&manifest.id);
+    if manifest.id == crate::power::WIDGET_ID { app.state::<crate::power::PowerService>().close_all()?; }
 
     // 如果已存在则先删除（覆盖安装）
     if dest.exists() {
@@ -328,6 +333,7 @@ pub fn read_widget_entry_html(app: tauri::AppHandle, id: String) -> Result<Strin
 #[tauri::command]
 pub fn uninstall_widget(app: tauri::AppHandle, id: String) -> Result<(), String> {
     validate_widget_id(&id)?;
+    if id == crate::power::WIDGET_ID { app.state::<crate::power::PowerService>().close_all()?; }
     let dir = widgets_dir(&app)?.join(&id);
     if dir.exists() {
         std::fs::remove_dir_all(&dir).map_err(|e| e.to_string())?;
@@ -341,6 +347,32 @@ pub fn uninstall_widget(app: tauri::AppHandle, id: String) -> Result<(), String>
     }
 
     Ok(())
+}
+
+const POWER_WIDGET_FILES: [(&str, &[u8]); 3] = [
+    ("widget.json", include_bytes!("../../resources/widgets/widget-keep-awake/widget.json")),
+    ("index.html", include_bytes!("../../resources/widgets/widget-keep-awake/index.html")),
+    ("icon.svg", include_bytes!("../../resources/widgets/widget-keep-awake/icon.svg")),
+];
+
+fn verify_power_widget_files(root: &std::path::Path) -> Result<(), String> {
+    let denied = || "power_untrusted_widget".to_string();
+    let metadata = std::fs::symlink_metadata(root).map_err(|_| denied())?;
+    if metadata.file_type().is_symlink() || !metadata.is_dir() { return Err(denied()); }
+    let canonical = root.canonicalize().map_err(|_| denied())?;
+    for (name, expected) in POWER_WIDGET_FILES {
+        let path = root.join(name);
+        let metadata = std::fs::symlink_metadata(&path).map_err(|_| denied())?;
+        if !metadata.is_file() || metadata.file_type().is_symlink() || metadata.len() != expected.len() as u64 { return Err(denied()); }
+        if !path.canonicalize().map_err(|_| denied())?.starts_with(&canonical) { return Err(denied()); }
+        if std::fs::read(path).map_err(|_| denied())? != expected { return Err(denied()); }
+    }
+    Ok(())
+}
+
+/// Trust is established by the bundled bytes, never a user-controlled `type: official` label.
+pub fn verify_power_widget(app: &tauri::AppHandle) -> Result<(), String> {
+    verify_power_widget_files(&widgets_dir(app)?.join(crate::power::WIDGET_ID))
 }
 
 /// 读取 Widget 存储数据
@@ -569,6 +601,37 @@ mod tests {
     }
 
     #[test]
+    fn power_plugin_is_opt_in_and_only_exact_bundled_content_is_trusted() {
+        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../resources/widgets/widget-keep-awake");
+        let manifest: WidgetManifest = serde_json::from_slice(&std::fs::read(source.join("widget.json")).unwrap()).unwrap();
+        validate_manifest(&manifest).unwrap();
+        assert_eq!(manifest.default_enabled, Some(false));
+        assert!(manifest.permissions.contains(&"power".to_string()));
+        verify_power_widget_files(&source).unwrap();
+        let temp = std::env::temp_dir().join(format!("pinwall-power-trust-{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+        copy_dir_recursive(&source, &temp).unwrap();
+        verify_power_widget_files(&temp).unwrap();
+        std::fs::write(temp.join("index.html"), "<script>malicious()</script>").unwrap();
+        assert!(verify_power_widget_files(&temp).is_err());
+        std::fs::remove_dir_all(&temp).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn power_plugin_rejects_symlinked_files_and_directory() {
+        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../resources/widgets/widget-keep-awake");
+        let temp = std::env::temp_dir().join(format!("pinwall-power-symlink-{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+        copy_dir_recursive(&source, &temp).unwrap();
+        std::fs::remove_file(temp.join("index.html")).unwrap();
+        std::os::unix::fs::symlink(source.join("index.html"), temp.join("index.html")).unwrap();
+        assert!(verify_power_widget_files(&temp).is_err());
+        let linked = temp.join("linked");
+        std::os::unix::fs::symlink(source, &linked).unwrap();
+        assert!(verify_power_widget_files(&linked).is_err());
+        std::fs::remove_dir_all(temp).unwrap();
+    }
+
+    #[test]
     fn validates_manifest_entry_and_icon_files() {
         let temp_root = std::env::temp_dir().join(format!(
             "pinwall-widget-test-{}",
@@ -597,6 +660,7 @@ mod tests {
             max_size: None,
             settings: None,
             installed_path: None,
+            default_enabled: None,
         };
 
         assert!(validate_manifest_files(&temp_root, &manifest).is_ok());

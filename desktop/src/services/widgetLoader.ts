@@ -21,6 +21,7 @@ const VALID_WIDGET_PERMISSIONS = new Set<WidgetPermission>([
   "app",
   "ai",
   "system",
+  "power",
   "network",
   "i18n",
 ]);
@@ -182,6 +183,7 @@ export function validateManifest(manifest: any): manifest is WidgetManifest {
   if (!isSafeWidgetRelativePath(manifest.entry)) return false;
   if (!isSafeWidgetRelativePath(manifest.icon)) return false;
   if (!hasValidPermissions(manifest.permissions)) return false;
+  if (manifest.defaultEnabled !== undefined && typeof manifest.defaultEnabled !== "boolean") return false;
   if (!isValidWidgetSize(manifest.defaultSize)) return false;
   if (manifest.minSize !== undefined && !isValidWidgetSize(manifest.minSize)) return false;
   if (manifest.maxSize !== undefined && !isValidWidgetSize(manifest.maxSize)) return false;

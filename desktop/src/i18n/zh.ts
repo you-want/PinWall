@@ -1,4 +1,12 @@
 export const zh = {
+  widget_load_failed: "小组件加载失败，请右键刷新或重新安装",
+  widget_uninstall_failed: "小组件移除失败，请重试",
+  widget_stop_failed: "防休眠停止失败，小组件仍开启，请重试关闭",
+  widget_refresh: "刷新",
+  widget_settings: "设置",
+  widget_size: "尺寸",
+  widget_disable: "关闭小组件",
+  widget_remove: "移除小组件",
   update_manual_only: "本内测版通过手动下载安装更新。安装其他版本前请先备份便签；应用内更新将在签名和更新验证完成后开放。",
   update_open_failed: "无法打开浏览器，请复制此地址访问：",
   cards_save_failed: "便签有未保存的修改。请保持 PinWall 打开并重试保存，最后保存的文件已保留。",

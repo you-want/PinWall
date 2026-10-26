@@ -4,12 +4,15 @@ import type {
   WidgetPermission,
   WidgetBridgeRequest,
   WidgetBridgeResponse,
+  WidgetPowerAction,
 } from "../types";
 import { useCardStore } from "../stores/cardStore";
 import { useLanguageStore } from "../stores/languageStore";
 import { getSettings } from "./storage";
 import { generateNoteContent } from "./aiService";
 import { version as appVersion } from "../../package.json";
+import { parseWidgetRequest, validWidgetArguments } from "./widgetProtocol";
+import type { createWidgetPowerSession } from "./widgetPower";
 
 /**
  * Widget Host API Bridge
@@ -143,11 +146,32 @@ function sanitizeNetworkHeaders(headers: unknown): Record<string, string> {
  */
 export async function handleBridgeRequest(
   request: WidgetBridgeRequest,
-  manifest: WidgetManifest
+  manifest: WidgetManifest,
+  context?: { signal?: AbortSignal; power?: ReturnType<typeof createWidgetPowerSession> }
 ): Promise<WidgetBridgeResponse> {
+  if (!parseWidgetRequest(request) || !validWidgetArguments(request)) {
+    return errorResponse(typeof request?.id === "string" ? request.id.slice(0, 128) : "invalid", "Invalid widget request");
+  }
   const { id, module, method, args = [] } = request;
 
-  // ── storage（基础能力，所有 Widget 可用）──
+  if (context?.signal?.aborted) return errorResponse(id, "Widget session closed");
+  if (["storage", "theme", "i18n", "notify"].includes(module) && !hasPermission(manifest, module as WidgetPermission)) {
+    return errorResponse(id, `Permission denied: ${module}`);
+  }
+  if (module === "power") {
+    if (!hasPermission(manifest, "power") || !context?.power) return errorResponse(id, "Permission denied: power");
+    if (method !== "start" && method !== "stop" && method !== "status") return errorResponse(id, "Unknown power method");
+    try {
+      const action: WidgetPowerAction = method === "start" ? { method, minutes: args[0] as number } : { method };
+      return successResponse(id, await context.power.request(action));
+    } catch (error: unknown) {
+      console.warn("[WidgetBridge] Power request failed", { method });
+      const code = typeof error === "string" ? error : error instanceof Error ? error.message : "";
+      return errorResponse(id, code === "power_unsupported" ? code : code === "power_untrusted_widget" ? "power_reinstall_required" : "power_request_failed");
+    }
+  }
+
+  // ── storage（需声明权限，仅访问当前 Widget 数据）──
   if (module === "storage") {
     try {
       // Widget 存储使用 Tauri invoke 读写独立文件
@@ -189,6 +213,7 @@ export async function handleBridgeRequest(
 
   // ── theme（基础能力）──
   if (module === "theme") {
+    if (method !== "get") return errorResponse(id, "Unknown theme method");
     try {
       await getSettings(); // Ensure settings are loaded
       return successResponse(id, {
@@ -221,6 +246,7 @@ export async function handleBridgeRequest(
 
   // ── notify（基础能力）──
   if (module === "notify") {
+    if (method !== "send") return errorResponse(id, "Unknown notify method");
     try {
       const [_title, _body] = args;
       // In Tauri, notifications are sent via the notification window or system API
@@ -233,6 +259,7 @@ export async function handleBridgeRequest(
 
   // ── settings（Widget 自身的设置，基础能力）──
   if (module === "settings") {
+    if (method !== "get" && method !== "getAll") return errorResponse(id, "Unknown settings method");
     // Widget 设置由 widgetStore 管理，通过 WidgetFrame 的 props 传入
     // 此处返回空，实际通过 iframe 初始化时注入
     return successResponse(id, {});
@@ -308,6 +335,7 @@ export async function handleBridgeRequest(
     if (!hasPermission(manifest, "ai")) {
       return errorResponse(id, "Permission denied: ai");
     }
+    if (method !== "generate") return errorResponse(id, "Unknown AI method");
     try {
       const settings = await getSettings();
       if (!settings.ai?.enabled || !settings.ai?.apiKey) {
@@ -327,6 +355,7 @@ export async function handleBridgeRequest(
     if (!hasPermission(manifest, "system")) {
       return errorResponse(id, "Permission denied: system");
     }
+    if (!["getBattery", "getMemoryInfo", "getMediaInfo", "mediaControl"].includes(method)) return errorResponse(id, "Unknown system method");
     try {
       const info = await invoke<any>("get_system_info", { category: method });
       return successResponse(id, info);
@@ -353,6 +382,7 @@ export async function handleBridgeRequest(
         credentials: "omit",
         redirect: "manual", // Do not follow redirects — prevents host bypass via 3xx
       };
+      if (context?.signal) fetchOptions.signal = context.signal;
       if (method === "post" && options?.body) {
         let bodyStr: string;
         if (typeof options.body === "string") {

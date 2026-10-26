@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { WidgetFrame } from '@/components/WidgetFrame';
 import { useWidgetStore } from '@/stores/widgetStore';
 import type { WidgetInstance } from '@/types';
+import { handleBridgeRequest } from '@/services/widgetBridge';
 
 vi.mock('@/services/widgetLoader', () => ({
   getWidgetFrameUrl: vi.fn(() => 'asset://localhost/widgets/com.pinwall.clock/index.html'),
@@ -44,6 +45,7 @@ function createInstance(overrides: Partial<WidgetInstance> = {}): WidgetInstance
 describe('WidgetFrame', () => {
   afterEach(() => vi.useRealTimers());
   beforeEach(() => {
+    vi.clearAllMocks();
     useWidgetStore.setState({ widgets: [], _zIndexCounter: 50 });
   });
 
@@ -70,11 +72,45 @@ describe('WidgetFrame', () => {
     );
   });
 
+  it('only routes valid requests from this opaque frame', async () => {
+    render(<WidgetFrame instance={createInstance()} />);
+    await waitFor(() => expect(screen.getByTitle('Clock').getAttribute('srcdoc')).toContain('Clock'));
+    const iframe = screen.getByTitle('Clock') as HTMLIFrameElement;
+    const data = { type: 'request', id: 'r1', module: 'theme', method: 'get' };
+    await act(async () => {
+      window.dispatchEvent(new MessageEvent('message', { source: window, origin: 'null', data }));
+      window.dispatchEvent(new MessageEvent('message', { source: iframe.contentWindow, origin: 'https://other.example', data }));
+      window.dispatchEvent(new MessageEvent('message', { source: iframe.contentWindow, origin: 'null', data: { ...data, args: 'invalid' } }));
+    });
+    expect(handleBridgeRequest).not.toHaveBeenCalled();
+    await act(async () => {
+      window.dispatchEvent(new MessageEvent('message', { source: iframe.contentWindow, origin: 'null', data }));
+    });
+    expect(handleBridgeRequest).toHaveBeenCalledTimes(1);
+    expect(iframe.getAttribute('sandbox')).toBe('allow-scripts');
+  });
+
+  it('ignores duplicate requests and does not deliver late replies after disposal', async () => {
+    let finish!: (value: { type: 'response'; id: string; success: boolean }) => void;
+    vi.mocked(handleBridgeRequest).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const { unmount } = render(<WidgetFrame instance={createInstance()} />);
+    await waitFor(() => expect(screen.getByTitle('Clock').getAttribute('srcdoc')).toContain('Clock'));
+    const iframe = screen.getByTitle('Clock') as HTMLIFrameElement;
+    const post = vi.spyOn(iframe.contentWindow!, 'postMessage');
+    const event = () => new MessageEvent('message', { source: iframe.contentWindow, origin: 'null', data: { type: 'request', id: 'r1', module: 'theme', method: 'get' } });
+    await act(async () => { window.dispatchEvent(event()); window.dispatchEvent(event()); });
+    expect(handleBridgeRequest).toHaveBeenCalledTimes(1);
+    unmount(); const count = post.mock.calls.length;
+    await act(async () => { finish({ type: 'response', id: 'r1', success: true }); });
+    expect(post).toHaveBeenCalledTimes(count);
+  });
+
   it('sends to opaque asset origins and cancels the load retry on unmount', async () => {
     vi.useFakeTimers();
     const instance = createInstance();
     instance.manifest.type = 'community';
     const { unmount } = render(<WidgetFrame instance={instance} />);
+    await act(async () => { await Promise.resolve(); });
     const iframe = screen.getByTitle('Clock') as HTMLIFrameElement;
     const post = vi.spyOn(iframe.contentWindow!, 'postMessage');
     await act(async () => { await vi.advanceTimersByTimeAsync(120); });

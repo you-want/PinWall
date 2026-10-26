@@ -1,13 +1,15 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import type {
   WidgetInstance,
-  WidgetBridgeRequest,
   WidgetSizePreset,
 } from "../types";
 import { WIDGET_SIZE_PRESETS } from "../types";
-import { getWidgetFrameUrl, loadWidgetEntryHtml } from "../services/widgetLoader";
+import { loadWidgetEntryHtml, uninstallWidget as uninstallWidgetFiles } from "../services/widgetLoader";
 import { handleBridgeRequest, subscribeWidgetEvent } from "../services/widgetBridge";
 import { useWidgetStore } from "../stores/widgetStore";
+import { parseWidgetRequest, prepareWidgetHtml } from "../services/widgetProtocol";
+import { createWidgetPowerSession, revokeWidgetPower } from "../services/widgetPower";
+import { useI18n } from "../i18n";
 
 interface WidgetFrameProps {
   instance: WidgetInstance;
@@ -15,6 +17,7 @@ interface WidgetFrameProps {
 }
 
 export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps) {
+  const { t, lang } = useI18n();
   const { manifest, x, y, size, zIndex, settings, enabled } = instance;
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -26,22 +29,17 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
   const [reloadKey, setReloadKey] = useState(0);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
 
-  const { setPosition, bringToFront, setSize, uninstallWidget, updateSettings } =
+  const { setPosition, bringToFront, setSize, uninstallWidget, toggleWidget, updateSettings } =
     useWidgetStore();
-  const iframeSrc = getWidgetFrameUrl(manifest);
-  const frameOrigin = new URL(iframeSrc).origin;
-  const targetOrigin = entryHtml || frameOrigin === "null" ? "*" : frameOrigin;
+  // Opaque sandbox frames can only be addressed with '*'; replies are bound to this exact frame.
+  const targetOrigin = "*";
 
   useEffect(() => {
     let cancelled = false;
 
     setLoadError(null);
-    if (!manifest.installedPath && manifest.type !== "official") {
-      setEntryHtml(null);
-      return () => {
-        cancelled = true;
-      };
-    }
+    setEntryHtml(null);
+    if (!enabled) return;
 
     loadWidgetEntryHtml(manifest.id)
       .then((html) => {
@@ -49,43 +47,63 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
         setEntryHtml(html);
         setLoadError(null);
       })
-      .catch((err) => {
+      .catch(() => {
         if (cancelled) return;
-        console.error("[WidgetFrame] Failed to load widget entry:", err);
+        console.warn("[WidgetFrame] Failed to load widget entry", { widgetId: manifest.id });
         setEntryHtml(null);
-        setLoadError(err instanceof Error ? err.message : String(err));
+        setLoadError("load_failed");
       });
 
     return () => {
       cancelled = true;
     };
-  }, [manifest.id, manifest.entry, manifest.installedPath, reloadKey]);
+  }, [manifest.id, manifest.entry, manifest.installedPath, reloadKey, enabled]);
 
   // ── postMessage 桥接 ──
   useEffect(() => {
     const iframe = iframeRef.current;
-    if (!iframe) return;
+    if (!iframe || !entryHtml || !enabled) return;
+    const controller = new AbortController();
+    const power = createWidgetPowerSession(manifest);
+    const inFlight = new Set<string>();
+    let intervalStarted = Date.now();
+    let requestCount = 0;
 
     const handler = async (e: MessageEvent) => {
       // 只处理来自当前 Widget iframe 的消息
-      if (e.source !== iframe.contentWindow) return;
-      const msg = e.data;
-      if (!msg || msg.type !== "request") return;
-
-      const request = msg as WidgetBridgeRequest;
-      const response = await handleBridgeRequest(request, manifest);
+      if (e.source !== iframe.contentWindow || e.origin !== "null" || controller.signal.aborted) return;
+      const request = parseWidgetRequest(e.data);
+      if (!request || inFlight.has(request.id)) return;
+      if (Date.now() - intervalStarted >= 1000) { intervalStarted = Date.now(); requestCount = 0; }
+      if (++requestCount > 60 || inFlight.size >= 16) {
+        iframe.contentWindow?.postMessage({ type: "response", id: request.id, success: false, error: "Widget request limit exceeded" }, targetOrigin);
+        return;
+      }
+      inFlight.add(request.id);
+      let response;
+      try {
+        response = await handleBridgeRequest(request, manifest, { signal: controller.signal, power });
+      } catch {
+        response = { type: "response", id: request.id, success: false, error: "Widget request failed" };
+      } finally {
+        inFlight.delete(request.id);
+      }
 
       // 回传响应
-      iframe.contentWindow?.postMessage(response, targetOrigin);
+      if (!controller.signal.aborted) iframe.contentWindow?.postMessage(response, targetOrigin);
     };
 
     window.addEventListener("message", handler);
-    return () => window.removeEventListener("message", handler);
-  }, [manifest, targetOrigin, reloadKey]);
+    return () => {
+      window.removeEventListener("message", handler);
+      controller.abort();
+      void power.dispose().catch(() => console.warn("[WidgetFrame] Power session cleanup failed", { widgetId: manifest.id }));
+    };
+  }, [manifest, reloadKey, entryHtml, enabled]);
 
   // ── 事件推送：向 iframe 广播应用事件 ──
   useEffect(() => {
-    if (!manifest.permissions.includes("events")) return;
+    if (!enabled || !entryHtml || !manifest.permissions.includes("events")) return;
     const iframe = iframeRef.current;
 
     const unsub = subscribeWidgetEvent("*", (event, payload) => {
@@ -95,12 +113,12 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
       );
     });
     return unsub;
-  }, [manifest.permissions, targetOrigin, reloadKey]);
+  }, [manifest.permissions, reloadKey, entryHtml, enabled]);
 
   // ── Widget 初始化：发送配置 ──
   useEffect(() => {
     const iframe = iframeRef.current;
-    if (!iframe) return;
+    if (!iframe || !entryHtml || !enabled) return;
 
     const sendReady = () => {
       iframe.contentWindow?.postMessage(
@@ -109,7 +127,8 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
           event: "pinwall:ready",
           payload: {
             settings,
-            locale: navigator.language.startsWith("zh") ? "zh" : "en",
+            locale: lang,
+            bridgeVersion: 1,
             widgetId: manifest.id,
           },
         },
@@ -129,7 +148,7 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
       window.clearTimeout(readyTimer);
       iframe.removeEventListener("load", onLoad);
     };
-  }, [manifest.id, settings, targetOrigin, reloadKey, entryHtml]);
+  }, [manifest.id, settings, reloadKey, entryHtml, enabled, lang]);
 
   // ── 拖拽 ──
   const handlePointerDown = useCallback(
@@ -186,21 +205,28 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
   );
 
   // ── 卸载 ──
-  const handleUninstall = useCallback(() => {
-    uninstallWidget(manifest.id);
+  const handleUninstall = useCallback(async () => {
+    const removed = await uninstallWidgetFiles(manifest.id);
+    if (removed) uninstallWidget(manifest.id);
+    else setLoadError("uninstall_failed");
     setContextMenu(null);
   }, [manifest.id, uninstallWidget]);
 
   // ── 刷新 ──
   const handleRefresh = useCallback(() => {
-    const iframe = iframeRef.current;
-    if (entryHtml) {
-      setReloadKey((key) => key + 1);
-    } else if (iframe) {
-      iframe.src = iframe.src; // 重新加载
+    setReloadKey((key) => key + 1);
+    setContextMenu(null);
+  }, []);
+
+  const handleDisable = async () => {
+    try {
+      await revokeWidgetPower(manifest.id);
+      toggleWidget(manifest.id, false);
+    } catch {
+      setLoadError("stop_failed");
     }
     setContextMenu(null);
-  }, [entryHtml]);
+  };
 
   if (!enabled) return null;
 
@@ -251,10 +277,10 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
         <iframe
           key={`${manifest.id}-${reloadKey}-${entryHtml ? "srcdoc" : "src"}`}
           ref={iframeRef}
-          src={entryHtml ? undefined : iframeSrc}
-          srcDoc={entryHtml ?? undefined}
+          srcDoc={entryHtml ? prepareWidgetHtml(entryHtml) : ""}
           title={manifest.name}
-          sandbox="allow-scripts allow-same-origin"
+          sandbox="allow-scripts"
+          referrerPolicy="no-referrer"
           style={{
             width: "100%",
             height: "100%",
@@ -278,7 +304,7 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
               background: "rgba(28, 28, 30, 0.82)",
             }}
           >
-            小组件加载失败，请右键刷新或重新安装
+            {loadError === "uninstall_failed" ? t.widget_uninstall_failed : loadError === "stop_failed" ? t.widget_stop_failed : t.widget_load_failed}
           </div>
         )}
       </div>
@@ -301,14 +327,15 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
             fontSize: 13,
           }}
         >
-          <MenuItem label="刷新" onClick={handleRefresh} />
-          <MenuItem label="设置" onClick={() => { setShowSettings(true); setContextMenu(null); }} />
+          <MenuItem label={t.widget_refresh} onClick={handleRefresh} />
+          <MenuItem label={t.widget_settings} onClick={() => { setShowSettings(true); setContextMenu(null); }} />
           <MenuDivider />
-          <MenuItem label="尺寸 S" onClick={() => handleSizePreset("S")} />
-          <MenuItem label="尺寸 M" onClick={() => handleSizePreset("M")} />
-          <MenuItem label="尺寸 L" onClick={() => handleSizePreset("L")} />
+          <MenuItem label={`${t.widget_size} S`} onClick={() => handleSizePreset("S")} />
+          <MenuItem label={`${t.widget_size} M`} onClick={() => handleSizePreset("M")} />
+          <MenuItem label={`${t.widget_size} L`} onClick={() => handleSizePreset("L")} />
           <MenuDivider />
-          <MenuItem label="移除小组件" onClick={handleUninstall} danger />
+          <MenuItem label={t.widget_disable} onClick={handleDisable} />
+          <MenuItem label={t.widget_remove} onClick={handleUninstall} danger />
         </div>
       )}
 
@@ -340,7 +367,8 @@ function MenuItem({
   danger?: boolean;
 }) {
   return (
-    <div
+    <button
+      type="button"
       className="widget-control"
       onClick={onClick}
       style={{
@@ -348,6 +376,11 @@ function MenuItem({
         cursor: "pointer",
         color: danger ? "#ef4444" : "#1a1a1a",
         transition: "background 0.15s",
+        display: "block",
+        width: "100%",
+        border: 0,
+        background: "transparent",
+        textAlign: "left",
       }}
       onMouseEnter={(e) =>
         ((e.target as HTMLElement).style.background = "rgba(0,0,0,0.05)")
@@ -357,7 +390,7 @@ function MenuItem({
       }
     >
       {label}
-    </div>
+    </button>
   );
 }
 
