@@ -221,6 +221,9 @@ export type WidgetPermission =
   | "system"
   | "power"
   | "clipboard"
+  | "ocr"
+  | "images"
+  | "clipboardHistory"
   | "network"
   | "i18n";
 

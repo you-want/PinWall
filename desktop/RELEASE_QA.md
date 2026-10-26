@@ -163,11 +163,11 @@ Automated vault tests use an in-memory adapter and temporary files. They do not 
 
 This is the primary path for trusted, optional widgets.
 
-- [ ] All seven official widgets are listed: Clock, Weather, Pomodoro, System Monitor, Music Control, Keep Awake, and Clipboard to Note.
+- [ ] All ten official widgets are listed: Clock, Weather, Pomodoro, System Monitor, Music Control, Keep Awake, Clipboard to Note, Image to Note, Image Tools, and Clipboard History.
 - [ ] Install Clock from the Official Widget Hub without choosing a folder.
 - [ ] Install Weather and confirm the high-risk `network` permission prompt appears before install.
 - [ ] Install System Monitor and confirm the high-risk `system` permission prompt appears before install.
-- [ ] Enabled widgets appear on the main wall immediately; Keep Awake, System Monitor and Clipboard to Note are disabled after installation until explicitly enabled.
+- [ ] Enabled widgets appear on the main wall immediately; all six native tools are disabled after installation until explicitly enabled; Keep Awake and Clipboard History also require an explicit Start.
 - [ ] Installed widgets survive app quit and restart.
 - [ ] Installed widgets can be toggled off and on.
 - [ ] Installed widgets can be removed.
@@ -235,6 +235,26 @@ cargo test --offline clipboard::tests::native_clipboard_smoke -- --ignored --exa
 ```
 
 Direct API smoke and browser IPC mocks do not verify actual Tauri/TCC authorization, WKWebView interaction, multiwindow disable, tray quit, sleep/wake or Apple Silicon runtime behavior. Keep these manual gates unchecked until performed.
+
+## Image To Note, Image Tools And Clipboard History (Experimental)
+
+Follow the ordered Chinese checklist in [PLUGIN_ACCEPTANCE.md](./PLUGIN_ACCEPTANCE.md) for all six native tools. Manual gates below remain unchecked until performed in Tauri.
+
+- [ ] Install the three new tools with distinct permission explanations, initially disabled; enabling must not select a file, create a note or start clipboard recording.
+- [ ] OCR: select Chinese/English PNG/JPEG/WebP, review/edit and create once; cancel, no text, corrupt/oversized input and late results never create notes automatically.
+- [ ] Images: resize with/without aspect lock, all three formats, JPEG quality and white alpha background; output metadata is removed, original bytes remain intact. Cancel chooser/save and retry failures. Source overwrite, AppData and symlinks are rejected.
+- [ ] History: explicitly Start then copy fixture text, search/copy/delete/review; Pause keeps entries, Clear pauses and empties. Closing the dialog continues recording, while disable/uninstall/main reload/quit clears and restart stays paused.
+- [ ] Check private markers, non-text, 64 KiB per text, 100 items/1 MiB/24 h retention and pending clipboard providers; unmarked sensitive text may be captured. No history file or text in iframe/logs.
+- [ ] Verify modified bundled files cannot access native operations. Test native file permissions, multiwindow disable, WKWebView, narrow layouts, keyboard focus, offline use, Intel and Apple Silicon.
+
+Explicit local OCR smoke (synthetic fixture only, no chooser or user files):
+
+```bash
+cd desktop/src-tauri
+cargo test --offline image_tools::tests::native_ocr_smoke -- --ignored --exact --nocapture
+```
+
+This does not verify file dialogs, TCC, actual clipboard history capture or user workflows. No manual gate is satisfied by mocked browser tests alone.
 
 ## Visual And Performance Checks
 

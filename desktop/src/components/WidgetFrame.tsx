@@ -8,7 +8,9 @@ import { loadWidgetEntryHtml, uninstallWidget as uninstallWidgetFiles } from "..
 import { handleBridgeRequest, subscribeWidgetEvent } from "../services/widgetBridge";
 import { useWidgetStore } from "../stores/widgetStore";
 import { parseWidgetRequest, prepareWidgetHtml } from "../services/widgetProtocol";
-import { createWidgetPowerSession, revokeWidgetPower } from "../services/widgetPower";
+import { createWidgetPowerSession } from "../services/widgetPower";
+import { clearNativeTool, revokeWidgetTools } from "../services/widgetTools";
+import { useWidgetTool } from "../hooks/useWidgetTool";
 import { useI18n } from "../i18n";
 import { useClipboardImport } from "../hooks/useClipboardImport";
 
@@ -20,6 +22,7 @@ interface WidgetFrameProps {
 export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps) {
   const { t, lang } = useI18n();
   const { request: importClipboard, dialog: clipboardDialog } = useClipboardImport();
+  const { request: openTool, dialog: toolDialog } = useWidgetTool();
   const { manifest, x, y, size, zIndex, settings, enabled } = instance;
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -84,7 +87,7 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
       inFlight.add(request.id);
       let response;
       try {
-        response = await handleBridgeRequest(request, manifest, { signal: controller.signal, power, clipboard: () => importClipboard(controller.signal) });
+        response = await handleBridgeRequest(request, manifest, { signal: controller.signal, power, clipboard: () => importClipboard(controller.signal), tools: kind => openTool(kind, controller.signal) });
       } catch {
         response = { type: "response", id: request.id, success: false, error: "Widget request failed" };
       } finally {
@@ -99,9 +102,10 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
     return () => {
       window.removeEventListener("message", handler);
       controller.abort();
+      void clearNativeTool(manifest.id).catch(() => console.warn("[WidgetFrame] Native tool cleanup failed"));
       void power.dispose().catch(() => console.warn("[WidgetFrame] Power session cleanup failed", { widgetId: manifest.id }));
     };
-  }, [manifest, reloadKey, entryHtml, enabled, importClipboard]);
+  }, [manifest, reloadKey, entryHtml, enabled, importClipboard, openTool]);
 
   // ── 事件推送：向 iframe 广播应用事件 ──
   useEffect(() => {
@@ -222,7 +226,7 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
 
   const handleDisable = async () => {
     try {
-      await revokeWidgetPower(manifest.id);
+      await revokeWidgetTools(manifest.id);
       toggleWidget(manifest.id, false);
     } catch {
       setLoadError("stop_failed");
@@ -262,6 +266,7 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
       onContextMenu={handleContextMenu}
     >
       {clipboardDialog}
+      {toolDialog}
       {/* 容器样式 */}
       <div
         style={{

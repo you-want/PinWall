@@ -7,6 +7,88 @@ export interface OfficialWidgetCatalogItem {
 
 export const OFFICIAL_WIDGETS: OfficialWidgetCatalogItem[] = [
   {
+    sourcePath: "resources/widgets/widget-ocr-note",
+    manifest: {
+      "id": "com.pinwall.ocr-note",
+      "name": "图片识字 / Image to Note",
+      "description": "图片文字本地识别并转为便签 / Recognize image text locally and create a note",
+      "version": "1.0.0",
+      "author": "PinWall Team",
+      "entry": "index.html",
+      "icon": "icon.svg",
+      "type": "official",
+      "category": "productivity",
+      "permissions": [
+        "ocr",
+        "i18n"
+      ],
+      "defaultEnabled": false,
+      "defaultSize": {
+        "width": 260,
+        "height": 240
+      },
+      "minSize": {
+        "width": 210,
+        "height": 210
+      }
+    },
+  },
+  {
+    sourcePath: "resources/widgets/widget-image-tools",
+    manifest: {
+      "id": "com.pinwall.image-tools",
+      "name": "图片工具 / Image Tools",
+      "description": "本地压缩、缩放与格式转换 / Local resize, compression and conversion",
+      "version": "1.0.0",
+      "author": "PinWall Team",
+      "entry": "index.html",
+      "icon": "icon.svg",
+      "type": "official",
+      "category": "productivity",
+      "permissions": [
+        "images",
+        "i18n"
+      ],
+      "defaultEnabled": false,
+      "defaultSize": {
+        "width": 260,
+        "height": 240
+      },
+      "minSize": {
+        "width": 210,
+        "height": 210
+      }
+    },
+  },
+  {
+    sourcePath: "resources/widgets/widget-clipboard-history",
+    manifest: {
+      "id": "com.pinwall.clipboard-history",
+      "name": "剪贴板历史 / Clipboard History",
+      "description": "主动开启的本次会话文本历史 / Opt-in text history for this app session",
+      "version": "1.0.0",
+      "author": "PinWall Team",
+      "entry": "index.html",
+      "icon": "icon.svg",
+      "type": "official",
+      "category": "productivity",
+      "permissions": [
+        "clipboardHistory",
+        "i18n"
+      ],
+      "defaultEnabled": false,
+      "defaultSize": {
+        "width": 260,
+        "height": 240
+      },
+      "minSize": {
+        "width": 210,
+        "height": 210
+      }
+    },
+  },
+
+  {
     sourcePath: "resources/widgets/widget-clipboard-note",
     manifest: {
       id: "com.pinwall.clipboard-note",

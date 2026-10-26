@@ -53,7 +53,7 @@ test('official power plugin is opt-in, isolated, and releases on refresh, disabl
   await expect(frame.getByRole('button', { name: 'Stop', exact: true })).toBeEnabled();
   await page.evaluate(() => localStorage.setItem('pinwall-e2e:power:failStop', 'true'));
   await menu(page, 'Disable widget');
-  await expect(page.getByText('Keep Awake could not stop. The widget remains enabled; retry disabling it.')).toBeVisible();
+  await expect(page.getByText('The native tool could not stop. The widget remains enabled; retry disabling it.')).toBeVisible();
   await expect(page.locator(selector)).toHaveCount(1);
   await page.evaluate(() => localStorage.removeItem('pinwall-e2e:power:failStop'));
   await menu(page, 'Disable widget');

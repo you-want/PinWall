@@ -1,0 +1,24 @@
+{
+  "id": "com.pinwall.clipboard-history",
+  "name": "剪贴板历史 / Clipboard History",
+  "description": "主动开启的本次会话文本历史 / Opt-in text history for this app session",
+  "version": "1.0.0",
+  "author": "PinWall Team",
+  "entry": "index.html",
+  "icon": "icon.svg",
+  "type": "official",
+  "category": "productivity",
+  "permissions": [
+    "clipboardHistory",
+    "i18n"
+  ],
+  "defaultEnabled": false,
+  "defaultSize": {
+    "width": 260,
+    "height": 240
+  },
+  "minSize": {
+    "width": 210,
+    "height": 210
+  }
+}

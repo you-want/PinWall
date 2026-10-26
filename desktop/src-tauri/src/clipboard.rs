@@ -1,4 +1,5 @@
-//! One explicit host-confirmed text read. No history, monitoring or pasteboard writes.
+//! Host-confirmed text import and shared pasteboard helpers for optional session history.
+//! Only the history service can monitor or write, after explicit host actions.
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
@@ -38,19 +39,55 @@ fn require_main(label: &str) -> Result<(), String> {
 
 #[derive(Default)]
 pub struct ClipboardService(Arc<AtomicBool>);
-struct ReadGuard(Arc<AtomicBool>);
+pub(crate) struct ReadGuard(Arc<AtomicBool>);
 impl Drop for ReadGuard {
     fn drop(&mut self) {
         self.0.store(false, Ordering::Release);
     }
 }
 impl ClipboardService {
-    fn acquire(&self) -> Result<ReadGuard, String> {
+    pub(crate) fn acquire(&self) -> Result<ReadGuard, String> {
         self.0
             .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
             .map_err(|_| "clipboard_busy")?;
         Ok(ReadGuard(self.0.clone()))
     }
+}
+
+#[cfg(target_os = "macos")]
+pub(crate) fn change_count() -> isize {
+    objc2::rc::autoreleasepool(|_| objc2_app_kit::NSPasteboard::generalPasteboard().changeCount())
+}
+
+#[cfg(target_os = "macos")]
+pub(crate) fn changed_text(previous: isize) -> Option<(isize, Result<String, String>)> {
+    objc2::rc::autoreleasepool(|_| {
+        let pasteboard = objc2_app_kit::NSPasteboard::generalPasteboard();
+        let count = pasteboard.changeCount();
+        if count == previous {
+            None
+        } else {
+            Some((count, macos::read(&pasteboard)))
+        }
+    })
+}
+
+#[cfg(target_os = "macos")]
+pub(crate) fn write_history_text(text: &str) -> Result<(), String> {
+    use objc2_app_kit::{NSPasteboard, NSPasteboardTypeString};
+    use objc2_foundation::NSString;
+    objc2::rc::autoreleasepool(|_| {
+        let pasteboard = NSPasteboard::generalPasteboard();
+        pasteboard.clearContents();
+        // SAFETY: AppKit's exported string constant is valid for the process lifetime.
+        if pasteboard
+            .setString_forType(&NSString::from_str(text), unsafe { NSPasteboardTypeString })
+        {
+            Ok(())
+        } else {
+            Err("history_unavailable".into())
+        }
+    })
 }
 
 #[tauri::command]

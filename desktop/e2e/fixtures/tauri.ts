@@ -30,6 +30,14 @@ export const test = base.extend({
         const key = `${prefix}power:log`;
         localStorage.setItem(key, JSON.stringify([...JSON.parse(localStorage.getItem(key) ?? '[]'), method]));
       };
+      const historyKey = `${prefix}history:state`;
+      const emptyHistory = () => ({ recording: false, stopping: false, entries: [] as { id: string; text: string; createdAt: number }[], skipped: 0, failed: false });
+      const historyState = () => JSON.parse(localStorage.getItem(historyKey) ?? JSON.stringify(emptyHistory())) as ReturnType<typeof emptyHistory>;
+      const saveHistory = (state: ReturnType<typeof emptyHistory>) => {
+        localStorage.setItem(historyKey, JSON.stringify(state));
+        localStorage.setItem(`${prefix}history:revision`, String(Number(localStorage.getItem(`${prefix}history:revision`) ?? 0) + 1));
+      };
+      if (!['settings', 'notification'].includes(new URL(location.href).searchParams.get('window') ?? '')) saveHistory(emptyHistory());
       const settingsKey = `${prefix}file:pinwall-settings.json`;
       if (localStorage.getItem(settingsKey) === null) {
         localStorage.setItem(settingsKey, JSON.stringify({
@@ -248,6 +256,45 @@ export const test = base.extend({
             if (!pkg || !installed.some(widget => widget.id === args.id)) throw new Error('Test widget is not installed');
             return pkg.html;
           }
+          case 'recognize_widget_image': {
+            localStorage.setItem(`${prefix}ocr:calls`, String(Number(localStorage.getItem(`${prefix}ocr:calls`) ?? 0) + 1));
+            const error = localStorage.getItem(`${prefix}ocr:fail`); if (error) throw error;
+            if (localStorage.getItem(`${prefix}ocr:delay`) === 'true') await new Promise(resolve => setTimeout(resolve, 400));
+            return localStorage.getItem(`${prefix}ocr:cancel`) === 'true' ? null : 'Recognized fixture\n本地识字';
+          }
+          case 'select_widget_image': {
+            const error = localStorage.getItem(`${prefix}images:fail`); if (error) throw error;
+            if (localStorage.getItem(`${prefix}images:cancel`) === 'true') return null;
+            localStorage.setItem(`${prefix}images:token`, 'selected-image');
+            return { token: 'selected-image', width: 800, height: 400, originalBytes: 40960, preview: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAFElEQVR4nGNMmXaCAQaY4CwGBgYAKhoBxrgvo6EAAAAASUVORK5CYII=' };
+          }
+          case 'export_widget_image': {
+            if (args.token !== localStorage.getItem(`${prefix}images:token`)) throw 'image_expired';
+            const error = localStorage.getItem(`${prefix}images:export-fail`); if (error) throw error;
+            if (localStorage.getItem(`${prefix}images:export-cancel`) === 'true') return null;
+            const options = args.options as Args;
+            localStorage.setItem(`${prefix}images:export`, JSON.stringify(options));
+            return { width: options.width, height: options.height, format: options.format, bytes: 1234 };
+          }
+          case 'widget_history_request': {
+            const error = localStorage.getItem(`${prefix}history:fail`); if (error) throw error;
+            const action = args.action as { method: string; id?: string }; const state = historyState();
+            if (action.method === 'start') state.recording = true;
+            else if (action.method === 'pause') state.recording = false;
+            else if (action.method === 'clear') { state.recording = false; state.entries = []; state.skipped = 0; }
+            else if (action.method === 'delete') state.entries = state.entries.filter(e => e.id !== action.id);
+            else if (action.method === 'copy') localStorage.setItem(`${prefix}clipboard:lastwrite`, state.entries.find(e => e.id === action.id)?.text ?? '');
+            else if (action.method !== 'status') throw new Error('Unsupported test history action');
+            if (action.method !== 'status') saveHistory(state);
+            return state;
+          }
+          case 'get_widget_history_status': { const state = historyState(); return { recording: state.recording, count: state.entries.length, revision: localStorage.getItem(`${prefix}history:revision`) ?? '0' }; }
+          case 'revoke_widget_tool': {
+            if (args.widgetId === 'com.pinwall.clipboard-history') saveHistory(emptyHistory());
+            else if (args.widgetId === 'com.pinwall.image-tools') localStorage.removeItem(`${prefix}images:token`);
+            else if (args.widgetId !== 'com.pinwall.ocr-note') throw new Error('Unsupported test native tool');
+            return null;
+          }
           case 'get_system_info': {
             if (args.category !== 'getMetrics') throw new Error('Unsupported test system category');
             const calls = Number(localStorage.getItem(`${prefix}metrics:calls`) ?? 0) + 1;
@@ -298,10 +345,12 @@ export const test = base.extend({
             powerToken = null; powerStatus = { supported: true, active: false, endsAt: null };
             return null;
           case 'uninstall_widget':
-            if (!['com.pinwall.keep-awake', 'com.pinwall.system-monitor', 'com.pinwall.clipboard-note'].includes(String(args.id))) throw new Error('Unsupported test widget uninstall');
+            if (!['com.pinwall.keep-awake', 'com.pinwall.system-monitor', 'com.pinwall.clipboard-note', 'com.pinwall.ocr-note', 'com.pinwall.image-tools', 'com.pinwall.clipboard-history'].includes(String(args.id))) throw new Error('Unsupported test widget uninstall');
             localStorage.setItem(`${prefix}widgets:installed`, '[]');
-            powerToken = null; powerStatus = { supported: true, active: false, endsAt: null };
-            powerLog('uninstall'); return null;
+            if (args.id === 'com.pinwall.clipboard-history') saveHistory(emptyHistory());
+            if (args.id === 'com.pinwall.image-tools') localStorage.removeItem(`${prefix}images:token`);
+            if (args.id === 'com.pinwall.keep-awake') { powerToken = null; powerStatus = { supported: true, active: false, endsAt: null }; powerLog('uninstall'); }
+            return null;
           case 'plugin:window|get_all_windows':
             return ['main', 'settings', 'notification'];
           case 'plugin:window|set_ignore_cursor_events':

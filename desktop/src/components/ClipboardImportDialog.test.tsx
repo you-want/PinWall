@@ -81,4 +81,15 @@ describe("host clipboard import", () => {
     expect(screen.queryByRole("button", { name: "Create note" })).not.toBeInTheDocument();
     expect(useCardStore.getState().cards).toHaveLength(0);
   });
+
+  it("reviews history text without reading the live clipboard or creating a note on open", () => {
+    const complete = vi.fn();
+    render(<ClipboardImportDialog initialText="selected history fixture" onComplete={complete} />);
+    expect(screen.getByRole("textbox", { name: "Note text" })).toHaveValue("selected history fixture");
+    expect(readClipboardText).not.toHaveBeenCalled();
+    expect(useCardStore.getState().cards).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(complete).toHaveBeenCalledWith({ created: false });
+    expect(useCardStore.getState().cards).toHaveLength(0);
+  });
 });

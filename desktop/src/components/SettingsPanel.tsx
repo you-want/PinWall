@@ -26,7 +26,7 @@ import { UpdateCard, UpdateDialog } from "./update";
 import { useAppUpdater } from "../hooks/useAppUpdater";
 import { version } from "../../package.json";
 import { NoteBackup } from "./NoteBackup";
-import { revokeWidgetPower } from "../services/widgetPower";
+import { revokeWidgetTools } from "../services/widgetTools";
 
 const PROVIDER_PRESETS = [
   {
@@ -760,7 +760,7 @@ function TextField({
 
 function WidgetExtensionsSection() {
   const { widgets, toggleWidget } = useWidgetStore();
-  const lang = useI18n().lang;
+  const { lang, t } = useI18n();
   const [installingId, setInstallingId] = useState<string | null>(null);
   const [status, setStatus] = useState("");
 
@@ -825,11 +825,11 @@ function WidgetExtensionsSection() {
 
   const handleToggle = async (id: string, enabled: boolean) => {
     try {
-      if (!enabled) await revokeWidgetPower(id);
+      if (!enabled) await revokeWidgetTools(id);
       toggleWidget(id, enabled);
       setWidgetStatus("");
     } catch {
-      setWidgetStatus(lang === "zh" ? "防休眠停止失败，开关保持开启，请重试。" : "Keep Awake could not stop. The widget remains enabled; please retry.");
+      setWidgetStatus(t.widget_stop_failed);
     }
   };
 
@@ -842,9 +842,7 @@ function WidgetExtensionsSection() {
             {lang === "zh" ? "先从官方小组件开始" : "Start with official widgets"}
           </div>
           <div className="ap-widget-security-desc">
-            {lang === "zh"
-              ? "官方小组件会显示请求的权限；网络、系统、防休眠、剪贴板、便签和 AI 权限安装前需要确认。防休眠、系统监控和剪贴板转便签安装后默认关闭，需要手动启用。"
-              : "Official widgets show requested permissions. Network, system, keep awake, clipboard, cards, and AI permissions require confirmation before install. Keep Awake, System Monitor and Clipboard to Note are disabled after installation until you enable them."}
+            {t.widget_native_permissions}
           </div>
         </div>
         <div className="ap-divider" />

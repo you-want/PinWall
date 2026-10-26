@@ -188,3 +188,26 @@ CI 暴露了 `srcDoc` 已提交但消息监听 effect 尚未就绪的测试竞�
 - 真实 macOS metrics smoke 已验证 CPU、内存和电池读取；clipboard smoke 验证私有命名 pasteboard 的 Unicode 文本和私密标记拒绝，不访问用户通用剪贴板。它们不替代实际 Tauri/TCC 手工验收。
 - `CARGO_NET_OFFLINE=true pnpm tauri:build:app`（含 TypeScript/Vite 生产构建）通过，主 JS **702.87 KB**，导入弹窗懒加载块 **36.69 KB**；原有大于 500 KB 的 chunk 提示仍存在。`codesign --verify --deep --strict` 通过，三项插件的 9 个资源文件与源码逐字节一致。产物为本机 x86_64、ad-hoc、无 Team ID、未公证；未合并主分支或创建发布。
 - 后续范围：OCR、图片处理、剪贴板历史、第三方原生市场、更新/回滚及完整 bridge 审计均未实现；已有媒体 API 仍为占位。保持原阶段顺序，不把扩展清单自动算作完成。
+
+### OCR、图片工具与会话剪贴板历史（2026-10-26）
+
+沿用 `feat/desktop-native-plugins`，补齐本次确定的三项后续功能。此前章节中“OCR/图片处理/历史未实现”为当时记录，以本节为当前状态。六项原生工具现在均已有实现，全部属于 P2 可选能力、安装后默认关闭；人工验收按用户要求集中到最后，不提前勾选。
+
+- [x] 图片识字：宿主选择 PNG/JPEG/WebP，macOS Vision 本地中英文识别，取消/无字/损坏/超限可处理，预览编辑确认后创建普通便签。原图/文字/路径不进 iframe、AI 或日志。
+- [x] 图片工具：预览、保持比例或独立尺寸、JPEG 质量、PNG/JPEG/WebP 转换；系统选择输出位置，原子导出、拒绝覆盖原图/符号链接/AppData/扩展名不符。PNG/WebP 无损，JPEG 透明填白，不复制原元数据；体积可能变大。
+- [x] 图像资源预算：20 MiB 输入、1600 万像素、8192 单边、128 MiB decoder 分配上限；共享单操作槽、10 分钟选图有效期，关闭/停用清理、迟到选择失效。系统对话框和已开始的 Vision 调用不保证立即终止。
+- [x] 剪贴板历史：主动 Start 后才记录新增纯文本，搜索/复制/删除/预览建卡；内存最多 100 条、1 MiB、24 小时、单条 64 KiB。暂停保留，清空同时暂停；弹窗关闭继续，停用/卸载/主页面重载/退出清空，不跨进程恢复。私密标记过滤、旧 generation 迟到结果丢弃、单 worker 避免并行读取。
+- [x] 三个独立权限、固定 ID 与内置 manifest/HTML/icon 字节校验；主窗口操作，设置窗口仅撤销；iframe 仅打开宿主或查询历史计数，无文本/路径输入接口。不新增 capability、不改便签/设置 schema，不跨目录修改 SDK。
+- [x] 中英文、焦点管理、窄窗口滚动与 lazy dialog；保留已有 ready 120ms 时序修复。新增浏览器流程和边界测试，保留未知 IPC/控制台错误门禁。
+- [x] 新增 [PLUGIN_ACCEPTANCE.md](./PLUGIN_ACCEPTANCE.md)：准备安装→六项工具→核心回归→开发者检查→结果记录，共 10 步，每步有预期结果。README、原生契约与发布 QA 同步。
+- [ ] 真实文件选择/写入授权、通用剪贴板采集、WKWebView、多窗口停用、托盘退出、锁屏/唤醒、多显示器和双架构运行由用户按清单执行；代码完成不等于已通过手工验收。
+
+本轮最终验证结果见下方记录。第三方原生市场、更新/回滚、插件存储迁移、完整网络桥审计和媒体占位能力仍是独立后续范围，不属于这六项工具已完成的声明。
+
+最终验证记录：
+
+- `pnpm test:run`：**32 个文件 / 247 项**通过，无新增 act 警告；`cargo test --offline`：**72 项**通过，4 项真实原生 smoke 默认忽略。显式 Vision OCR smoke 已使用合成文字图片执行通过，不读取用户文件。
+- 匹配 Chromium 的完整浏览器回归 **44 个流程通过**（1.7 分钟），产物 `/tmp/pinwall-all-tools-final-e2e`；最后补充后台记录说明及历史卡片失败提示后，相关 **6 个流程再次通过**（37.1 秒），产物 `/tmp/pinwall-tools-copy-final-e2e`。均保留原有未知 IPC/控制台/运行时错误门禁。首次全量中的一处旧防休眠提示断言已同步新通用提示后重跑通过。
+- `CARGO_NET_OFFLINE=true pnpm tauri:build:app`（含 TypeScript/Vite）通过，最终主 JS **716.51 KB**；三项新工具界面懒加载，原有 >500 KB chunk 提示仍存在。`codesign --verify --deep --strict` 通过；六项插件的 **18 个资源文件**与源码逐字节一致。
+- 当前 `.app` 为本机 **x86_64、ad-hoc、无 Team ID、未公证**。没有代替用户执行手工验收，没有合并主分支、创建标签或公开发布；按 `PLUGIN_ACCEPTANCE.md` 执行后才能记录真实原生结果。
+- 无持久化 schema 迁移，无 capability 扩大；新增 image/base64 依赖及锁文件，历史只在会话内存，不提供跨重启恢复。文档链接和 `git diff --check` 通过。

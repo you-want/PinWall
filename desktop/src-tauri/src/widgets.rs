@@ -107,6 +107,7 @@ fn validate_widget_permission(permission: &str) -> Result<(), String> {
         | "system"
         | "power"
         | "clipboard"
+        | "ocr" | "images" | "clipboardHistory"
         | "network"
         | "i18n" => Ok(()),
         _ => Err(format!("Widget permission is invalid: {}", permission)),
@@ -161,12 +162,15 @@ fn official_widget_dir_name(id: &str) -> Option<&'static str> {
         "com.pinwall.music" => Some("widget-music"),
         "com.pinwall.keep-awake" => Some("widget-keep-awake"),
         "com.pinwall.clipboard-note" => Some("widget-clipboard-note"),
+        "com.pinwall.ocr-note" => Some("widget-ocr-note"),
+        "com.pinwall.image-tools" => Some("widget-image-tools"),
+        "com.pinwall.clipboard-history" => Some("widget-clipboard-history"),
         _ => None,
     }
 }
 
 fn is_desktop_widget(id: &str) -> bool {
-    matches!(id, crate::power::WIDGET_ID | "com.pinwall.system-monitor" | crate::clipboard::WIDGET_ID)
+    matches!(id, crate::power::WIDGET_ID | "com.pinwall.system-monitor" | crate::clipboard::WIDGET_ID | "com.pinwall.ocr-note" | "com.pinwall.image-tools" | "com.pinwall.clipboard-history")
 }
 
 fn official_widget_source(app: &tauri::AppHandle, id: &str) -> Result<PathBuf, String> {
@@ -280,6 +284,8 @@ fn install_widget_from_source(app: &tauri::AppHandle, source: PathBuf) -> Result
     // 目标目录
     let dest = widgets_dir(app)?.join(&manifest.id);
     if manifest.id == crate::power::WIDGET_ID { app.state::<crate::power::PowerService>().close_all()?; }
+    if manifest.id == crate::clipboard_history::WIDGET_ID { app.state::<crate::clipboard_history::HistoryService>().stop(true)?; }
+    if manifest.id == crate::image_tools::IMAGE_ID { app.state::<crate::image_tools::ImageService>().clear()?; }
 
     // 如果已存在则先删除（覆盖安装）
     if dest.exists() {
@@ -340,6 +346,8 @@ pub fn read_widget_entry_html(app: tauri::AppHandle, id: String) -> Result<Strin
 pub fn uninstall_widget(app: tauri::AppHandle, id: String) -> Result<(), String> {
     validate_widget_id(&id)?;
     if id == crate::power::WIDGET_ID { app.state::<crate::power::PowerService>().close_all()?; }
+    if id == crate::clipboard_history::WIDGET_ID { app.state::<crate::clipboard_history::HistoryService>().stop(true)?; }
+    if id == crate::image_tools::IMAGE_ID { app.state::<crate::image_tools::ImageService>().clear()?; }
     let dir = widgets_dir(&app)?.join(&id);
     if dir.exists() {
         std::fs::remove_dir_all(&dir).map_err(|e| e.to_string())?;
@@ -393,6 +401,25 @@ const CLIPBOARD_WIDGET_FILES: [(&str, &[u8]); 3] = [
 
 pub fn verify_clipboard_widget(app: &tauri::AppHandle) -> Result<(), String> {
     verify_bundled_widget_files(&widgets_dir(app)?.join(crate::clipboard::WIDGET_ID), &CLIPBOARD_WIDGET_FILES, "clipboard_untrusted_widget")
+}
+
+fn native_tool_files(id: &str) -> Result<[(&'static str, &'static [u8]); 3], String> {
+    macro_rules! files { ($folder:literal) => { [
+        ("widget.json", include_bytes!(concat!("../../resources/widgets/", $folder, "/widget.json")).as_slice()),
+        ("index.html", include_bytes!(concat!("../../resources/widgets/", $folder, "/index.html")).as_slice()),
+        ("icon.svg", include_bytes!(concat!("../../resources/widgets/", $folder, "/icon.svg")).as_slice()),
+    ] }; }
+    Ok(match id {
+        "com.pinwall.ocr-note" => files!("widget-ocr-note"),
+        "com.pinwall.image-tools" => files!("widget-image-tools"),
+        "com.pinwall.clipboard-history" => files!("widget-clipboard-history"),
+        _ => return Err("tool_permission_denied".into()),
+    })
+}
+
+pub fn verify_native_tool(app: &tauri::AppHandle, id: &str) -> Result<(), String> {
+    let files = native_tool_files(id)?;
+    verify_bundled_widget_files(&widgets_dir(app)?.join(id), &files, "tool_reinstall_required")
 }
 
 /// 读取 Widget 存储数据
@@ -594,6 +621,34 @@ mod tests {
                 assert!(manifest.permissions.contains(&"system".into()));
             }
         }
+    }
+
+    #[test]
+    fn image_and_history_tools_require_opt_in_and_exact_bundled_bytes() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../resources/widgets");
+        for (id, permission) in [(crate::image_tools::OCR_ID, "ocr"), (crate::image_tools::IMAGE_ID, "images"), (crate::clipboard_history::WIDGET_ID, "clipboardHistory")] {
+            let source = root.join(official_widget_dir_name(id).unwrap());
+            let manifest: WidgetManifest = serde_json::from_slice(&std::fs::read(source.join("widget.json")).unwrap()).unwrap();
+            validate_manifest(&manifest).unwrap();
+            validate_manifest_files(&source, &manifest).unwrap();
+            assert_eq!(manifest.id, id);
+            assert_eq!(manifest.default_enabled, Some(false));
+            assert_eq!(manifest.permissions, vec![permission.to_string(), "i18n".to_string()]);
+            assert!(is_desktop_widget(id));
+            let files = native_tool_files(id).unwrap();
+            verify_bundled_widget_files(&source, &files, "denied").unwrap();
+            let temp = std::env::temp_dir().join(format!("pinwall-tool-trust-{}-{}", std::process::id(), id));
+            copy_dir_recursive(&source, &temp).unwrap();
+            for name in ["widget.json", "index.html", "icon.svg"] {
+                let original = std::fs::read(temp.join(name)).unwrap();
+                let mut modified = original.clone(); modified[0] ^= 1;
+                std::fs::write(temp.join(name), modified).unwrap();
+                assert!(verify_bundled_widget_files(&temp, &files, "denied").is_err());
+                std::fs::write(temp.join(name), original).unwrap();
+            }
+            std::fs::remove_dir_all(temp).unwrap();
+        }
+        assert!(native_tool_files("com.example.untrusted").is_err());
     }
 
     #[test]

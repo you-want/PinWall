@@ -3,12 +3,14 @@ import { Dialog } from "radix-ui";
 import { useI18n } from "../i18n";
 import { readClipboardText, validClipboardText, type ClipboardNoteResult } from "../services/widgetClipboard";
 import { useCardStore, tauriHandler } from "../stores/cardStore";
+import { recognizeImage, toolError } from "../services/widgetTools";
 
-export function ClipboardImportDialog({ onComplete }: { onComplete: (result: ClipboardNoteResult) => void }) {
+export function ClipboardImportDialog({ onComplete, source = "clipboard", initialText = null }: { onComplete: (result: ClipboardNoteResult) => void; source?: "clipboard" | "ocr"; initialText?: string | null }) {
   const { t } = useI18n();
   const [phase, setPhase] = useState<"idle" | "reading" | "preview" | "saving">("idle");
-  const [text, setText] = useState<string | null>(null);
-  const [title, setTitle] = useState<string>(t.clipboard_title);
+  const [text, setText] = useState<string | null>(initialText);
+  const dialogTitle = source === "ocr" ? t.ocr_title : t.clipboard_title;
+  const [title, setTitle] = useState<string>(dialogTitle);
   const [error, setError] = useState("");
   const [createdId, setCreatedId] = useState<string | null>(null);
   const running = useRef(false);
@@ -31,13 +33,14 @@ export function ClipboardImportDialog({ onComplete }: { onComplete: (result: Cli
     if (running.current || !controller || controller.signal.aborted) return;
     running.current = true; setPhase("reading"); setError("");
     try {
-      const value = await readClipboardText(controller.signal);
+      const value = source === "ocr" ? await recognizeImage(controller.signal) : await readClipboardText(controller.signal);
       if (controller.signal.aborted) return;
+      if (value === null) { setPhase("idle"); return; }
       setText(value); setPhase("preview");
     } catch (failure: unknown) {
       if (controller.signal.aborted) return;
       const code = failure instanceof Error ? failure.message : "";
-      setError(code === "clipboard_sensitive" ? t.clipboard_sensitive
+      setError(source === "ocr" ? toolError(failure, t) : code === "clipboard_sensitive" ? t.clipboard_sensitive
         : code === "clipboard_empty" || code === "clipboard_invalid" ? t.clipboard_empty
         : code === "clipboard_too_large" ? t.clipboard_large
         : code === "clipboard_changed" ? t.clipboard_changed
@@ -56,7 +59,7 @@ export function ClipboardImportDialog({ onComplete }: { onComplete: (result: Cli
     running.current = true; setPhase("saving"); setError("");
     try {
       if (!created.current) {
-        created.current = useCardStore.getState().createCard(title.trim().slice(0, 120) || t.clipboard_title, text, 0, "note", false, null, 0, 0);
+        created.current = useCardStore.getState().createCard(title.trim().slice(0, 120) || dialogTitle, text, 0, "note", false, null, 0, 0);
         setCreatedId(created.current);
         await tauriHandler.flush();
       } else {
@@ -78,12 +81,12 @@ export function ClipboardImportDialog({ onComplete }: { onComplete: (result: Cli
           onContextMenu={event => event.stopPropagation()}
           onInteractOutside={event => event.preventDefault()}
           onEscapeKeyDown={event => { if (phase === "saving") event.preventDefault(); }}>
-          <div className="modal-v2-header"><Dialog.Title className="modal-v2-title">{t.clipboard_title}</Dialog.Title></div>
+          <div className="modal-v2-header"><Dialog.Title className="modal-v2-title">{dialogTitle}</Dialog.Title></div>
           <div className="modal-v2-body" style={{ overflowY: "auto" }}>
-            <Dialog.Description className="text-sm text-gray-600">{t.clipboard_description}</Dialog.Description>
+            <Dialog.Description className="text-sm text-gray-600">{source === "ocr" ? t.ocr_description : t.clipboard_description}</Dialog.Description>
             {text === null ? (
               <button className="btn-v2 btn-v2-primary mt-4" disabled={phase === "reading"} onClick={() => void read()}>
-                {phase === "reading" ? t.clipboard_reading : t.clipboard_read}
+                {source === "ocr" ? phase === "reading" ? t.ocr_recognizing : t.ocr_choose : phase === "reading" ? t.clipboard_reading : t.clipboard_read}
               </button>
             ) : (
               <div className="mt-4 flex flex-col gap-3">

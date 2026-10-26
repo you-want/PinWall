@@ -15,6 +15,7 @@ import { parseWidgetRequest, validWidgetArguments } from "./widgetProtocol";
 import type { createWidgetPowerSession } from "./widgetPower";
 import { readWidgetMetrics } from "./widgetMetrics";
 import { CLIPBOARD_WIDGET_ID, type ClipboardNoteResult } from "./widgetClipboard";
+import { NATIVE_TOOLS, historyStatus, type NativeTool, type ToolResult } from "./widgetTools";
 
 /**
  * Widget Host API Bridge
@@ -149,7 +150,7 @@ function sanitizeNetworkHeaders(headers: unknown): Record<string, string> {
 export async function handleBridgeRequest(
   request: WidgetBridgeRequest,
   manifest: WidgetManifest,
-  context?: { signal?: AbortSignal; power?: ReturnType<typeof createWidgetPowerSession>; clipboard?: () => Promise<ClipboardNoteResult> }
+  context?: { signal?: AbortSignal; power?: ReturnType<typeof createWidgetPowerSession>; clipboard?: () => Promise<ClipboardNoteResult>; tools?: (kind: NativeTool) => Promise<ToolResult> }
 ): Promise<WidgetBridgeResponse> {
   if (!parseWidgetRequest(request) || !validWidgetArguments(request)) {
     return errorResponse(typeof request?.id === "string" ? request.id.slice(0, 128) : "invalid", "Invalid widget request");
@@ -157,6 +158,15 @@ export async function handleBridgeRequest(
   const { id, module, method, args = [] } = request;
 
   if (context?.signal?.aborted) return errorResponse(id, "Widget session closed");
+  if (Object.prototype.hasOwnProperty.call(NATIVE_TOOLS, module)) {
+    const kind = module as NativeTool; const tool = NATIVE_TOOLS[kind];
+    if (manifest.id !== tool.id || !hasPermission(manifest, tool.permission)) return errorResponse(id, "Permission denied: native tool");
+    try {
+      if (kind === "clipboardHistory" && method === "status" && context?.signal) return successResponse(id, await historyStatus(context.signal));
+      if (method !== "open" || !context?.tools) return errorResponse(id, "Unknown native tool method");
+      return successResponse(id, await context.tools(kind));
+    } catch { return errorResponse(id, "tool_unavailable"); }
+  }
   if (module === "clipboard") {
     if (manifest.id !== CLIPBOARD_WIDGET_ID || !hasPermission(manifest, "clipboard") || !context?.clipboard) return errorResponse(id, "Permission denied: clipboard");
     if (method !== "openImport") return errorResponse(id, "Unknown clipboard method");

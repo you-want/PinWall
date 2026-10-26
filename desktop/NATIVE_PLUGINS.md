@@ -1,14 +1,14 @@
-# 可选原生插件：第一阶段
+# 可选原生插件契约
 
-本轮属于 P2 实验能力，复用已有 Widget Hub、安装器和桌面卡片。第一阶段包含防休眠、系统监控和剪贴板转便签，均默认关闭；防休眠需用户主动开始，不自动恢复运行。不新增独立服务进程，不扩大 Tauri capability，不改动便签/设置持久化 schema。
+本轮属于 P2 实验能力，复用已有 Widget Hub、安装器和桌面卡片。当前包含防休眠、系统监控、剪贴板转便签、图片识字、图片工具和剪贴板历史，均默认关闭；防休眠需用户主动开始，不自动恢复运行。不新增独立服务进程，不扩大 Tauri capability，不改动便签/设置持久化 schema。
 
 ## 安装与资源
 
-源码位于 `desktop/resources/widgets/` 的 `widget-keep-awake/`、`widget-system-monitor/`、`widget-clipboard-note/`，随应用打包至 `native-widgets/`；其余官方组件沿用现有资源目录。系统监控保留 ID `com.pinwall.system-monitor`，升级至 2.0；旧版不会自动替换，需从组件中心重新安装。安装后仍存入 AppData 下的 widgets 目录。
+源码位于 `desktop/resources/widgets/` 的 `widget-keep-awake/`、`widget-system-monitor/`、`widget-clipboard-note/`、`widget-ocr-note/`、`widget-image-tools/`、`widget-clipboard-history/`，随应用打包至 `native-widgets/`；其余官方组件沿用现有资源目录。系统监控保留 ID `com.pinwall.system-monitor`，升级至 2.0；旧版不会自动替换，需从组件中心重新安装。安装后仍存入 AppData 下的 widgets 目录。
 
-Manifest 支持可选字段 `defaultEnabled`；原生操作使用独立 `power`、`clipboard` 权限，监控使用已有 `system` 权限。新安装组件按 `defaultEnabled ?? true` 初始化，兼容既有组件；同步已有安装时保留用户的启用选择。三项工具固定为 `false`，安装授权不会启动原生能力。覆盖安装会重新关闭；普通启动同步保留现有启用状态和尺寸。
+Manifest 支持可选字段 `defaultEnabled`；原生操作使用独立 `power`、`clipboard` 权限，监控使用已有 `system` 权限。新安装组件按 `defaultEnabled ?? true` 初始化，兼容既有组件；同步已有安装时保留用户的启用选择。六项工具固定为 `false`，安装授权不会启动原生能力。覆盖安装会重新关闭；普通启动同步保留现有启用状态和尺寸。
 
-`type: official` 不能授予原生权限。Rust 在打开电源会话、读取剪贴板前校验各自固定 ID、安装目录及三个入口文件的精确字节，拒绝符号链接、路径逃逸和修改后的组件。更新应用后旧组件内容若不匹配，需要重新安装；UI 提供说明。这是内置可信源机制，不是第三方签名、市场审核或自动更新系统。
+`type: official` 不能授予原生权限。Rust 在打开电源会话、读取剪贴板、操作图片或历史前校验各自固定 ID、安装目录及三个入口文件的精确字节，拒绝符号链接、路径逃逸和修改后的组件。更新应用后旧组件内容若不匹配，需要重新安装；UI 提供说明。这是内置可信源机制，不是第三方签名、市场审核或自动更新系统。
 
 ## iframe 与消息协议
 
@@ -61,10 +61,39 @@ macOS 使用 IOKit `PreventUserIdleSystemSleep` 和系统 `TimeoutActionRelease`
 
 新增 macOS 直接依赖 `libc`、`core-foundation-sys`、`objc2`、`objc2-app-kit`、`objc2-foundation`，均为已有锁定版本；未新增 Tauri capability，未改变持久化 schema。自动化剪贴板 smoke 只使用私有命名 pasteboard，不读写用户通用剪贴板。
 
+## 图片识字与图片处理
+
+新增独立高风险权限 `ocr`、`images`，只允许各自固定 ID `com.pinwall.ocr-note`、`com.pinwall.image-tools` 调用无参数 `ocr.open()`、`images.open()`。二者只打开懒加载宿主界面；iframe 收不到路径、图像、识别文字或原生选择 token。OCR 响应仅含创建结果/卡片 ID，图片工具只回传 `{closed:true}`。安装后的 manifest/HTML/icon 必须逐字节匹配内置资源；声明 official 或复制权限不能获得能力。
+
+原生命令均限制 main，阻塞选择器和处理离开 UI 线程：
+
+| 命令 | 宿主输入/输出 | 边界 |
+| --- | --- | --- |
+| `recognize_widget_image` | 无输入；取消/null 或识别文本 | 选择器由原生打开，Vision accurate 中英文识别，最多 64 KiB UTF-8 |
+| `select_widget_image` | 无输入；取消/null 或 token/尺寸/原大小/PNG 缩略图 | 不接受任意文件路径，原图只在原生内存 |
+| `export_widget_image` | token + width/height/format/quality；取消/null 或尺寸/字节数/格式 | 系统保存选择器，拒绝原图、符号链接、AppData 及扩展名不符 |
+| `revoke_widget_tool` | 三项固定 ID 之一；无返回内容 | main/settings 只可清除选择或停止清空历史，不能启动 |
+
+图像服务共享单操作槽，拒绝并发 OCR/选择/导出。选择结果只保留一张，10 分钟逻辑过期，关闭图片弹窗、frame 销毁/刷新、停用、卸载、重装或主页面重载清除。选择 token 是宿主内部标识，不充当加密凭证；原生权限和内容校验独立进行。清除使迟到的选择失效；保存前再次确认当前选择。已打开的系统选择器或开始的 Vision 调用不能强制终止，前端取消会丢弃结果，原生槽位等待系统返回。
+
+输入只允许 PNG/JPEG/WebP，按实际内容识别，限制 20 MiB、1600 万像素、8192 单边和 decoder 128 MiB 分配预算，应用 EXIF 方向。输出使用 Lanczos3 缩放、PNG 最佳压缩、WebP 无损和 JPEG 质量 1–100（透明填白），重新编码像素不复制原元数据；体积可能增大。输出通过目标目录内 0600 临时文件、fsync、rename 替换，不修改原图。没有 HEIC/PDF、屏幕捕获、摄像头或批量操作。Vision 直接链接系统 framework，不启动 Swift helper、不访问网络。
+
+新增 image 0.25.9（仅 png/jpeg/webp）和 base64 0.22；锁文件固定传递依赖，objc2-foundation 启用 NSData/NSDictionary/NSError；没有扩大 Tauri capability 或修改持久化 schema。
+
+## 剪贴板历史
+
+固定 `com.pinwall.clipboard-history` + 独立 `clipboardHistory` 权限。插件只可调用 `clipboardHistory.open()` 和 `clipboardHistory.status()`；后者仅返回 recording/count/revision，不返回文本。全部历史内容、复制、删除和创建便签都在宿主 UI，不能通过 iframe 指定历史 ID 或注入文本写剪贴板。
+
+`widget_history_request` 仅 main + 精确内置内容，接收严格枚举 status/start/pause/clear/delete/copy；额外参数拒绝，运行在 blocking worker。`get_widget_history_status` 仅返回元数据，宿主按 revision 变化取完整快照，避免持续传输最大 1 MiB 文本。界面和插件隐藏时暂停状态查询，但用户明确开始的原生记录继续。
+
+Start 后仅创建一个 native thread，每 750ms 查询 changeCount，只在变化时读取；开始不读取已有文本。与单次导入共享原生读取槽和私密/临时/自动生成标记过滤，单条最多 64 KiB。最多 100 条、合计 1 MiB、24 小时保留，重复文本移到最前；无磁盘写入、无启动恢复。Pause 停止但保留历史，Clear 停止并清空，关闭弹窗继续记录。停用、卸载、覆盖安装、主页面重载/销毁或进程退出清空，重新开启仍须 Start。迟到结果按 generation 丢弃，旧系统 provider 返回前不能再开第二个 worker；失败有重试状态。未标记的敏感文本无法自动过滤，UI 明确提示。
+
+复制只允许宿主按钮写入已选历史文本；转便签复用确认编辑和同 ID 保存重试，不重新读取当前剪贴板。前端完整快照逐项校验类型和大小，没有把文本回传 iframe/AI/日志。
+
 ## 扩展顺序与未完成范围
 
-后续能力应按“单独 manifest 权限 → 类型化 bridge → 最小原生命令 → 可撤销生命周期 → 错误/离线状态 → 测试和原生 QA”逐个加入。图片处理、OCR、剪贴板历史等后续能力需独立评估读写范围与资源预算，不能通过通用 shell 权限接入。
+后续能力应按“单独 manifest 权限 → 类型化 bridge → 最小原生命令 → 可撤销生命周期 → 错误/离线状态 → 测试和原生 QA”逐个加入。以后新增能力同样需要独立评估读写范围与资源预算，不能通过通用 shell 权限接入。
 
 本轮不提供第三方原生插件执行、开放市场、更新回滚、插件存储迁移或完整网络代理安全方案。已有网络 bridge 的 DNS/重定向策略、AppData asset scope、原子安装等仍需后续审计。iframe 改造和少量可信原生服务不等同于整个 Widget 体系已完成安全化。
 
-测试入口包括 `src/services/widgetProtocol.test.ts`、`widgetPower.test.ts`、`widgetMetrics.test.ts`、`widgetClipboard.test.ts`、`widgetBridge.test.ts`、宿主弹窗测试，以及 `src-tauri/src/{power,metrics,clipboard}.rs` 和 `e2e/widget-{power,metrics,clipboard}.spec.ts`。真实 Tauri 多窗口、退出和睡眠唤醒仍按 `RELEASE_QA.md` 验收。
+测试入口包括 `src/services/widgetProtocol.test.ts`、`widgetPower.test.ts`、`widgetMetrics.test.ts`、`widgetClipboard.test.ts`、`widgetBridge.test.ts`、宿主弹窗测试，以及 `src-tauri/src/{power,metrics,clipboard}.rs` 和 `e2e/widget-{power,metrics,clipboard}.spec.ts`。新增测试位于 `widgetTools.test.ts`、`image_tools.rs`、`clipboard_history.rs` 和 `e2e/widget-tools.spec.ts`。真实 Tauri 多窗口、文件选择器、通用剪贴板、退出和睡眠唤醒按 `PLUGIN_ACCEPTANCE.md` 与 `RELEASE_QA.md` 验收。

@@ -1,0 +1,24 @@
+{
+  "id": "com.pinwall.ocr-note",
+  "name": "图片识字 / Image to Note",
+  "description": "图片文字本地识别并转为便签 / Recognize image text locally and create a note",
+  "version": "1.0.0",
+  "author": "PinWall Team",
+  "entry": "index.html",
+  "icon": "icon.svg",
+  "type": "official",
+  "category": "productivity",
+  "permissions": [
+    "ocr",
+    "i18n"
+  ],
+  "defaultEnabled": false,
+  "defaultSize": {
+    "width": 260,
+    "height": 240
+  },
+  "minSize": {
+    "width": 210,
+    "height": 210
+  }
+}

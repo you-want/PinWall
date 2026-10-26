@@ -1,0 +1,29 @@
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import type { NativeTool, ToolResult } from "../services/widgetTools";
+const OcrDialog = lazy(() => import("../components/ClipboardImportDialog").then(m => ({ default: m.ClipboardImportDialog })));
+const ImagesDialog = lazy(() => import("../components/ImageToolsDialog").then(m => ({ default: m.ImageToolsDialog })));
+const HistoryDialog = lazy(() => import("../components/ClipboardHistoryDialog").then(m => ({ default: m.ClipboardHistoryDialog })));
+
+export function useWidgetTool() {
+  const [tool, setTool] = useState<NativeTool | null>(null);
+  const pending = useRef<{ resolve: (result: ToolResult) => void; signal: AbortSignal; abort: () => void } | null>(null);
+  const complete = useCallback((result: ToolResult) => {
+    const current = pending.current; pending.current = null;
+    current?.signal.removeEventListener("abort", current.abort); current?.resolve(result); setTool(null);
+  }, []);
+  const request = useCallback((kind: NativeTool, signal: AbortSignal): Promise<ToolResult> => {
+    if (signal.aborted) return Promise.resolve({ closed: true });
+    if (pending.current) return Promise.reject(new Error("tool_busy"));
+    return new Promise(resolve => {
+      const abort = () => complete({ closed: true });
+      pending.current = { resolve, signal, abort }; signal.addEventListener("abort", abort, { once: true }); setTool(kind);
+    });
+  }, [complete]);
+  useEffect(() => () => {
+    const current = pending.current; pending.current = null;
+    current?.signal.removeEventListener("abort", current.abort); current?.resolve({ closed: true });
+  }, []);
+  return { request, dialog: tool ? <Suspense fallback={null}>
+    {tool === "ocr" ? <OcrDialog source="ocr" onComplete={complete} /> : tool === "images" ? <ImagesDialog onClose={() => complete({ closed: true })} /> : <HistoryDialog onClose={() => complete({ closed: true })} />}
+  </Suspense> : null };
+}

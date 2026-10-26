@@ -118,6 +118,24 @@ describe('widgetBridge', () => {
   });
 
   describe('clipboard import boundary', () => {
+    it('binds each new tool to its permission and fixed ID, without giving direct file or history access', async () => {
+      const { invoke } = await import('@tauri-apps/api/core');
+      vi.mocked(invoke).mockClear();
+      const tools = vi.fn().mockResolvedValue({ closed: true });
+      for (const [module, id] of [['ocr', 'ocr-note'], ['images', 'image-tools'], ['clipboardHistory', 'clipboard-history']] as const) {
+        const manifest = { ...createTestManifest([module]), id: `com.pinwall.${id}` };
+        for (const request of [makeRequest(module, 'read'), makeRequest(module, 'open', ['path'])]) {
+          expect((await handleBridgeRequest(request, manifest, { tools })).success).toBe(false);
+        }
+        expect((await handleBridgeRequest(makeRequest(module, 'open'), { ...manifest, id: 'com.fake.tool' }, { tools })).success).toBe(false);
+        expect((await handleBridgeRequest(makeRequest(module, 'open'), { ...manifest, permissions: [] }, { tools })).success).toBe(false);
+        expect((await handleBridgeRequest(makeRequest(module, 'open'), manifest, { tools })).data).toEqual({ closed: true });
+        expect(tools).toHaveBeenLastCalledWith(module);
+      }
+      expect(tools).toHaveBeenCalledTimes(3);
+      expect(invoke).not.toHaveBeenCalled();
+    });
+
     it('only opens host UI for the declared official tool and returns no clipboard text', async () => {
       const { invoke } = await import('@tauri-apps/api/core');
       vi.mocked(invoke).mockClear();
