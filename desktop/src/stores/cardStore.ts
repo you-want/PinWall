@@ -53,7 +53,7 @@ type CardState = {
     reminderTime: number | null,
     x: number,
     y: number
-  ) => void;
+  ) => string;
   updateReminder: (id: string, reminderEnabled: boolean, reminderTime: number | null) => void;
   updateContent: (id: string, content: string) => void;
   editCard: (id: string, changes: Pick<PinCardData,
@@ -158,6 +158,7 @@ export const useCardStore = create<CardState>((set, get) => ({
       zIndexMap: { ...s.zIndexMap, [newCard.id]: nextCounter },
       _zIndexCounter: nextCounter,
     }));
+    return newCard.id;
   },
 
   updateReminder: (id, reminderEnabled, reminderTime) => {

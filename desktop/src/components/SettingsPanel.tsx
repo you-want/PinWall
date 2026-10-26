@@ -843,8 +843,8 @@ function WidgetExtensionsSection() {
           </div>
           <div className="ap-widget-security-desc">
             {lang === "zh"
-              ? "官方小组件会显示请求的权限；网络、系统、防休眠、便签和 AI 权限安装前需要确认。防休眠安装后默认关闭，需要手动启用。"
-              : "Official widgets show requested permissions. Network, system, keep awake, cards, and AI permissions require confirmation before install. Keep Awake is disabled after installation until you enable it."}
+              ? "官方小组件会显示请求的权限；网络、系统、防休眠、剪贴板、便签和 AI 权限安装前需要确认。防休眠、系统监控和剪贴板转便签安装后默认关闭，需要手动启用。"
+              : "Official widgets show requested permissions. Network, system, keep awake, clipboard, cards, and AI permissions require confirmation before install. Keep Awake, System Monitor and Clipboard to Note are disabled after installation until you enable them."}
           </div>
         </div>
         <div className="ap-divider" />

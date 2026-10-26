@@ -230,6 +230,7 @@ export const test = base.extend({
             emit('main-layer-changed', true);
             return null;
           case 'send_to_background':
+            localStorage.setItem(`${prefix}background:calls`, String(Number(localStorage.getItem(`${prefix}background:calls`) ?? 0) + 1));
             emit('main-layer-changed', false);
             return null;
           case 'list_installed_widgets':
@@ -246,6 +247,27 @@ export const test = base.extend({
             const pkg = JSON.parse(localStorage.getItem(`${prefix}widgets:package`) ?? 'null') as { manifest: Args; html: string } | null;
             if (!pkg || !installed.some(widget => widget.id === args.id)) throw new Error('Test widget is not installed');
             return pkg.html;
+          }
+          case 'get_system_info': {
+            if (args.category !== 'getMetrics') throw new Error('Unsupported test system category');
+            const calls = Number(localStorage.getItem(`${prefix}metrics:calls`) ?? 0) + 1;
+            localStorage.setItem(`${prefix}metrics:calls`, String(calls));
+            if (localStorage.getItem(`${prefix}metrics:fail`) === 'true') throw 'metrics_unavailable';
+            const partial = localStorage.getItem(`${prefix}metrics:partial`) === 'true';
+            return {
+              sampledAt: Date.now(),
+              cpu: partial ? { status: 'unavailable' } : { status: 'ok', value: 37.5 },
+              memory: { status: 'ok', value: { total: 17179869184, inUse: 8589934592 } },
+              battery: partial ? { status: 'notPresent' } : { status: 'ok', value: { level: 0.85, charging: false, onAc: true } },
+            };
+          }
+          case 'read_widget_clipboard_text': {
+            if (args.widgetId !== 'com.pinwall.clipboard-note') throw 'clipboard_permission_denied';
+            localStorage.setItem(`${prefix}clipboard:reads`, String(Number(localStorage.getItem(`${prefix}clipboard:reads`) ?? 0) + 1));
+            const failure = localStorage.getItem(`${prefix}clipboard:fail`);
+            if (failure) throw failure;
+            if (localStorage.getItem(`${prefix}clipboard:delay`) === 'true') await new Promise(resolve => setTimeout(resolve, 400));
+            return localStorage.getItem(`${prefix}clipboard:text`) ?? 'Clipboard fixture\nSecond line';
           }
           case 'open_widget_power_session':
             if (args.widgetId !== 'com.pinwall.keep-awake') throw 'power_permission_denied';
@@ -276,7 +298,7 @@ export const test = base.extend({
             powerToken = null; powerStatus = { supported: true, active: false, endsAt: null };
             return null;
           case 'uninstall_widget':
-            if (args.id !== 'com.pinwall.keep-awake') throw new Error('Unsupported test widget uninstall');
+            if (!['com.pinwall.keep-awake', 'com.pinwall.system-monitor', 'com.pinwall.clipboard-note'].includes(String(args.id))) throw new Error('Unsupported test widget uninstall');
             localStorage.setItem(`${prefix}widgets:installed`, '[]');
             powerToken = null; powerStatus = { supported: true, active: false, endsAt: null };
             powerLog('uninstall'); return null;

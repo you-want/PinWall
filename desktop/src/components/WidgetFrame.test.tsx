@@ -149,6 +149,13 @@ describe('WidgetFrame', () => {
     const post = vi.spyOn(iframe.contentWindow!, 'postMessage');
     await act(async () => { await vi.advanceTimersByTimeAsync(120); });
     expect(post).toHaveBeenCalledWith(expect.objectContaining({ event: 'pinwall:ready' }), '*');
+    const beforeLoad = post.mock.calls.length;
+    fireEvent.load(iframe);
+    expect(post).toHaveBeenCalledTimes(beforeLoad);
+    await act(async () => { await vi.advanceTimersByTimeAsync(119); });
+    expect(post).toHaveBeenCalledTimes(beforeLoad);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    expect(post).toHaveBeenCalledTimes(beforeLoad + 1);
     fireEvent.load(iframe);
     const count = post.mock.calls.length;
     unmount();

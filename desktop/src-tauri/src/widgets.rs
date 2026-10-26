@@ -106,6 +106,7 @@ fn validate_widget_permission(permission: &str) -> Result<(), String> {
         | "ai"
         | "system"
         | "power"
+        | "clipboard"
         | "network"
         | "i18n" => Ok(()),
         _ => Err(format!("Widget permission is invalid: {}", permission)),
@@ -159,8 +160,13 @@ fn official_widget_dir_name(id: &str) -> Option<&'static str> {
         "com.pinwall.system-monitor" => Some("widget-system-monitor"),
         "com.pinwall.music" => Some("widget-music"),
         "com.pinwall.keep-awake" => Some("widget-keep-awake"),
+        "com.pinwall.clipboard-note" => Some("widget-clipboard-note"),
         _ => None,
     }
+}
+
+fn is_desktop_widget(id: &str) -> bool {
+    matches!(id, crate::power::WIDGET_ID | "com.pinwall.system-monitor" | crate::clipboard::WIDGET_ID)
 }
 
 fn official_widget_source(app: &tauri::AppHandle, id: &str) -> Result<PathBuf, String> {
@@ -170,7 +176,7 @@ fn official_widget_source(app: &tauri::AppHandle, id: &str) -> Result<PathBuf, S
 
     if let Ok(resource_dir) = app.path().resource_dir() {
         let bundled = resource_dir
-            .join(if id == crate::power::WIDGET_ID { "native-widgets" } else { "official-widgets" })
+            .join(if is_desktop_widget(id) { "native-widgets" } else { "official-widgets" })
             .join(dir_name);
         if bundled.exists() {
             return Ok(bundled);
@@ -178,7 +184,7 @@ fn official_widget_source(app: &tauri::AppHandle, id: &str) -> Result<PathBuf, S
     }
 
     let dev_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join(if id == crate::power::WIDGET_ID { "../resources/widgets" } else { "../../widgets" })
+        .join(if is_desktop_widget(id) { "../resources/widgets" } else { "../../widgets" })
         .join(dir_name);
     if dev_path.exists() {
         return Ok(dev_path);
@@ -356,11 +362,15 @@ const POWER_WIDGET_FILES: [(&str, &[u8]); 3] = [
 ];
 
 fn verify_power_widget_files(root: &std::path::Path) -> Result<(), String> {
-    let denied = || "power_untrusted_widget".to_string();
+    verify_bundled_widget_files(root, &POWER_WIDGET_FILES, "power_untrusted_widget")
+}
+
+fn verify_bundled_widget_files(root: &std::path::Path, files: &[(&str, &[u8])], error: &str) -> Result<(), String> {
+    let denied = || error.to_string();
     let metadata = std::fs::symlink_metadata(root).map_err(|_| denied())?;
     if metadata.file_type().is_symlink() || !metadata.is_dir() { return Err(denied()); }
     let canonical = root.canonicalize().map_err(|_| denied())?;
-    for (name, expected) in POWER_WIDGET_FILES {
+    for &(name, expected) in files {
         let path = root.join(name);
         let metadata = std::fs::symlink_metadata(&path).map_err(|_| denied())?;
         if !metadata.is_file() || metadata.file_type().is_symlink() || metadata.len() != expected.len() as u64 { return Err(denied()); }
@@ -373,6 +383,16 @@ fn verify_power_widget_files(root: &std::path::Path) -> Result<(), String> {
 /// Trust is established by the bundled bytes, never a user-controlled `type: official` label.
 pub fn verify_power_widget(app: &tauri::AppHandle) -> Result<(), String> {
     verify_power_widget_files(&widgets_dir(app)?.join(crate::power::WIDGET_ID))
+}
+
+const CLIPBOARD_WIDGET_FILES: [(&str, &[u8]); 3] = [
+    ("widget.json", include_bytes!("../../resources/widgets/widget-clipboard-note/widget.json")),
+    ("index.html", include_bytes!("../../resources/widgets/widget-clipboard-note/index.html")),
+    ("icon.svg", include_bytes!("../../resources/widgets/widget-clipboard-note/icon.svg")),
+];
+
+pub fn verify_clipboard_widget(app: &tauri::AppHandle) -> Result<(), String> {
+    verify_bundled_widget_files(&widgets_dir(app)?.join(crate::clipboard::WIDGET_ID), &CLIPBOARD_WIDGET_FILES, "clipboard_untrusted_widget")
 }
 
 /// 读取 Widget 存储数据
@@ -410,74 +430,43 @@ pub fn write_widget_storage(
 
 /// 获取系统信息（供 Widget system API 使用）
 #[tauri::command]
-pub fn get_system_info(category: String) -> Result<serde_json::Value, String> {
-    match category.as_str() {
-        "getBattery" => {
-            // 电池信息在 macOS 上通过 pmset 获取
-            #[cfg(target_os = "macos")]
-            {
-                let output = std::process::Command::new("pmset")
-                    .arg("-g")
-                    .arg("batt")
-                    .output()
-                    .map_err(|e| e.to_string())?;
-                let text = String::from_utf8_lossy(&output.stdout);
-                // 解析百分比
-                let percent = text
-                    .find('\t')
-                    .and_then(|i| {
-                        let rest = &text[i..];
-                        rest.find('%').map(|j| {
-                            let start = rest[..j].rfind(char::is_numeric).unwrap_or(0);
-                            rest[start..j].parse::<f64>().unwrap_or(-1.0)
-                        })
-                    })
-                    .unwrap_or(-1.0);
-                let charging = text.contains("charging") && !text.contains("discharging");
-                Ok(serde_json::json!({
-                    "level": percent / 100.0,
-                    "charging": charging,
-                }))
-            }
-            #[cfg(not(target_os = "macos"))]
-            {
-                Ok(serde_json::json!({ "level": -1, "charging": false }))
-            }
-        }
-        "getMemoryInfo" => {
-            #[cfg(target_os = "macos")]
-            {
-                let output = std::process::Command::new("vm_stat")
-                    .output()
-                    .map_err(|e| e.to_string())?;
-                let text = String::from_utf8_lossy(&output.stdout);
-                // 简单解析（pages active * page_size）
-                let page_size = 16384u64; // Apple Silicon default
-                let active = parse_vm_stat(&text, "Pages active").unwrap_or(0);
-                let total_mem = get_total_memory_macos().unwrap_or(0);
-                let used = active * page_size;
-                Ok(serde_json::json!({
-                    "total": total_mem,
-                    "used": used,
-                    "free": total_mem.saturating_sub(used),
-                }))
-            }
-            #[cfg(not(target_os = "macos"))]
-            {
-                Ok(serde_json::json!({ "total": 0, "used": 0, "free": 0 }))
-            }
-        }
+pub async fn get_system_info(
+    window: tauri::WebviewWindow,
+    category: String,
+    state: tauri::State<'_, crate::metrics::MetricsService>,
+) -> Result<serde_json::Value, String> {
+    crate::metrics::require_main(window.label())?;
+    let service = state.inner().clone();
+    // Platform queries run off the UI thread; all callers still share one sampler.
+    tauri::async_runtime::spawn_blocking(move || system_info(&service, &category))
+        .await.map_err(|_| "metrics_unavailable".to_string())?
+}
+
+fn system_info(state: &crate::metrics::MetricsService, category: &str) -> Result<serde_json::Value, String> {
+    use crate::metrics::Reading;
+    match category {
+        "getMetrics" => serde_json::to_value(state.snapshot()?).map_err(|_| "metrics_unavailable".into()),
+        "getCPUUsage" => match state.snapshot()?.cpu {
+            Reading::Ok(value) => Ok(serde_json::json!(value)),
+            Reading::WarmingUp => Err("metrics_warming_up".into()),
+            _ => Err("metrics_unavailable".into()),
+        },
+        "getBattery" => match state.snapshot()?.battery {
+            Reading::Ok(value) => Ok(serde_json::json!({ "level": value.level, "charging": value.charging })),
+            Reading::NotPresent => Ok(serde_json::json!({ "level": -1, "charging": false })),
+            _ => Err("metrics_unavailable".into()),
+        },
+        "getMemoryInfo" => match state.snapshot()?.memory {
+            Reading::Ok(value) => Ok(serde_json::json!({ "total": value.total, "used": value.in_use, "free": value.total - value.in_use })),
+            _ => Err("metrics_unavailable".into()),
+        },
+        // Legacy media functionality is outside the metrics feature's scope.
         "getMediaInfo" => Ok(serde_json::json!({
-            "trackName": "PinWall Focus",
-            "artistName": "Local Demo",
-            "albumName": "Desktop Session",
-            "isPlaying": false,
-            "position": 0,
-            "duration": 180,
-            "volume": 0.7
+            "trackName": "PinWall Focus", "artistName": "Local Demo", "albumName": "Desktop Session",
+            "isPlaying": false, "position": 0, "duration": 180, "volume": 0.7
         })),
         "mediaControl" => Ok(serde_json::json!({ "ok": true })),
-        _ => Ok(serde_json::json!({})),
+        _ => Err("metrics_unknown_method".into()),
     }
 }
 
@@ -506,29 +495,6 @@ fn copy_dir_recursive(src: &PathBuf, dst: &PathBuf) -> Result<(), String> {
         }
     }
     Ok(())
-}
-
-#[cfg(target_os = "macos")]
-fn parse_vm_stat(text: &str, key: &str) -> Option<u64> {
-    text.lines()
-        .find(|line| line.contains(key))
-        .and_then(|line| {
-            line.split(':')
-                .nth(1)
-                .and_then(|v| v.trim().split('.').next())
-                .and_then(|v| v.trim().parse::<u64>().ok())
-        })
-}
-
-#[cfg(target_os = "macos")]
-fn get_total_memory_macos() -> Option<u64> {
-    let output = std::process::Command::new("sysctl")
-        .arg("-n")
-        .arg("hw.memsize")
-        .output()
-        .ok()?;
-    let text = String::from_utf8_lossy(&output.stdout);
-    text.trim().parse::<u64>().ok()
 }
 
 #[cfg(test)]
@@ -592,11 +558,41 @@ mod tests {
             "com.pinwall.music",
         ] {
             let dir_name = official_widget_dir_name(id).unwrap();
-            let source = widgets_root.join(dir_name);
+            let source = if is_desktop_widget(id) { PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../resources/widgets").join(dir_name) } else { widgets_root.join(dir_name) };
             let manifest_content = std::fs::read_to_string(source.join("widget.json")).unwrap();
             let manifest: WidgetManifest = serde_json::from_str(&manifest_content).unwrap();
             validate_manifest(&manifest).unwrap();
             validate_manifest_files(&source, &manifest).unwrap();
+        }
+    }
+
+    #[test]
+    fn new_native_plugins_are_opt_in_and_clipboard_content_is_verified() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../resources/widgets");
+        for id in [crate::clipboard::WIDGET_ID, "com.pinwall.system-monitor"] {
+            let source = root.join(official_widget_dir_name(id).unwrap());
+            let manifest: WidgetManifest = serde_json::from_slice(&std::fs::read(source.join("widget.json")).unwrap()).unwrap();
+            validate_manifest(&manifest).unwrap();
+            validate_manifest_files(&source, &manifest).unwrap();
+            assert_eq!(manifest.id, id);
+            assert_eq!(manifest.default_enabled, Some(false));
+            assert!(is_desktop_widget(id));
+            if id == crate::clipboard::WIDGET_ID {
+                assert!(manifest.permissions.contains(&"clipboard".into()));
+                assert!(!manifest.permissions.contains(&"cards".into()));
+                verify_bundled_widget_files(&source, &CLIPBOARD_WIDGET_FILES, "denied").unwrap();
+                let temp = std::env::temp_dir().join(format!("pinwall-clipboard-trust-{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+                copy_dir_recursive(&source, &temp).unwrap();
+                verify_bundled_widget_files(&temp, &CLIPBOARD_WIDGET_FILES, "denied").unwrap();
+                // Same-length replacement cannot bypass byte verification.
+                let mut bytes = std::fs::read(temp.join("index.html")).unwrap();
+                bytes[0] ^= 1;
+                std::fs::write(temp.join("index.html"), bytes).unwrap();
+                assert!(verify_bundled_widget_files(&temp, &CLIPBOARD_WIDGET_FILES, "denied").is_err());
+                std::fs::remove_dir_all(temp).unwrap();
+            } else {
+                assert!(manifest.permissions.contains(&"system".into()));
+            }
         }
     }
 

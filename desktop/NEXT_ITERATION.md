@@ -168,3 +168,23 @@
 CI 暴露了 `srcDoc` 已提交但消息监听 effect 尚未就绪的测试竞态，布局测试也未等待异步加载结束。所有需要已加载组件的测试统一用异步 `act` 刷新加载、提交和 effect，再获取替换后的 iframe；每个用例重置 bridge/loader mock，结束后恢复 spy。新增可控延迟加载场景，验证占位 frame 和旧 frame 的消息被忽略、新 frame 正常接收。
 
 验证：`pnpm test:run` 为 28 个文件 / 217 个测试通过；WidgetFrame 的 6 个测试使用 `--sequence.shuffle --sequence.seed=1` 至 `10` 连续通过，输出无 `act` 警告；`pnpm build` 和 `git diff --check` 通过。本次只修改测试及验证记录，不涉及原生权限、运行时行为或数据迁移。
+
+
+### 系统监控与剪贴板转便签（2026-10-26）
+
+延续 `feat/desktop-native-plugins`，补齐可行性报告第一阶段的另外两项工具，属于 P2 可选能力。三项工具的代码均已实现；真实 Tauri UI 验收仍未完成，不能据此称整个插件平台或完整 Vorssaint 功能集已交付。
+
+- [x] 系统监控 2.0：真实 CPU 差值、系统页大小内存及 IOKit 电池；统一 3 秒请求缓存，独立失败/预热/无电池状态。无常驻采样线程和 shell 解析，可见时轮询，隐藏/停用停止。
+- [x] 剪贴板转便签：独立高风险 `clipboard` 权限，仅官方固定 ID；原生校验内置文件字节。插件只打开宿主弹窗，用户确认读取、预览编辑后再创建；不授予 `cards`、不把文本送到 iframe/AI、不存历史。
+- [x] 64 KiB UTF-8 上限、空文本/私密标记/变更检测、8 秒前端截止与单项原生读取；取消丢弃迟到结果，保存失败同 ID 重试不重复创建。未保存草稿仍不跨进程恢复。
+- [x] 官方目录、权限解释、中英文、键盘焦点、390×700 布局；系统监控迁至 desktop 内置资源，保留原 ID，旧版需重新安装，覆盖安装后重新启用。不变更便签/设置 schema、不扩大 capability。
+- [x] iframe ready 统一经已有 120ms 初始化定时器发送，取消 load 时的提前通知；不再用页面刚加载的控件触发首次交互。窄窗口完整导入连续 10 次通过，并补充定时器单测。弹窗遮罩标记为交互区，点击外侧不让便签墙退到后台。
+- [ ] 真实系统授权/拒绝、WKWebView、多窗口停用、托盘退出、睡眠/唤醒、多显示器和 Apple Silicon 原生运行按 `RELEASE_QA.md` 手工验收。
+
+本轮验证：
+
+- `pnpm test:run`：31 个文件 / 241 个测试通过；`cargo test --offline`：63 个通过、3 个 smoke 默认忽略。
+- 匹配 Chromium 的浏览器最终全量回归 **38 个场景通过**（51.4 秒），保留未知 IPC、控制台错误和运行时异常门禁；产物位于 `/tmp/pinwall-native-tools-final-e2e`。窄窗口首击压力测试 `/tmp/pinwall-clipboard-repeat-ready` 连续 10 次通过。
+- 真实 macOS metrics smoke 已验证 CPU、内存和电池读取；clipboard smoke 验证私有命名 pasteboard 的 Unicode 文本和私密标记拒绝，不访问用户通用剪贴板。它们不替代实际 Tauri/TCC 手工验收。
+- `CARGO_NET_OFFLINE=true pnpm tauri:build:app`（含 TypeScript/Vite 生产构建）通过，主 JS **702.87 KB**，导入弹窗懒加载块 **36.69 KB**；原有大于 500 KB 的 chunk 提示仍存在。`codesign --verify --deep --strict` 通过，三项插件的 9 个资源文件与源码逐字节一致。产物为本机 x86_64、ad-hoc、无 Team ID、未公证；未合并主分支或创建发布。
+- 后续范围：OCR、图片处理、剪贴板历史、第三方原生市场、更新/回滚及完整 bridge 审计均未实现；已有媒体 API 仍为占位。保持原阶段顺序，不把扩展清单自动算作完成。

@@ -13,6 +13,8 @@ import { generateNoteContent } from "./aiService";
 import { version as appVersion } from "../../package.json";
 import { parseWidgetRequest, validWidgetArguments } from "./widgetProtocol";
 import type { createWidgetPowerSession } from "./widgetPower";
+import { readWidgetMetrics } from "./widgetMetrics";
+import { CLIPBOARD_WIDGET_ID, type ClipboardNoteResult } from "./widgetClipboard";
 
 /**
  * Widget Host API Bridge
@@ -147,7 +149,7 @@ function sanitizeNetworkHeaders(headers: unknown): Record<string, string> {
 export async function handleBridgeRequest(
   request: WidgetBridgeRequest,
   manifest: WidgetManifest,
-  context?: { signal?: AbortSignal; power?: ReturnType<typeof createWidgetPowerSession> }
+  context?: { signal?: AbortSignal; power?: ReturnType<typeof createWidgetPowerSession>; clipboard?: () => Promise<ClipboardNoteResult> }
 ): Promise<WidgetBridgeResponse> {
   if (!parseWidgetRequest(request) || !validWidgetArguments(request)) {
     return errorResponse(typeof request?.id === "string" ? request.id.slice(0, 128) : "invalid", "Invalid widget request");
@@ -155,6 +157,12 @@ export async function handleBridgeRequest(
   const { id, module, method, args = [] } = request;
 
   if (context?.signal?.aborted) return errorResponse(id, "Widget session closed");
+  if (module === "clipboard") {
+    if (manifest.id !== CLIPBOARD_WIDGET_ID || !hasPermission(manifest, "clipboard") || !context?.clipboard) return errorResponse(id, "Permission denied: clipboard");
+    if (method !== "openImport") return errorResponse(id, "Unknown clipboard method");
+    try { return successResponse(id, await context.clipboard()); }
+    catch { return errorResponse(id, "clipboard_unavailable"); }
+  }
   if (["storage", "theme", "i18n", "notify"].includes(module) && !hasPermission(manifest, module as WidgetPermission)) {
     return errorResponse(id, `Permission denied: ${module}`);
   }
@@ -279,7 +287,7 @@ export async function handleBridgeRequest(
           return successResponse(id, store.cards);
         case "create": {
           const card = args[0];
-          store.createCard(
+          const cardId = store.createCard(
             card.title || "",
             card.content || "",
             card.colorIndex ?? 0,
@@ -289,7 +297,7 @@ export async function handleBridgeRequest(
             card.x ?? 0,
             card.y ?? 0
           );
-          return successResponse(id);
+          return successResponse(id, { cardId });
         }
         case "update": {
           const [cardId, patch] = args;
@@ -355,7 +363,11 @@ export async function handleBridgeRequest(
     if (!hasPermission(manifest, "system")) {
       return errorResponse(id, "Permission denied: system");
     }
-    if (!["getBattery", "getMemoryInfo", "getMediaInfo", "mediaControl"].includes(method)) return errorResponse(id, "Unknown system method");
+    if (!["getMetrics", "getCPUUsage", "getBattery", "getMemoryInfo", "getMediaInfo", "mediaControl"].includes(method)) return errorResponse(id, "Unknown system method");
+    if (method === "getMetrics") {
+      try { return successResponse(id, await readWidgetMetrics()); }
+      catch { return errorResponse(id, "metrics_unavailable"); }
+    }
     try {
       const info = await invoke<any>("get_system_info", { category: method });
       return successResponse(id, info);

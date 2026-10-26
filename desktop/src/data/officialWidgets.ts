@@ -7,6 +7,24 @@ export interface OfficialWidgetCatalogItem {
 
 export const OFFICIAL_WIDGETS: OfficialWidgetCatalogItem[] = [
   {
+    sourcePath: "resources/widgets/widget-clipboard-note",
+    manifest: {
+      id: "com.pinwall.clipboard-note",
+      name: "剪贴板转便签 / Clipboard to Note",
+      description: "确认读取一次文本，预览后创建便签 / Confirm one text read, preview and create a note",
+      version: "1.0.0",
+      author: "PinWall Team",
+      entry: "index.html",
+      icon: "icon.svg",
+      type: "official",
+      category: "productivity",
+      permissions: ["clipboard", "i18n"],
+      defaultEnabled: false,
+      defaultSize: { width: 260, height: 240 },
+      minSize: { width: 210, height: 210 }
+    },
+  },
+  {
     sourcePath: "resources/widgets/widget-keep-awake",
     manifest: {
       id: "com.pinwall.keep-awake",
@@ -93,24 +111,21 @@ export const OFFICIAL_WIDGETS: OfficialWidgetCatalogItem[] = [
     },
   },
   {
-    sourcePath: "../widgets/widget-system-monitor",
+    sourcePath: "resources/widgets/widget-system-monitor",
     manifest: {
       id: "com.pinwall.system-monitor",
-      name: "系统监控",
-      description: "实时 CPU/内存/电池状态监控",
-      version: "1.0.0",
+      name: "系统监控 / System Monitor",
+      description: "按需查看 CPU、内存与电池 / CPU, memory and battery on demand",
+      version: "2.0.0",
       author: "PinWall Team",
       entry: "index.html",
       icon: "icon.svg",
       type: "official",
       category: "utility",
-      permissions: ["storage", "theme", "i18n", "system"],
-      defaultSize: { width: 200, height: 240 },
-      minSize: { width: 160, height: 200 },
-      maxSize: { width: 350, height: 400 },
-      settings: [
-        { key: "refreshInterval", label: "刷新间隔(秒)", type: "number", default: 3, min: 1, max: 30 },
-      ],
+      permissions: ["system", "i18n"],
+      defaultEnabled: false,
+      defaultSize: { width: 260, height: 360 },
+      minSize: { width: 210, height: 300 }
     },
   },
   {

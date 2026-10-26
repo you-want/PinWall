@@ -220,6 +220,7 @@ export type WidgetPermission =
   | "ai"
   | "system"
   | "power"
+  | "clipboard"
   | "network"
   | "i18n";
 
@@ -311,6 +312,17 @@ export interface WidgetPowerStatus {
   supported: boolean;
   active: boolean;
   endsAt: number | null;
+}
+
+export type MetricReading<T> =
+  | { status: "ok"; value: T }
+  | { status: "warmingUp" | "notPresent" | "unavailable" | "unsupported" };
+
+export interface WidgetMetrics {
+  sampledAt: number;
+  cpu: MetricReading<number>;
+  memory: MetricReading<{ total: number; inUse: number }>;
+  battery: MetricReading<{ level: number; charging: boolean; onAc: boolean }>;
 }
 
 export interface WidgetBridgeResponse {

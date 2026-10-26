@@ -163,11 +163,11 @@ Automated vault tests use an in-memory adapter and temporary files. They do not 
 
 This is the primary path for trusted, optional widgets.
 
-- [ ] All six official widgets are listed: Clock, Weather, Pomodoro, System Monitor, Music Control, and Keep Awake.
+- [ ] All seven official widgets are listed: Clock, Weather, Pomodoro, System Monitor, Music Control, Keep Awake, and Clipboard to Note.
 - [ ] Install Clock from the Official Widget Hub without choosing a folder.
 - [ ] Install Weather and confirm the high-risk `network` permission prompt appears before install.
 - [ ] Install System Monitor and confirm the high-risk `system` permission prompt appears before install.
-- [ ] Enabled widgets appear on the main wall immediately; Keep Awake is disabled after installation until explicitly enabled.
+- [ ] Enabled widgets appear on the main wall immediately; Keep Awake, System Monitor and Clipboard to Note are disabled after installation until explicitly enabled.
 - [ ] Installed widgets survive app quit and restart.
 - [ ] Installed widgets can be toggled off and on.
 - [ ] Installed widgets can be removed.
@@ -208,6 +208,33 @@ cargo test --offline power::tests::native_assertion_smoke -- --ignored --exact -
 ```
 
 The smoke verifies acquisition, manual release and system timeout; browser tests use mocked native commands. Neither replaces the unchecked Tauri UI, multiwindow, exit or sleep/wake checks above. Local builds remain ad-hoc and unnotarized; this feature does not constitute a release.
+
+## System Monitor (Experimental, macOS)
+
+- [ ] Install v2.0; explain `system` permission, keep disabled until enabled. Reinstall an old monitor; verify existing notes are untouched and re-enabling loads the new packaged source.
+- [ ] CPU warms up on first sample and after a long pause, then shows changing utilization. Memory uses actual system page size (test Intel and Apple Silicon); active + wired + physical compressor is the stated definition.
+- [ ] Compare battery level/charging with macOS, including AC without charging and a desktop without internal battery. A failed field must not hide other fields or display a fake zero.
+- [ ] Hide, disable, refresh, uninstall, sleep/wake and quit; requests stop when hidden/disabled and resume without overlapping timers. Check idle CPU with optional tools off.
+- [ ] Check Chinese/English, narrow dimensions and offline behavior in actual WKWebView. No subprocess polling or external requests.
+
+## Clipboard to Note (Experimental, macOS)
+
+- [ ] Explain `clipboard` permission; install disabled. Enabling and opening import do not read the clipboard. Only the host Read button reads once, and Create note requires separate confirmation.
+- [ ] Preview and edit Unicode/multiline text, title, then create; verify note text and position survive real quit/restart. Text and raw errors never enter iframe responses or logs.
+- [ ] Cancel before reading, Escape during a slow read, refresh/unmount and disable from settings; a late result cannot create a note. Verify keyboard focus returns to the widget and Tab stays inside the open dialog.
+- [ ] Test empty/non-text clipboard, over 64 KiB UTF-8, private/temporary marker rejection, changed clipboard, actual macOS permission denial and a stalled provider. Retry remains usable; no history or automatic reads.
+- [ ] Force note-save failure, retry without duplicates, then close an unsaved preview; draft is retained in the wall and global save-retry works. Unsaved drafts do not survive process exit.
+- [ ] Verify modified/symlinked bundled files cannot read clipboard; reinstall restores access. Check normal notes/reminders, click-through and multiwindow behavior with the dialog open.
+
+Explicit native checks (metrics are read-only; clipboard uses a private named pasteboard, never the user's clipboard):
+
+```bash
+cd desktop/src-tauri
+cargo test --offline metrics::tests::native_metrics_smoke -- --ignored --exact --nocapture
+cargo test --offline clipboard::tests::native_clipboard_smoke -- --ignored --exact --nocapture
+```
+
+Direct API smoke and browser IPC mocks do not verify actual Tauri/TCC authorization, WKWebView interaction, multiwindow disable, tray quit, sleep/wake or Apple Silicon runtime behavior. Keep these manual gates unchecked until performed.
 
 ## Visual And Performance Checks
 

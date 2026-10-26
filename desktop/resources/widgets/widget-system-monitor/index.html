@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>System Monitor</title>
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; padding: 16px; font: 12px/1.5 -apple-system, BlinkMacSystemFont, sans-serif; color: #f5f5f7; background: transparent; }
+h1 { font-size: 16px; margin: 0 0 14px; font-weight: 600; }
+section { margin: 12px 0; }
+.row { display: flex; gap: 10px; justify-content: space-between; align-items: baseline; }
+output { font-variant-numeric: tabular-nums; text-align: right; color: #bee8da; overflow-wrap: anywhere; }
+progress { appearance: none; width: 100%; height: 4px; border: 0; border-radius: 4px; background: #44464d; display: block; margin-top: 7px; }
+progress::-webkit-progress-bar { background: #44464d; border-radius: 4px; }
+progress::-webkit-progress-value { background: #a9daca; border-radius: 4px; }
+progress::-moz-progress-bar { background: #a9daca; border-radius: 4px; }
+p { color: #c0c1c9; font-size: 11px; margin: 6px 0; }
+#error { color: #ffb4ad; }
+button { margin-top: 9px; border: 1px solid #777b83; border-radius: 7px; padding: 7px 12px; color: #f5f5f7; background: #34363e; width: 100%; font: inherit; cursor: pointer; }
+button:disabled { opacity: .6; cursor: default; }
+:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+</style>
+</head>
+<body>
+<h1 id="title">System Monitor</h1>
+<section aria-labelledby="cpu-label"><div class="row"><span id="cpu-label">CPU</span><output id="cpu-value">—</output></div><progress id="cpu-bar" max="100" value="0" aria-label="CPU"></progress></section>
+<section aria-labelledby="memory-label"><div class="row"><span id="memory-label">Memory</span><output id="memory-value">—</output></div><progress id="memory-bar" max="100" value="0" aria-label="Memory"></progress><p id="memory-detail"></p></section>
+<section aria-labelledby="battery-label"><div class="row"><span id="battery-label">Battery</span><output id="battery-value">—</output></div><progress id="battery-bar" max="100" value="0" aria-label="Battery"></progress><p id="battery-detail"></p></section>
+<p id="sample-state" role="status"></p>
+<div id="error" role="alert"></div>
+<button id="refresh" disabled>Refresh</button>
+<script>
+const messages = {
+  en: { title: 'System Monitor', memory: 'Memory', battery: 'Battery', refresh: 'Refresh', loading: 'Sampling…', unsupported: 'Not supported', unavailable: 'Unavailable', notPresent: 'No battery', memoryDetail: 'Active + wired + compressed / total', charging: 'Charging', onAc: 'Connected to power', onBattery: 'On battery', sampled: 'Updated', failed: 'Could not read system status. Try again.' },
+  zh: { title: '系统监控', memory: '内存', battery: '电池', refresh: '刷新', loading: '采样中…', unsupported: '不支持', unavailable: '读取失败', notPresent: '无电池', memoryDetail: '活跃 + 有线 + 压缩 / 总内存', charging: '充电中', onAc: '已接电源', onBattery: '使用电池', sampled: '更新于', failed: '系统状态读取失败，请重试。' }
+};
+const el = Object.fromEntries(['title', 'memory-label', 'battery-label', 'cpu-value', 'memory-value', 'battery-value', 'cpu-bar', 'memory-bar', 'battery-bar', 'memory-detail', 'battery-detail', 'sample-state', 'error', 'refresh'].map(id => [id, document.getElementById(id)]));
+let locale = 'en', ready = false, busy = false, disposed = false, timer = null, sequence = 0, snapshot = null;
+const pending = new Map();
+const words = () => messages[locale];
+const bytes = value => `${(value / 1073741824).toFixed(1)} GiB`;
+function missing(reading) {
+  const t = words();
+  return reading?.status === 'warmingUp' ? t.loading : reading?.status === 'unsupported' ? t.unsupported : reading?.status === 'notPresent' ? t.notPresent : t.unavailable;
+}
+function render() {
+  const t = words(); document.documentElement.lang = locale;
+  el.title.textContent = t.title; el['memory-label'].textContent = t.memory; el['battery-label'].textContent = t.battery;
+  el.refresh.textContent = t.refresh; el.refresh.disabled = !ready || busy;
+  el['memory-bar'].setAttribute('aria-label', t.memory); el['battery-bar'].setAttribute('aria-label', t.battery);
+  const cpu = snapshot?.cpu, memory = snapshot?.memory, battery = snapshot?.battery;
+  el['cpu-value'].textContent = cpu?.status === 'ok' ? `${cpu.value.toFixed(1)}%` : snapshot ? missing(cpu) : t.loading;
+  el['cpu-bar'].value = cpu?.status === 'ok' ? cpu.value : 0;
+  el['memory-value'].textContent = memory?.status === 'ok' ? `${bytes(memory.value.inUse)} / ${bytes(memory.value.total)}` : snapshot ? missing(memory) : '—';
+  el['memory-bar'].value = memory?.status === 'ok' ? memory.value.inUse / memory.value.total * 100 : 0;
+  el['memory-detail'].textContent = t.memoryDetail;
+  el['battery-value'].textContent = battery?.status === 'ok' ? `${Math.round(battery.value.level * 100)}%` : snapshot ? missing(battery) : '—';
+  el['battery-bar'].value = battery?.status === 'ok' ? battery.value.level * 100 : 0;
+  el['battery-detail'].textContent = battery?.status === 'ok' ? (battery.value.charging ? t.charging : battery.value.onAc ? t.onAc : t.onBattery) : '';
+  el['sample-state'].textContent = snapshot ? `${t.sampled} ${new Date(snapshot.sampledAt).toLocaleTimeString(locale === 'zh' ? 'zh-CN' : 'en-US')}` : busy ? t.loading : '';
+}
+function request() {
+  return new Promise((resolve, reject) => {
+    const id = `metrics_${++sequence}`;
+    const timeout = setTimeout(() => { pending.delete(id); reject(new Error('timeout')); }, 8000);
+    pending.set(id, { resolve, reject, timeout });
+    parent.postMessage({ type: 'request', version: 1, id, module: 'system', method: 'getMetrics', args: [] }, '*');
+  });
+}
+function schedule() {
+  clearTimeout(timer); timer = null;
+  if (ready && !disposed && !document.hidden) timer = setTimeout(update, 3000);
+}
+async function update() {
+  if (busy || !ready || disposed || document.hidden) return;
+  busy = true; clearTimeout(timer); el.error.textContent = ''; render();
+  try { snapshot = await request(); }
+  catch { snapshot = null; if (!disposed) el.error.textContent = words().failed; }
+  finally { busy = false; if (!disposed) { render(); schedule(); } }
+}
+addEventListener('message', event => {
+  if (event.source !== parent) return;
+  const message = event.data;
+  if (message?.type === 'response' && pending.has(message.id)) {
+    const item = pending.get(message.id); pending.delete(message.id); clearTimeout(item.timeout);
+    message.success ? item.resolve(message.data) : item.reject(new Error('failed'));
+  } else if (message?.type === 'event' && message.event === 'pinwall:ready') {
+    locale = message.payload?.locale === 'zh' ? 'zh' : 'en'; ready = true; render(); update();
+  }
+});
+el.refresh.addEventListener('click', update);
+document.addEventListener('visibilitychange', () => { clearTimeout(timer); if (!document.hidden) update(); });
+addEventListener('pagehide', () => { disposed = true; clearTimeout(timer); for (const item of pending.values()) { clearTimeout(item.timeout); item.reject(new Error('closed')); } pending.clear(); });
+render();
+</script>
+</body>
+</html>

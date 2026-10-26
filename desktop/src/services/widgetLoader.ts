@@ -22,6 +22,7 @@ const VALID_WIDGET_PERMISSIONS = new Set<WidgetPermission>([
   "ai",
   "system",
   "power",
+  "clipboard",
   "network",
   "i18n",
 ]);

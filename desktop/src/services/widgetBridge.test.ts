@@ -37,6 +37,7 @@ vi.mock('@tauri-apps/api/core', () => ({
     if (cmd === 'write_widget_storage') return Promise.resolve();
     if (cmd === 'get_app_version') return Promise.resolve('0.1.3');
     if (cmd === 'get_system_info') {
+      if (args?.category === 'getMetrics') return Promise.resolve({ sampledAt: 1234, cpu: { status: 'ok', value: 25 }, memory: { status: 'ok', value: { total: 8192, inUse: 4096 } }, battery: { status: 'notPresent' } });
       if (args?.category === 'getBattery') return Promise.resolve({ level: 0.85, charging: false });
       if (args?.category === 'getMemoryInfo') return Promise.resolve({ total: 17179869184, used: 8589934592, free: 8589934592 });
       if (args?.category === 'getMediaInfo') return Promise.resolve({ trackName: 'PinWall Focus', isPlaying: false });
@@ -112,6 +113,30 @@ describe('widgetBridge', () => {
       for (const request of [makeRequest('storage', 'set', ['__proto__', {}]), makeRequest('cards', 'create', [{ content: {} }])]) {
         expect((await handleBridgeRequest(request, createTestManifest())).success).toBe(false);
       }
+      expect(invoke).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('clipboard import boundary', () => {
+    it('only opens host UI for the declared official tool and returns no clipboard text', async () => {
+      const { invoke } = await import('@tauri-apps/api/core');
+      vi.mocked(invoke).mockClear();
+      const clipboard = vi.fn().mockResolvedValue({ created: true, cardId: 'card-new' });
+      const manifest = { ...createTestManifest(['clipboard']), id: 'com.pinwall.clipboard-note' };
+      for (const [request, source, context] of [
+        [makeRequest('clipboard', 'openImport'), createTestManifest(['clipboard']), { clipboard }],
+        [makeRequest('clipboard', 'openImport'), { ...manifest, permissions: [] }, { clipboard }],
+        [makeRequest('clipboard', 'openImport'), manifest, undefined],
+        [makeRequest('clipboard', 'readText'), manifest, { clipboard }],
+        [makeRequest('clipboard', 'openImport', ['extra']), manifest, { clipboard }],
+      ] as const) {
+        expect((await handleBridgeRequest(request, source, context)).success).toBe(false);
+      }
+      expect(clipboard).not.toHaveBeenCalled();
+      expect(invoke).not.toHaveBeenCalled();
+      const result = await handleBridgeRequest(makeRequest('clipboard', 'openImport'), manifest, { clipboard });
+      expect(result).toMatchObject({ success: true, data: { created: true, cardId: 'card-new' } });
+      expect(clipboard).toHaveBeenCalledOnce();
       expect(invoke).not.toHaveBeenCalled();
     });
   });
@@ -265,15 +290,30 @@ describe('widgetBridge', () => {
     it('creates a card', async () => {
       const { useCardStore } = await import('@/stores/cardStore');
       const manifest = createTestManifest(['cards']);
+      vi.mocked(useCardStore.getState().createCard).mockReturnValueOnce('created-card');
       const req = makeRequest('cards', 'create', [{ title: 'New', content: 'Content' }]);
       const res = await handleBridgeRequest(req, manifest);
 
       expect(res.success).toBe(true);
-      expect((useCardStore as any)._mocks.createCard).toHaveBeenCalled();
+      expect(useCardStore.getState().createCard).toHaveBeenCalled();
+      expect(res.data).toEqual({ cardId: 'created-card' });
     });
   });
 
   describe('system module (with permission)', () => {
+    it('returns the shared snapshot and denies undeclared or malformed requests before IO', async () => {
+      const { invoke } = await import('@tauri-apps/api/core');
+      vi.mocked(invoke).mockClear();
+      expect((await handleBridgeRequest(makeRequest('system', 'getMetrics'), createTestManifest([]))).success).toBe(false);
+      expect((await handleBridgeRequest(makeRequest('system', 'getMetrics', ['extra']), createTestManifest(['system']))).success).toBe(false);
+      expect(invoke).not.toHaveBeenCalled();
+      const response = await handleBridgeRequest(makeRequest('system', 'getMetrics'), createTestManifest(['system']));
+      expect(response.success).toBe(true);
+      expect(response.data.cpu).toEqual({ status: 'ok', value: 25 });
+      expect(response.data.battery).toEqual({ status: 'notPresent' });
+      expect(invoke).toHaveBeenCalledExactlyOnceWith('get_system_info', { category: 'getMetrics' });
+    });
+
     it('returns battery info', async () => {
       const manifest = createTestManifest(['system']);
       const req = makeRequest('system', 'getBattery');

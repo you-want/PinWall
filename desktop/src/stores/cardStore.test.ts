@@ -38,6 +38,12 @@ describe('useCardStore', () => {
   }
 
   describe('createCard', () => {
+    it('returns the new card ID so callers can track creation without reading other notes', () => {
+      const id = useCardStore.getState().createCard('Clipboard', 'Text', 0, 'note', false, null, 0, 0);
+      expect(typeof id).toBe('string');
+      expect(useCardStore.getState().cards).toHaveLength(1);
+      expect(useCardStore.getState().cards[0].id).toBe(id);
+    });
     it('creates a card with default grid position', () => {
       useCardStore.getState().createCard(
         'Test Title', 'Test Content', 0, 'note', false, null, 0, 0

@@ -44,9 +44,10 @@ export function validWidgetArguments(request: WidgetBridgeRequest): boolean {
   switch (`${request.module}.${request.method}`) {
     case "power.start": return args.length === 1 && typeof first === "number" && Number.isInteger(first) && first >= 1 && first <= 480;
     case "power.status": case "power.stop":
+    case "clipboard.openImport":
     case "storage.clear": case "theme.get": case "i18n.getLocale": case "settings.getAll":
     case "app.getVersion": case "app.getLocale":
-    case "system.getBattery": case "system.getMemoryInfo": case "system.getMediaInfo":
+    case "system.getMetrics": case "system.getCPUUsage": case "system.getBattery": case "system.getMemoryInfo": case "system.getMediaInfo":
       return args.length === 0;
     case "storage.get": case "storage.remove": case "settings.get": case "cards.delete":
       return args.length === 1 && key(first);

@@ -1,0 +1,15 @@
+{
+  "id": "com.pinwall.clipboard-note",
+  "name": "剪贴板转便签 / Clipboard to Note",
+  "description": "确认读取一次文本，预览后创建便签 / Confirm one text read, preview and create a note",
+  "version": "1.0.0",
+  "author": "PinWall Team",
+  "entry": "index.html",
+  "icon": "icon.svg",
+  "type": "official",
+  "category": "productivity",
+  "permissions": ["clipboard", "i18n"],
+  "defaultEnabled": false,
+  "defaultSize": { "width": 260, "height": 240 },
+  "minSize": { "width": 210, "height": 210 }
+}

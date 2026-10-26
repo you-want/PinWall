@@ -1,0 +1,15 @@
+{
+  "id": "com.pinwall.system-monitor",
+  "name": "系统监控 / System Monitor",
+  "description": "按需查看 CPU、内存与电池 / CPU, memory and battery on demand",
+  "version": "2.0.0",
+  "author": "PinWall Team",
+  "entry": "index.html",
+  "icon": "icon.svg",
+  "type": "official",
+  "category": "utility",
+  "permissions": ["system", "i18n"],
+  "defaultEnabled": false,
+  "defaultSize": { "width": 260, "height": 360 },
+  "minSize": { "width": 210, "height": 300 }
+}

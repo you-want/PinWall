@@ -747,6 +747,11 @@ dependencies = [
 name = "desktop"
 version = "0.1.4-beta.3"
 dependencies = [
+ "core-foundation-sys",
+ "libc",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
  "security-framework",
  "serde",
  "serde_json",

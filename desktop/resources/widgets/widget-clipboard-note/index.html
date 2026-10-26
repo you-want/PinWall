@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Clipboard to Note</title>
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; padding: 18px; font: 13px/1.5 -apple-system, BlinkMacSystemFont, sans-serif; color: #f5f5f7; background: transparent; }
+h1 { font-size: 16px; margin: 0 0 10px; }
+p { margin: 8px 0; color: #c8c7cf; font-size: 12px; }
+button { width: 100%; border: 0; border-radius: 8px; padding: 9px; margin-top: 10px; font: inherit; background: #d3c7f6; color: #25212e; cursor: pointer; }
+button:disabled { opacity: .6; cursor: default; }
+:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+#error { color: #ffb4ad; font-size: 12px; }
+</style></head>
+<body><h1 id="title">Clipboard to Note</h1><p id="description"></p><button id="open" disabled>Open import</button><p id="status" role="status"></p><div id="error" role="alert"></div>
+<script>
+const messages = {
+  en: { title: 'Clipboard to Note', description: 'Open a PinWall dialog to read text once, review it and create a note. No clipboard history is recorded.', open: 'Open import', opening: 'Review in PinWall…', created: 'Note created', cancelled: 'Import cancelled', failed: 'Could not open import. Try again.' },
+  zh: { title: '剪贴板转便签', description: '在 PinWall 窗口中确认读取一次文本，预览后创建便签。不记录剪贴板历史。', open: '打开导入', opening: '请在 PinWall 中确认…', created: '便签已创建', cancelled: '已取消导入', failed: '导入窗口打开失败，请重试。' }
+};
+let locale = 'en', ready = false, busy = false, sequence = 0;
+const el = Object.fromEntries(['title', 'description', 'open', 'status', 'error'].map(id => [id, document.getElementById(id)]));
+const pending = new Map();
+function render() { const t = messages[locale]; document.documentElement.lang = locale; el.title.textContent = t.title; el.description.textContent = t.description; el.open.textContent = t.open; el.open.disabled = !ready || busy; }
+el.open.addEventListener('click', async () => {
+  if (!ready || busy) return;
+  busy = true; el.error.textContent = ''; el.status.textContent = messages[locale].opening; render();
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const id = `clipboard_${++sequence}`;
+      pending.set(id, { resolve, reject });
+      parent.postMessage({ type: 'request', version: 1, id, module: 'clipboard', method: 'openImport', args: [] }, '*');
+    });
+    el.status.textContent = result.created ? messages[locale].created : messages[locale].cancelled;
+  } catch { el.status.textContent = ''; el.error.textContent = messages[locale].failed; }
+  finally { busy = false; render(); }
+});
+addEventListener('message', event => {
+  if (event.source !== parent) return;
+  const message = event.data;
+  if (message?.type === 'response' && pending.has(message.id)) {
+    const item = pending.get(message.id); pending.delete(message.id);
+    message.success ? item.resolve(message.data) : item.reject(new Error('failed'));
+  } else if (message?.type === 'event' && message.event === 'pinwall:ready') {
+    locale = message.payload?.locale === 'zh' ? 'zh' : 'en'; ready = true; render();
+  }
+});
+addEventListener('pagehide', () => { for (const item of pending.values()) item.reject(new Error('closed')); pending.clear(); });
+render();
+</script></body></html>

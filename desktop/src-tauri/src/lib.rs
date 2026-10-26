@@ -1,8 +1,10 @@
 mod background;
 mod cards_storage;
+mod clipboard;
 mod commands;
 mod credentials;
 mod i18n;
+mod metrics;
 mod persistence;
 mod power;
 mod tray;
@@ -18,6 +20,8 @@ pub fn run() {
     tauri::Builder::default()
         .manage(cards_storage::CardsStorage::default())
         .manage(power::PowerService::default())
+        .manage(metrics::MetricsService::default())
+        .manage(clipboard::ClipboardService::default())
         .setup(|app| {
             // 隐藏 Dock 图标，仅通过托盘图标交互
             #[cfg(target_os = "macos")]
@@ -82,6 +86,7 @@ pub fn run() {
             power::widget_power_request,
             power::close_widget_power_session,
             power::revoke_widget_power,
+            clipboard::read_widget_clipboard_text,
         ])
         .on_page_load(|webview, payload| {
             if webview.label() == "main" && matches!(payload.event(), tauri::webview::PageLoadEvent::Started) {

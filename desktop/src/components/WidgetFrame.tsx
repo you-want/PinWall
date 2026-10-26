@@ -10,6 +10,7 @@ import { useWidgetStore } from "../stores/widgetStore";
 import { parseWidgetRequest, prepareWidgetHtml } from "../services/widgetProtocol";
 import { createWidgetPowerSession, revokeWidgetPower } from "../services/widgetPower";
 import { useI18n } from "../i18n";
+import { useClipboardImport } from "../hooks/useClipboardImport";
 
 interface WidgetFrameProps {
   instance: WidgetInstance;
@@ -18,6 +19,7 @@ interface WidgetFrameProps {
 
 export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps) {
   const { t, lang } = useI18n();
+  const { request: importClipboard, dialog: clipboardDialog } = useClipboardImport();
   const { manifest, x, y, size, zIndex, settings, enabled } = instance;
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -82,7 +84,7 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
       inFlight.add(request.id);
       let response;
       try {
-        response = await handleBridgeRequest(request, manifest, { signal: controller.signal, power });
+        response = await handleBridgeRequest(request, manifest, { signal: controller.signal, power, clipboard: () => importClipboard(controller.signal) });
       } catch {
         response = { type: "response", id: request.id, success: false, error: "Widget request failed" };
       } finally {
@@ -99,7 +101,7 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
       controller.abort();
       void power.dispose().catch(() => console.warn("[WidgetFrame] Power session cleanup failed", { widgetId: manifest.id }));
     };
-  }, [manifest, reloadKey, entryHtml, enabled]);
+  }, [manifest, reloadKey, entryHtml, enabled, importClipboard]);
 
   // ── 事件推送：向 iframe 广播应用事件 ──
   useEffect(() => {
@@ -137,7 +139,7 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
     };
 
     const onLoad = () => {
-      sendReady();
+      // Let the embedded document finish loading before exposing interactive controls.
       window.clearTimeout(readyTimer);
       readyTimer = window.setTimeout(sendReady, 120);
     };
@@ -259,6 +261,7 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
       onPointerDown={handlePointerDown}
       onContextMenu={handleContextMenu}
     >
+      {clipboardDialog}
       {/* 容器样式 */}
       <div
         style={{
