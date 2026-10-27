@@ -3,6 +3,8 @@ use tauri::{Emitter, Manager};
 pub struct MainLayerState(pub std::sync::Mutex<bool>);
 
 pub fn set_main_default_layer<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+    if let Some(hardware)=app.try_state::<crate::hardware_tools::HardwareService>() { if hardware.clear().is_err() { eprintln!("[HardwareTools] Background cleanup failed"); } }
+    if let Some(display)=app.try_state::<crate::display_tools::DisplayService>() { if display.clear().is_err() { eprintln!("[DisplayTools] Background cleanup failed"); } }
     if let Ok(mut state) = app.state::<MainLayerState>().0.lock() {
         *state = false;
     }

@@ -233,6 +233,10 @@ impl HiddenWall {
     fn hide(window: tauri::WebviewWindow) -> Result<Self, String> {
         let restore = window.is_visible().map_err(|_| "screen_capture_failed")?;
         if restore {
+            // A screenshot temporarily hides the wall without CloseRequested.
+            // Revoke the same visible-only tools as an explicit hide.
+            window.state::<crate::hardware_tools::HardwareService>().clear()?;
+            window.state::<crate::display_tools::DisplayService>().clear()?;
             window.hide().map_err(|_| "screen_capture_failed")?;
         }
         Ok(Self { window, restore })

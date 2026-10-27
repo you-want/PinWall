@@ -1,0 +1,24 @@
+{
+  "id": "com.pinwall.hardware-tools",
+  "name": "风扇与合盖 / Hardware Tools",
+  "description": "签名助手支持的限时风扇增强和合盖防休眠。 / Signed helper for timed fan boost and closed-lid sessions.",
+  "version": "1.0.0",
+  "author": "PinWall Team",
+  "entry": "index.html",
+  "icon": "icon.svg",
+  "type": "official",
+  "category": "system",
+  "permissions": [
+    "hardware",
+    "i18n"
+  ],
+  "defaultEnabled": false,
+  "defaultSize": {
+    "width": 260,
+    "height": 240
+  },
+  "minSize": {
+    "width": 210,
+    "height": 210
+  }
+}

@@ -300,6 +300,8 @@ pub fn revoke_widget_tool(
     }
     match widget_id.as_str() {
         crate::desktop_tools::AUDIO_ID | crate::desktop_tools::WINDOWS_ID => app.state::<crate::desktop_tools::DesktopService>().clear_widget(&widget_id),
+        crate::hardware_tools::WIDGET_ID => app.state::<crate::hardware_tools::HardwareService>().clear(),
+        crate::display_tools::WIDGET_ID => app.state::<crate::display_tools::DisplayService>().clear(),
         crate::maintenance::WIDGET_ID => app.state::<crate::maintenance::MaintenanceService>().clear(),
         crate::video_tools::WIDGET_ID => app.state::<crate::video_tools::VideoService>().clear(),
         crate::input_tools::WIDGET_ID => app.state::<crate::input_tools::InputService>().clear(),

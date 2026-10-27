@@ -320,3 +320,5 @@ Dock 悬停与视频/无声录屏新增实机门禁见 `PLUGIN_ACCEPTANCE.md` �
 
 
 第三方可信市场（P2、默认关闭）：根签审核目录 + 发布者签名包，手动刷新/权限审阅/默认关闭安装及更新；离线审核工具与只读源站见 [MARKETPLACE_TRUST.md](./MARKETPLACE_TRUST.md)。公网域名/TLS/真实信任根需发行者配置；不支持任意匿名代码或进程级 CPU 隔离，统一原生验收保持未勾选。
+
+EDR与硬件助手新增实机门禁见 `PLUGIN_ACCEPTANCE.md` 第17、18步；签名/注册/恢复/移除流程见 `HARDWARE_TOOLS.md`。普通ad-hoc包只能验证拒绝路径，不算硬件功能通过。源码复核范围/风险见 `PLUGIN_SECURITY_REVIEW.md`；性能页面基线和原生待填表见 `PLUGIN_PERFORMANCE.md`，当前五张可见限制需明确记录。21步人工项仍未执行。

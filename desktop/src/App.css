@@ -3361,3 +3361,14 @@ html, body, #root {
 .mood-done-btn:hover {
   background: rgba(52, 199, 89, 1);
 }
+
+/* Light native-tool dialogs use settings controls with explicit readable colors. */
+.modal-v2 .native-hardware-fields .ap-input {
+  color: #1f2937;
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.18);
+}
+.modal-v2 .native-hardware-fields:disabled .ap-input {
+  color: #4b5563;
+  opacity: 0.8;
+}

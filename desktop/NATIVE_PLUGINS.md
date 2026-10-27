@@ -1,12 +1,12 @@
 # 可选原生插件契约
 
-本轮属于 P2 实验能力，复用已有 Widget Hub、安装器和桌面卡片。当前包含防休眠、系统监控、剪贴板转便签、图片识字、图片工具、剪贴板历史、文件暂存架、屏幕工具、本地工具、音频与媒体、窗口工具、输入增强、视频工具和系统维护，均默认关闭；防休眠需用户主动开始，不自动恢复运行。截图仅按需启动固定系统截图程序，不新增常驻独立服务进程，不扩大 Tauri capability，不改动便签/设置持久化 schema；暂存架使用独立版本化索引。
+本轮属于 P2 实验能力，复用已有 Widget Hub、安装器和桌面卡片。当前包含防休眠、系统监控、剪贴板转便签、图片识字、图片工具、剪贴板历史、文件暂存架、屏幕工具、本地工具、音频与媒体、窗口工具、输入增强、视频工具、系统维护、EDR 显示增强和风扇/合盖，十六项均默认关闭；防休眠需用户主动开始，不自动恢复运行。截图仅按需启动固定系统截图程序，不新增常驻独立服务进程，不扩大 Tauri capability，不改动便签/设置持久化 schema；暂存架使用独立版本化索引。
 
 ## 安装与资源
 
-源码位于 `desktop/resources/widgets/` 的 `widget-keep-awake/`、`widget-system-monitor/`、`widget-clipboard-note/`、`widget-ocr-note/`、`widget-image-tools/`、`widget-clipboard-history/`、`widget-file-shelf/`、`widget-screen-tools/`、`widget-local-tools/`、`widget-music/`、`widget-window-tools/`、`widget-input-tools/`、`widget-video-tools/`、`widget-maintenance/`，随应用打包至 `native-widgets/`；其余官方组件沿用现有资源目录。系统监控保留 ID `com.pinwall.system-monitor`，升级至 2.0；旧版不会自动替换，需从组件中心重新安装。安装后仍存入 AppData 下的 widgets 目录。
+源码位于 `desktop/resources/widgets/` 的 `widget-keep-awake/`、`widget-system-monitor/`、`widget-clipboard-note/`、`widget-ocr-note/`、`widget-image-tools/`、`widget-clipboard-history/`、`widget-file-shelf/`、`widget-screen-tools/`、`widget-local-tools/`、`widget-music/`、`widget-window-tools/`、`widget-input-tools/`、`widget-video-tools/`、`widget-maintenance/`、`widget-display-tools/`、`widget-hardware-tools/`，随应用打包至 `native-widgets/`；其余官方组件沿用现有资源目录。系统监控保留 ID `com.pinwall.system-monitor`，升级至 2.0；旧版不会自动替换，需从组件中心重新安装。安装后仍存入 AppData 下的 widgets 目录。
 
-Manifest 支持可选字段 `defaultEnabled`；原生操作使用独立 `power`、`clipboard` 权限，监控使用已有 `system` 权限。新安装组件按 `defaultEnabled ?? true` 初始化，兼容既有组件；同步已有安装时保留用户的启用选择。十四项工具固定为 `false`，安装授权不会启动原生能力。覆盖安装会重新关闭；普通启动同步保留现有启用状态和尺寸。
+Manifest 支持可选字段 `defaultEnabled`；原生操作使用独立 `power`、`clipboard` 权限，监控使用已有 `system` 权限。新安装组件按 `defaultEnabled ?? true` 初始化，兼容既有组件；同步已有安装时保留用户的启用选择。十六项工具固定为 `false`，安装授权不会启动原生能力。覆盖安装会重新关闭；普通启动同步保留现有启用状态和尺寸。
 
 `type: official` 不能授予原生权限。Rust 在打开电源会话、读取剪贴板、操作图片、历史、暂存架或屏幕前校验各自固定 ID、安装目录及三个入口文件的精确字节，拒绝符号链接、路径逃逸和修改后的组件。更新应用后旧组件内容若不匹配，需要重新安装；UI 提供说明。这是内置可信源机制，不是第三方签名、市场审核或自动更新系统。
 
@@ -72,7 +72,7 @@ macOS 使用 IOKit `PreventUserIdleSystemSleep` 和系统 `TimeoutActionRelease`
 | `recognize_widget_image` | 无输入；取消/null 或识别文本 | 选择器由原生打开，Vision accurate 中英文识别，最多 64 KiB UTF-8 |
 | `select_widget_image` | 无输入；取消/null 或 token/尺寸/原大小/PNG 缩略图 | 不接受任意文件路径，原图只在原生内存 |
 | `export_widget_image` | token + width/height/format/quality；取消/null 或尺寸/字节数/格式 | 系统保存选择器，拒绝原图、符号链接、AppData 及扩展名不符 |
-| `revoke_widget_tool` | 八项固定 ID 之一；无返回内容 | main/settings 只可清除图像/屏幕选择、停止清空历史或停用暂存架，不能启动 |
+| `revoke_widget_tool` | 固定内置工具 ID 之一；无返回内容 | main/settings 只可清除图像/屏幕选择、停止清空历史或停用暂存架，不能启动 |
 
 图像服务共享单操作槽，拒绝并发 OCR/选择/导出。选择结果只保留一张，10 分钟逻辑过期，关闭图片弹窗、frame 销毁/刷新、停用、卸载、重装或主页面重载清除。选择 token 是宿主内部标识，不充当加密凭证；原生权限和内容校验独立进行。清除使迟到的选择失效；保存前再次确认当前选择。已打开的系统选择器或开始的 Vision 调用不能强制终止，前端取消会丢弃结果，原生槽位等待系统返回。
 
@@ -187,3 +187,12 @@ macOS 仓库安装/读取/恢复在进程内 mutex 外增加包级文件锁；�
 
 
 第三方可信市场（P2、默认关闭）：根签审核目录 + 发布者签名包，手动刷新/权限审阅/默认关闭安装及更新；离线审核工具与只读源站见 [MARKETPLACE_TRUST.md](./MARKETPLACE_TRUST.md)。公网域名/TLS/真实信任根需发行者配置；不支持任意匿名代码或进程级 CPU 隔离，统一原生验收保持未勾选。
+
+
+## EDR 与签名硬件助手
+
+新增固定 `com.pinwall.display-tools` / `display` 与 `com.pinwall.hardware-tools` / `hardware`，默认关闭。iframe仅能无参打开宿主面板，不能提交屏幕采集、RPM、路径或SMC键。Rust按main、精确内置资源及严格枚举DTO校验，原生epoch拒绝撤销后的排队动作；清理接入面板/隐藏墙/停用/卸载/重装/重载/退出。
+
+EDR使用ScreenCaptureKit/CoreImage/Metal，单显示器排除自身覆盖、15fps/4M像素/单GPU任务、最长300秒，不改全局亮度、不保存帧。硬件仅macOS14+、同TeamID真实签名的窄XPC/root helper；无任意命令，固定SMC键、接电/温度/时长/控制台会话边界、五秒租约、写前journal、失败保留并重试恢复，注销前retire。普通ad-hoc包不携带/注册助手，真实签名与设备验证待验收。合盖标记非per-client，不承诺多软件共存。详见 [HARDWARE_TOOLS.md](./HARDWARE_TOOLS.md)。
+
+Tauri capability未扩大；root日志是已批准helper独占的版本化恢复记录，不授予Web插件root或文件权限。源码复核见 [PLUGIN_SECURITY_REVIEW.md](./PLUGIN_SECURITY_REVIEW.md)，页面基线和真实性能待填表见 [PLUGIN_PERFORMANCE.md](./PLUGIN_PERFORMANCE.md)。

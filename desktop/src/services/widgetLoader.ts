@@ -23,7 +23,7 @@ const VALID_WIDGET_PERMISSIONS = new Set<WidgetPermission>([
   "system",
   "power",
   "clipboard",
-  "ocr", "images", "clipboardHistory", "shelf", "screenCapture", "utilities", "audio", "windows", "input", "video", "maintenance",
+  "ocr", "images", "clipboardHistory", "shelf", "screenCapture", "utilities", "audio", "windows", "input", "video", "maintenance", "display", "hardware",
   "network",
   "i18n",
 ]);

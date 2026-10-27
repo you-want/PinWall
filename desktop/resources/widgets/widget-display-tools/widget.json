@@ -1,0 +1,24 @@
+{
+  "id": "com.pinwall.display-tools",
+  "name": "显示增强 / Display Tools",
+  "description": "按需开启有时限的 EDR 屏幕增强。 / Opt-in, time-limited EDR display enhancement.",
+  "version": "1.0.0",
+  "author": "PinWall Team",
+  "entry": "index.html",
+  "icon": "icon.svg",
+  "type": "official",
+  "category": "system",
+  "permissions": [
+    "display",
+    "i18n"
+  ],
+  "defaultEnabled": false,
+  "defaultSize": {
+    "width": 260,
+    "height": 240
+  },
+  "minSize": {
+    "width": 210,
+    "height": 210
+  }
+}

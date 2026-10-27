@@ -21,6 +21,8 @@ mod desktop_tools;
 mod input_tools;
 mod video_tools;
 mod maintenance;
+mod display_tools;
+mod hardware_tools;
 mod marketplace;
 mod window_layer;
 
@@ -41,6 +43,8 @@ pub fn run() {
         .manage(input_tools::InputService::default())
         .manage(video_tools::VideoService::default())
         .manage(maintenance::MaintenanceService::default())
+        .manage(display_tools::DisplayService::default())
+        .manage(hardware_tools::HardwareService::default())
         .manage(marketplace::MarketService::default())
         .manage(shelf::ShelfService::default())
         .manage(image_tools::ImageService::default())
@@ -80,6 +84,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::greet,
             marketplace::marketplace_request,
+            display_tools::widget_display_request,
+            hardware_tools::widget_hardware_request,
             commands::get_app_version,
             commands::quit_app,
             persistence::settings_read,
@@ -150,6 +156,8 @@ pub fn run() {
                 if webview.state::<shelf::ShelfService>().deactivate().is_err() {
                     eprintln!("[Shelf] Session cleanup failed");
                 }
+                if webview.state::<hardware_tools::HardwareService>().clear().is_err() { eprintln!("[HardwareTools] Reload cleanup failed"); }
+                if webview.state::<display_tools::DisplayService>().clear().is_err() { eprintln!("[DisplayTools] Reload cleanup failed"); }
                 if webview.state::<maintenance::MaintenanceService>().clear().is_err() { eprintln!("[Maintenance] Reload cleanup failed"); }
                 if webview.state::<video_tools::VideoService>().clear().is_err() { eprintln!("[VideoTools] Reload cleanup failed"); }
                 if webview.state::<input_tools::InputService>().clear().is_err() { eprintln!("[InputTools] Page reload cleanup failed"); }
@@ -183,6 +191,8 @@ pub fn run() {
                 if window.state::<clipboard_history::HistoryService>().stop(true).is_err() {
                     eprintln!("[ClipboardHistory] Failed to clear session on window destruction");
                 }
+                if window.state::<hardware_tools::HardwareService>().clear().is_err() { eprintln!("[HardwareTools] Window cleanup failed"); }
+                if window.state::<display_tools::DisplayService>().clear().is_err() { eprintln!("[DisplayTools] Window cleanup failed"); }
                 if window.state::<maintenance::MaintenanceService>().clear().is_err() { eprintln!("[Maintenance] Window cleanup failed"); }
                 if window.state::<video_tools::VideoService>().clear().is_err() { eprintln!("[VideoTools] Window cleanup failed"); }
                 if window.state::<input_tools::InputService>().clear().is_err() { eprintln!("[InputTools] Window cleanup failed"); }
@@ -195,6 +205,8 @@ pub fn run() {
                 }
             }
             tauri::WindowEvent::CloseRequested { api, .. } => {
+                if window.label()=="main" && window.state::<hardware_tools::HardwareService>().clear().is_err() { eprintln!("[HardwareTools] Hide cleanup failed"); }
+                if window.label()=="main" && window.state::<display_tools::DisplayService>().clear().is_err() { eprintln!("[DisplayTools] Hide cleanup failed"); }
                 // 所有窗口关闭时仅隐藏，不退出 APP
                 // 退出只能通过托盘菜单「退出」
                 api.prevent_close();
@@ -209,6 +221,8 @@ pub fn run() {
         Ok(app) => app.run(|app, event| {
             if matches!(event, tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit) {
                 if app.state::<marketplace::MarketService>().clear().is_err() { eprintln!("[Marketplace] Exit cleanup failed"); }
+                if app.state::<hardware_tools::HardwareService>().clear().is_err() { eprintln!("[HardwareTools] Exit cleanup failed"); }
+                if app.state::<display_tools::DisplayService>().clear().is_err() { eprintln!("[DisplayTools] Exit cleanup failed"); }
                 if app.state::<maintenance::MaintenanceService>().clear().is_err() { eprintln!("[Maintenance] Exit cleanup failed"); }
                 if app.state::<video_tools::VideoService>().clear().is_err() { eprintln!("[VideoTools] Exit cleanup failed"); }
                 if app.state::<input_tools::InputService>().clear().is_err() { eprintln!("[InputTools] Exit cleanup failed"); }

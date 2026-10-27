@@ -102,9 +102,11 @@ macOS 的 AI / 额度监控 API 密钥保存到系统 Keychain。旧明文密钥
 
 “系统维护 / Maintenance”默认不扫描，按需列举普通应用、用户缓存、自己的非系统进程和 Homebrew formula。每次先预览再确认；文件只移入系统废纸篓，可在本次 PinWall 会话尝试恢复。进程信号与 Homebrew 卸载不能撤销，不提权、不执行自定义命令。
 
-官方目录共 17 项。安装更新先完整校验暂存包，失败保留旧版；已安装行可审阅权限后回滚上一版，回滚后停用，数据不降级。高级本地安装同样先预览权限。
+“显示增强 / Display Tools”提供有时限的 EDR 屏幕镜像增强（macOS 14+、兼容 HDR 屏幕和录屏授权），15fps/最多400万像素，不改系统亮度、不保存画面；关闭/锁屏/睡眠/停用停止。“风扇与合盖 / Hardware Tools”通过同 Team ID 真实签名的受限系统助手提供限时风扇增强/合盖会话；普通 ad-hoc 包明确拒绝，注册需系统批准，每次确认、接电低温、最长五分钟、失联恢复。设备支持、签名打包/显式移除及合盖共存限制见 [HARDWARE_TOOLS.md](./HARDWARE_TOOLS.md)。
 
-十四项工具均可离线使用，目前主要面向 macOS；实际系统授权、窗口和睡眠唤醒仍需按发布 QA 验收。完整的手工操作步骤见 [PLUGIN_ACCEPTANCE.md](./PLUGIN_ACCEPTANCE.md)，当前均待人工执行。本轮独立实现这些能力，没有复制 Vorssaint 的 GPL 源码。插件协议、原生权限边界和后续扩展约束见 [NATIVE_PLUGINS.md](./NATIVE_PLUGINS.md)。核心便签无需安装或启用插件。
+官方目录共 19 项。安装更新先完整校验暂存包，失败保留旧版；已安装行可审阅权限后回滚上一版，回滚后停用，数据不降级。高级本地安装同样先预览权限。
+
+十六项工具均可离线使用，目前主要面向 macOS；实际系统授权、窗口和睡眠唤醒仍需按发布 QA 验收。完整的手工操作步骤见 [PLUGIN_ACCEPTANCE.md](./PLUGIN_ACCEPTANCE.md)，当前均待人工执行。本轮独立实现这些能力，没有复制 Vorssaint 的 GPL 源码。插件协议、原生权限边界和后续扩展约束见 [NATIVE_PLUGINS.md](./NATIVE_PLUGINS.md)。核心便签无需安装或启用插件。
 
 ## 技术栈
 
@@ -154,3 +156,5 @@ desktop/
 
 
 第三方可信市场（P2、默认关闭）：根签审核目录 + 发布者签名包，手动刷新/权限审阅/默认关闭安装及更新；离线审核工具与只读源站见 [MARKETPLACE_TRUST.md](./MARKETPLACE_TRUST.md)。公网域名/TLS/真实信任根需发行者配置；不支持任意匿名代码或进程级 CPU 隔离，统一原生验收保持未勾选。
+
+实现阶段源码复核及残余边界见 [PLUGIN_SECURITY_REVIEW.md](./PLUGIN_SECURITY_REVIEW.md)，浏览器基线与原生性能待验表见 [PLUGIN_PERFORMANCE.md](./PLUGIN_PERFORMANCE.md)。

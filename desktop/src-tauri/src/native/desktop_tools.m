@@ -328,6 +328,8 @@ static NSDictionary *PWNotify(NSDictionary *request) {
     }
     return PWError(@"desktop_unsupported");
 }
+extern NSDictionary *pinwall_hardware_request(NSDictionary *request);
+extern NSDictionary *pinwall_display_request(NSDictionary *request);
 extern NSDictionary *pinwall_maintenance_request(NSDictionary *request);
 extern NSDictionary *pinwall_video_request(NSDictionary *request);
 extern NSDictionary *pinwall_input_request(NSDictionary *request);
@@ -346,6 +348,8 @@ char *pinwall_desktop_request(const char *json) {
         else if ([request[@"domain"] isEqual:@"media"]) result=PWMedia(request);
         else if ([request[@"domain"] isEqual:@"notify"]) result=PWNotify(request);
         else if ([request[@"domain"] isEqual:@"routes"]) result=pinwall_routes_request(request);
+        else if ([request[@"domain"] isEqual:@"hardware"]) result=pinwall_hardware_request(request);
+        else if ([request[@"domain"] isEqual:@"display"]) result=pinwall_display_request(request);
         else if ([request[@"domain"] isEqual:@"maintenance"]) result=pinwall_maintenance_request(request);
         else if ([request[@"domain"] isEqual:@"video"]) result=pinwall_video_request(request);
         else if ([request[@"domain"] isEqual:@"input"]) result=pinwall_input_request(request);

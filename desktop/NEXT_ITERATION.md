@@ -280,3 +280,19 @@ macOS 包替换/读取/恢复增加进程间 advisory lock；插件数据事务�
 新增 Node 离线 keygen/package/inspect/review --approve/catalog 工具与只读 localhost 源站，私钥不托管；源站需运营方另配 HTTPS。inspect 解出受限普通资源供人工代码/资源审查，不执行插件。协议、上限、撤销、运维和限制见 MARKETPLACE_TRUST.md。独立公钥、域名/TLS 和真实审核身份尚需发行者配置；iframe 没有进程级 CPU 硬隔离，仅接收人工审查的单文件 Web 插件，不能宣称允许任意匿名代码。
 
 验证：前端 41 文件 / 274 项通过，Node 4 项签名/审核/只读源站测试通过；Rust 117 项通过 / 7 项 smoke 默认忽略，含 Node→Rust 公开验签向量（无私钥）。TypeScript/Vite、`.app`、strict codesign 和 42 资源字节核对通过；主 JS 776.57 KB，原有大 chunk 提示保留，市场面板按需加载。首次 6 worker 与 release 编译并行时音频流程整体 30 秒超时，编译结束以 3 worker 重跑全量 59 项全部通过，未放宽断言/超时（`/tmp/pinwall-marketplace-all-e2e-confirmed`）。窄窗口截图已检查。保持 x86_64/ad-hoc/无 Team ID/未公证，未部署公网、未执行用户原生验收；清单现十九步，全部待最后验收。
+
+## EDR、受限硬件助手与原方案代码收口（2026-10-27 续）
+
+新增第十五/十六项默认关闭工具，官方目录共19项：EDR屏幕镜像增强，以及真实签名helper支持的限时风扇增强/合盖会话。EDR使用ScreenCaptureKit/CoreImage/Metal，15fps、4M像素、1.05–2.0增益、最多五分钟，排除自身覆盖，不改系统亮度/保存画面。helper固定Developer ID Application证书类型、TeamID和宿主/helper标识，双向窄XPC、当前控制台UID、固定SMC键/动作/温度/电源/租约及写前恢复日志；异常保留所有权并重试，注销前retire，普通ad-hoc包不包含安装payload且拒绝操作。合盖powerd标记非per-client，不保证其他控制工具共存。完整支持/签名/移除/恢复见 `HARDWARE_TOOLS.md`。
+
+审查补强了suspended XPC释放、日志失败后的watchdog、过期heartbeat不续租、用户切换和睡眠恢复、注销epoch竞态、风扇mode/target类型及DeveloperID证书限定。显示/硬件清理接入面板、送回桌面层、普通隐藏与截图临时隐藏、停用、重装、卸载、重载及退出；EDR系统停止未确认保留繁忙预算，失败明确要求退出重开。没有扩大Tauri capability或修改核心便签/设置schema，helper独占版本化root恢复日志与普通AppData分离。UI双语及窄窗口检查通过，修复浅色弹窗控制文字对比度。
+
+原始能力队列的开发项已有约束明确的实现；`PLUGIN_SECURITY_REVIEW.md`记录本轮源码复核范围、修复与残余边界，无独立外部审计或进程级CPU硬隔离的声明。第三方仍仅限人工审查的单文件Web插件；真实审核根/TLS/托管不由本地代码代替。
+
+验证：前端43文件/278项及Node4项通过；Rust122项通过/7项真实smoke默认忽略；helper universal `-Wall -Wextra -Werror`编译与56项全IO替身检查通过；EDR和客户端也通过arm64+x86_64严格编译。完整浏览器61项通过，对新面板样式修复后两条流程另行回归通过。TypeScript/Vite生产构建通过，主JS789.18KB、既有>500KB chunk提示保留。
+
+另新增 `pnpm test:performance`：单worker交替五轮、三种场景、12张存储卡片/现有五张可见。无插件/16项全停用/一个本地工具启动卡片的暖导航中位数分别484.4/506.8/659.4ms；十五个1.5秒空闲窗口无widget原生命令，拖拽帧间隔P95中位数均16.7ms。只记录Chromium renderer/合成IPC，不宣称原生CPU/RSS/唤醒/GPU/能耗已通过；实测方法、当前可见数量限制和原生待填表见 `PLUGIN_PERFORMANCE.md`。
+
+统一人工验收清单现21步，全部保持未勾选。当前仍为x86_64/ad-hoc/无TeamID/未公证；没有启用真实输入监听、音频路由、录屏、硬件写入/助手注册，未移动真实应用/缓存、结束用户进程或卸载brew包。剩余是发行方真实DeveloperID/公证、可信市场HTTPS/根配置，以及两种架构/设备/系统权限/原生性能的最后统一验收，不把这些条件描述为已完成。
+
+最终 `CARGO_NET_OFFLINE=true pnpm tauri:build:app`、`codesign --verify --deep --strict` 及48个native-widgets资源逐字节核对均通过，普通包确认不含HelperTools/LaunchDaemons安装payload。截图临时隐藏清理补强后另跑5项screen服务测试通过，最新helper自测仍56项通过。当前包仍明确未公证，未执行生产身份的硬件打包/注册流程。生成的dist/target/浏览器产物不提交。

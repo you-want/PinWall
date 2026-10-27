@@ -7,21 +7,26 @@ fn main() {
             .file("src/native/dock_preview.m")
             .file("src/native/video_tools.m")
             .file("src/native/maintenance_tools.m")
+            .file("src/native/display_tools.m")
+            .file("src/native/hardware_client.m")
             .flag("-fobjc-arc")
             .flag("-std=gnu11")
             .flag("-mmacosx-version-min=10.13")
             .compile("pinwall_desktop_tools");
-        for framework in ["Foundation", "AppKit", "CoreAudio", "ApplicationServices", "AudioToolbox", "Carbon", "AVFoundation", "CoreMedia", "CoreVideo"] {
+        for framework in ["Foundation", "AppKit", "CoreAudio", "ApplicationServices", "AudioToolbox", "Carbon", "AVFoundation", "CoreMedia", "CoreVideo", "CoreImage", "Metal", "QuartzCore"] {
             println!("cargo:rustc-link-lib=framework={framework}");
         }
         println!("cargo:rustc-link-arg=-Wl,-weak_framework,ScreenCaptureKit");
         println!("cargo:rustc-link-arg=-Wl,-weak_framework,UserNotifications");
+        println!("cargo:rustc-link-arg=-Wl,-weak_framework,ServiceManagement");
         println!("cargo:rerun-if-changed=src/native/desktop_tools.m");
         println!("cargo:rerun-if-changed=src/native/audio_routes.m");
         println!("cargo:rerun-if-changed=src/native/input_tools.m");
         println!("cargo:rerun-if-changed=src/native/dock_preview.m");
         println!("cargo:rerun-if-changed=src/native/video_tools.m");
         println!("cargo:rerun-if-changed=src/native/maintenance_tools.m");
+        println!("cargo:rerun-if-changed=src/native/display_tools.m");
+        println!("cargo:rerun-if-changed=src/native/hardware_client.m");
     }
     tauri_build::build()
 }

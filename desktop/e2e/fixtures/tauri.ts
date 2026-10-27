@@ -117,6 +117,13 @@ export const test = base.extend({
         options?: { headers?: Record<string, string> },
       ): Promise<unknown> => {
         const args = rawArgs as Args;
+        // Opt-in command counts for the browser baseline; never record arguments or user content.
+        if (localStorage.getItem(`${prefix}ipc:measure`) === 'true') {
+          const key = `${prefix}ipc:counts`;
+          const counts = JSON.parse(localStorage.getItem(key) ?? '{}') as Record<string, number>;
+          counts[command] = (counts[command] ?? 0) + 1;
+          localStorage.setItem(key, JSON.stringify(counts));
+        }
         switch (command) {
           case 'cards_read': return readCards();
           case 'cards_patch': {
@@ -278,6 +285,29 @@ export const test = base.extend({
             else if (mutation.method === 'remove') delete data[mutation.key];
             else throw new Error('Unsupported test mutation');
             localStorage.setItem(key,JSON.stringify(data));return null;
+          }
+          case 'widget_hardware_request': {
+            const action=args.action as {method:string;fan?:number;rpm?:number;seconds?:number;confirmed?:boolean};
+            if(localStorage.getItem(`${prefix}hardware:signed`)!=='true')throw 'hardware_signing_required';
+            let service=Number(localStorage.getItem(`${prefix}hardware:service`)??0);
+            if(action.method==='service')return {service};
+            if(action.method==='register'){if(!action.confirmed)throw 'hardware_confirmation';service=2;localStorage.setItem(`${prefix}hardware:service`,'2');return {service};}
+            if(service!==1)throw 'hardware_approval_required';
+            const failure=localStorage.getItem(`${prefix}hardware:fail`);if(failure)throw failure;
+            if(action.method==='unregister'){localStorage.setItem(`${prefix}hardware:service`,'0');localStorage.removeItem(`${prefix}hardware:active`);return {service:0};}
+            if(action.method==='fan'||action.method==='lid'){if(!action.confirmed)throw 'hardware_confirmation';localStorage.setItem(`${prefix}hardware:lastStart`,JSON.stringify(action));localStorage.setItem(`${prefix}hardware:active`,action.method);}
+            if(action.method==='stop')localStorage.removeItem(`${prefix}hardware:active`);
+            const active=localStorage.getItem(`${prefix}hardware:active`);
+            return {fans:[{id:0,minimum:1200,maximum:6000,current:3000,controllable:!active,manual:active==='fan'}],temperature:45,onAc:true,hasLid:true,lidDisabled:active==='lid',fanActive:active==='fan'?0:-1,lidActive:active==='lid',recoveryRequired:false,remaining:active?60:0};
+          }
+          case 'widget_display_request': {
+            const action=args.action as {method:string;display?:number;gain?:number;seconds?:number};
+            const failure=localStorage.getItem(`${prefix}display:fail`);if(failure)throw failure;
+            if(action.method==='list')return {displays:[{id:1,name:'Synthetic HDR display',potential:2,current:1.5}]};
+            if(action.method==='start'){localStorage.setItem(`${prefix}display:active`,'true');localStorage.setItem(`${prefix}display:lastStart`,JSON.stringify(action));}
+            if(action.method==='stop')localStorage.setItem(`${prefix}display:active`,'false');
+            if(['start','status','stop'].includes(action.method)){const active=localStorage.getItem(`${prefix}display:active`)==='true';return {active,starting:false,display:active?1:0,gain:active?1.2:1,remaining:active?60:0,lastError:null};}
+            throw new Error('Unsupported test display action');
           }
           case 'marketplace_request': {
             const action=args.action as {method:string;config?:{enabled:boolean;catalogUrl:string;rootKey:string};id?:string;version?:string;token?:string};
@@ -494,6 +524,8 @@ export const test = base.extend({
           }
           case 'get_widget_history_status': { const state = historyState(); return { recording: state.recording, count: state.entries.length, revision: localStorage.getItem(`${prefix}history:revision`) ?? '0' }; }
           case 'revoke_widget_tool': {
+            if(args.widgetId==='com.pinwall.hardware-tools'){localStorage.removeItem(`${prefix}hardware:active`);return null;}
+            if(args.widgetId==='com.pinwall.display-tools'){localStorage.setItem(`${prefix}display:active`,'false');return null;}
             if(args.widgetId==='com.pinwall.maintenance')return null;
             if(args.widgetId==='com.pinwall.video-tools'){localStorage.setItem(`${prefix}video:cancelled`,'true');localStorage.setItem(`${prefix}video:recording`,'false');localStorage.removeItem(`${prefix}video:selected`);return null;}
             if(args.widgetId==='com.pinwall.window-tools'){localStorage.setItem(`${prefix}dock:active`,'false');return null;}
