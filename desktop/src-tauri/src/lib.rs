@@ -9,6 +9,9 @@ mod image_tools;
 mod metrics;
 mod persistence;
 mod power;
+mod shelf;
+mod screen_tools;
+mod tool_files;
 mod tray;
 mod widgets;
 mod window_layer;
@@ -19,11 +22,13 @@ use tray::CurrentShortcut;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let application = tauri::Builder::default()
         .manage(cards_storage::CardsStorage::default())
         .manage(power::PowerService::default())
         .manage(metrics::MetricsService::default())
         .manage(clipboard::ClipboardService::default())
+        .manage(screen_tools::ScreenService::default())
+        .manage(shelf::ShelfService::default())
         .manage(image_tools::ImageService::default())
         .manage(clipboard_history::HistoryService::default())
         .setup(|app| {
@@ -91,6 +96,8 @@ pub fn run() {
             power::close_widget_power_session,
             power::revoke_widget_power,
             clipboard::read_widget_clipboard_text,
+            shelf::widget_shelf_request,
+            screen_tools::widget_screen_request,
             image_tools::select_widget_image,
             image_tools::export_widget_image,
             image_tools::recognize_widget_image,
@@ -98,8 +105,21 @@ pub fn run() {
             clipboard_history::get_widget_history_status,
             clipboard_history::revoke_widget_tool,
         ])
+        .on_webview_event(|webview, event| {
+            if webview.label() == "main" {
+                if let tauri::WebviewEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
+                    shelf::on_native_drop(webview.app_handle().clone(), paths.clone());
+                }
+            }
+        })
         .on_page_load(|webview, payload| {
             if webview.label() == "main" && matches!(payload.event(), tauri::webview::PageLoadEvent::Started) {
+                if webview.state::<shelf::ShelfService>().deactivate().is_err() {
+                    eprintln!("[Shelf] Session cleanup failed");
+                }
+                if webview.state::<screen_tools::ScreenService>().clear().is_err() {
+                    eprintln!("[ScreenTools] Capture cleanup failed");
+                }
                 if webview.state::<clipboard_history::HistoryService>().stop(true).is_err() {
                     eprintln!("[ClipboardHistory] Failed to clear session on page reload");
                 }
@@ -113,6 +133,12 @@ pub fn run() {
         })
         .on_window_event(|window, event| match event {
             tauri::WindowEvent::Destroyed if window.label() == "main" => {
+                if window.state::<shelf::ShelfService>().deactivate().is_err() {
+                    eprintln!("[Shelf] Session cleanup failed");
+                }
+                if window.state::<screen_tools::ScreenService>().clear().is_err() {
+                    eprintln!("[ScreenTools] Capture cleanup failed");
+                }
                 if window.state::<clipboard_history::HistoryService>().stop(true).is_err() {
                     eprintln!("[ClipboardHistory] Failed to clear session on window destruction");
                 }
@@ -131,6 +157,15 @@ pub fn run() {
             }
             _ => {}
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!());
+    match application {
+        Ok(app) => app.run(|app, event| {
+            if matches!(event, tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit) {
+                if app.state::<screen_tools::ScreenService>().shutdown().is_err() { eprintln!("[ScreenTools] Exit cleanup failed"); }
+                if app.state::<shelf::ShelfService>().deactivate().is_err() { eprintln!("[Shelf] Exit cleanup failed"); }
+                if app.state::<clipboard_history::HistoryService>().stop(true).is_err() { eprintln!("[ClipboardHistory] Exit cleanup failed"); }
+            }
+        }),
+        Err(_) => { eprintln!("[App] Native application initialization failed"); std::process::exit(1); },
+    }
 }

@@ -122,8 +122,8 @@ describe('widgetBridge', () => {
       const { invoke } = await import('@tauri-apps/api/core');
       vi.mocked(invoke).mockClear();
       const tools = vi.fn().mockResolvedValue({ closed: true });
-      for (const [module, id] of [['ocr', 'ocr-note'], ['images', 'image-tools'], ['clipboardHistory', 'clipboard-history']] as const) {
-        const manifest = { ...createTestManifest([module]), id: `com.pinwall.${id}` };
+      for (const [module, id, permission] of [['shelf', 'file-shelf', 'shelf'], ['screen', 'screen-tools', 'screenCapture'], ['ocr', 'ocr-note', 'ocr'], ['images', 'image-tools', 'images'], ['clipboardHistory', 'clipboard-history', 'clipboardHistory']] as const) {
+        const manifest = { ...createTestManifest([permission]), id: `com.pinwall.${id}` };
         for (const request of [makeRequest(module, 'read'), makeRequest(module, 'open', ['path'])]) {
           expect((await handleBridgeRequest(request, manifest, { tools })).success).toBe(false);
         }
@@ -132,7 +132,7 @@ describe('widgetBridge', () => {
         expect((await handleBridgeRequest(makeRequest(module, 'open'), manifest, { tools })).data).toEqual({ closed: true });
         expect(tools).toHaveBeenLastCalledWith(module);
       }
-      expect(tools).toHaveBeenCalledTimes(3);
+      expect(tools).toHaveBeenCalledTimes(5);
       expect(invoke).not.toHaveBeenCalled();
     });
 

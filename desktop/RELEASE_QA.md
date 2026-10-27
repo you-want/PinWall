@@ -163,11 +163,11 @@ Automated vault tests use an in-memory adapter and temporary files. They do not 
 
 This is the primary path for trusted, optional widgets.
 
-- [ ] All ten official widgets are listed: Clock, Weather, Pomodoro, System Monitor, Music Control, Keep Awake, Clipboard to Note, Image to Note, Image Tools, and Clipboard History.
+- [ ] All twelve official widgets are listed: Clock, Weather, Pomodoro, System Monitor, Music Control, Keep Awake, Clipboard to Note, Image to Note, Image Tools, Clipboard History, File Shelf, and Screen Tools.
 - [ ] Install Clock from the Official Widget Hub without choosing a folder.
 - [ ] Install Weather and confirm the high-risk `network` permission prompt appears before install.
 - [ ] Install System Monitor and confirm the high-risk `system` permission prompt appears before install.
-- [ ] Enabled widgets appear on the main wall immediately; all six native tools are disabled after installation until explicitly enabled; Keep Awake and Clipboard History also require an explicit Start.
+- [ ] Enabled widgets appear on the main wall immediately; all eight native tools are disabled after installation until explicitly enabled; Keep Awake and Clipboard History also require an explicit Start.
 - [ ] Installed widgets survive app quit and restart.
 - [ ] Installed widgets can be toggled off and on.
 - [ ] Installed widgets can be removed.
@@ -238,7 +238,7 @@ Direct API smoke and browser IPC mocks do not verify actual Tauri/TCC authorizat
 
 ## Image To Note, Image Tools And Clipboard History (Experimental)
 
-Follow the ordered Chinese checklist in [PLUGIN_ACCEPTANCE.md](./PLUGIN_ACCEPTANCE.md) for all six native tools. Manual gates below remain unchecked until performed in Tauri.
+Follow the ordered Chinese checklist in [PLUGIN_ACCEPTANCE.md](./PLUGIN_ACCEPTANCE.md) for all eight native tools. Manual gates below remain unchecked until performed in Tauri.
 
 - [ ] Install the three new tools with distinct permission explanations, initially disabled; enabling must not select a file, create a note or start clipboard recording.
 - [ ] OCR: select Chinese/English PNG/JPEG/WebP, review/edit and create once; cancel, no text, corrupt/oversized input and late results never create notes automatically.
@@ -255,6 +255,20 @@ cargo test --offline image_tools::tests::native_ocr_smoke -- --ignored --exact -
 ```
 
 This does not verify file dialogs, TCC, actual clipboard history capture or user workflows. No manual gate is satisfied by mocked browser tests alone.
+
+## File Shelf And Screen Tools (Experimental, macOS)
+
+Use steps 8–9 of [PLUGIN_ACCEPTANCE.md](./PLUGIN_ACCEPTANCE.md); keep every native check pending until actually performed.
+
+- [ ] Install both tools with separate `shelf`/`screenCapture` permission explanations, initially disabled. Opening must not choose files or request screen permission automatically.
+- [ ] Shelf: native multi-file picker and Finder drops only while its host dialog is open; deduplicate, search, reveal, save identical copy, remove and clear/cancel. Originals remain unchanged. Test 50 references, 100 MiB per file, seven-day expiry, unavailable/replaced sources and real quit/restart retention.
+- [ ] Shelf: cancel a late picker, disable in settings, uninstall; no late import or deletion of originals. Verify corrupted-index backup/reset and future-schema protection with isolated fixtures. No file paths/content in iframe messages or logs.
+- [ ] Screen: real macOS screen-recording permission deny/grant/restart, interactive region selection/Escape, temporary wall hide and focus restoration; original-pixel color with mouse/keyboard, explicit color copy, local OCR review/edit/create and PNG export.
+- [ ] Screen: test native WKWebView, Retina/multiple displays, both CPU architectures, no-text/oversized input, timeout, close/disable/reload/tray-exit during selection and ten-minute expiry. Capture child must terminate/reap; no late preview/note and no wall reappearance on exit.
+- [ ] Verify normal private screenshot temporary-directory cleanup; crash leftovers are cleaned on next capture. Cancel save and failed exports leave no partial output; AppData, symlinks and protected source destinations are denied.
+- [ ] Confirm no background screen capture, recording, network/AI calls or permanent clipboard writes except the explicit Copy color action. Core notes, reminders, tray and click-through still work with these tools disabled.
+
+Browser IPC mocks and synthetic child-process tests do not satisfy these real TCC, Finder, dialog, window or hardware gates.
 
 ## Visual And Performance Checks
 

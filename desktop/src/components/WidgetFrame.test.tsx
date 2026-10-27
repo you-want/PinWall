@@ -141,6 +141,18 @@ describe('WidgetFrame', () => {
     expect(post).toHaveBeenCalledTimes(count);
   });
 
+  it('preserves an active tool session across equivalent cross-window manifests, but revokes changed permissions', async () => {
+    const instance = createInstance();
+    const { rerender, iframe } = await renderLoadedWidget({ instance });
+    await act(async () => { window.dispatchEvent(new MessageEvent('message', { source: iframe.contentWindow, origin: 'null', data: { type: 'request', id: 'session-1', module: 'theme', method: 'get' } })); });
+    const signal = vi.mocked(handleBridgeRequest).mock.calls[0][2]!.signal!;
+    await act(async () => rerender(<WidgetFrame instance={structuredClone(instance)} />));
+    expect(signal.aborted).toBe(false);
+    const changed = structuredClone(instance); changed.manifest.permissions = ['i18n'];
+    await act(async () => rerender(<WidgetFrame instance={changed} />));
+    expect(signal.aborted).toBe(true);
+  });
+
   it('sends to opaque asset origins and cancels the load retry on unmount', async () => {
     vi.useFakeTimers();
     const instance = createInstance();

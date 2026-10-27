@@ -1,0 +1,24 @@
+{
+  "id": "com.pinwall.file-shelf",
+  "name": "文件暂存 / File Shelf",
+  "description": "保存所选文件的引用，保留七天；原文件不移动。 / Keep selected file references for seven days. Originals stay in place.",
+  "version": "1.0.0",
+  "author": "PinWall Team",
+  "entry": "index.html",
+  "icon": "icon.svg",
+  "type": "official",
+  "category": "productivity",
+  "permissions": [
+    "shelf",
+    "i18n"
+  ],
+  "defaultEnabled": false,
+  "defaultSize": {
+    "width": 260,
+    "height": 240
+  },
+  "minSize": {
+    "width": 210,
+    "height": 210
+  }
+}

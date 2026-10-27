@@ -1,0 +1,24 @@
+{
+  "id": "com.pinwall.screen-tools",
+  "name": "屏幕工具 / Screen Tools",
+  "description": "选择屏幕区域，本地识字、取色或保存截图。 / Select a screen region, recognize text or pick a pixel color locally.",
+  "version": "1.0.0",
+  "author": "PinWall Team",
+  "entry": "index.html",
+  "icon": "icon.svg",
+  "type": "official",
+  "category": "productivity",
+  "permissions": [
+    "screenCapture",
+    "i18n"
+  ],
+  "defaultEnabled": false,
+  "defaultSize": {
+    "width": 260,
+    "height": 240
+  },
+  "minSize": {
+    "width": 210,
+    "height": 210
+  }
+}

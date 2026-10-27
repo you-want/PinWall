@@ -74,7 +74,7 @@ impl ExportOptions {
     }
 }
 
-fn decode_image(bytes: &[u8]) -> Result<DynamicImage, String> {
+pub(crate) fn decode_image(bytes: &[u8]) -> Result<DynamicImage, String> {
     if bytes.len() > MAX_FILE_BYTES {
         return Err("image_too_large".into());
     }
@@ -101,7 +101,7 @@ fn decode_image(bytes: &[u8]) -> Result<DynamicImage, String> {
     Ok(image)
 }
 
-fn encode_image(image: &DynamicImage, options: &ExportOptions) -> Result<Vec<u8>, String> {
+pub(crate) fn encode_image(image: &DynamicImage, options: &ExportOptions) -> Result<Vec<u8>, String> {
     options.validate()?;
     let resized = image
         .resize_exact(
@@ -153,7 +153,7 @@ fn encode_image(image: &DynamicImage, options: &ExportOptions) -> Result<Vec<u8>
     Ok(bytes)
 }
 
-fn safe_path(path: &Path) -> Result<PathBuf, String> {
+pub(crate) fn safe_path(path: &Path) -> Result<PathBuf, String> {
     if !path.is_absolute()
         || path
             .components()
@@ -216,14 +216,14 @@ pub struct ImageService {
     selected: Mutex<Option<SelectedImage>>,
     generation: AtomicU64,
 }
-struct ImageGuard(Arc<AtomicBool>);
+pub(crate) struct ImageGuard(Arc<AtomicBool>);
 impl Drop for ImageGuard {
     fn drop(&mut self) {
         self.0.store(false, Ordering::Release);
     }
 }
 impl ImageService {
-    fn acquire(&self) -> Result<ImageGuard, String> {
+    pub(crate) fn acquire(&self) -> Result<ImageGuard, String> {
         self.busy
             .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
             .map_err(|_| "image_busy")?;
@@ -441,7 +441,7 @@ pub async fn recognize_widget_image(
 }
 
 #[cfg(target_os = "macos")]
-fn vision_text(bytes: &[u8]) -> Result<String, String> {
+pub(crate) fn vision_text(bytes: &[u8]) -> Result<String, String> {
     use objc2::{
         msg_send,
         rc::Retained,

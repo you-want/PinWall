@@ -67,7 +67,7 @@ fn backup_path(path: &Path) -> PathBuf {
     path.with_extension("json.corrupt-backup")
 }
 
-fn preserve_corrupt(path: &Path) -> StorageResult<()> {
+pub(crate) fn preserve_corrupt(path: &Path) -> StorageResult<()> {
     let backup = backup_path(path);
     let mut options = OpenOptions::new();
     options.write(true).create_new(true);

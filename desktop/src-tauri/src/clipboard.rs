@@ -1,5 +1,5 @@
 //! Host-confirmed text import and shared pasteboard helpers for optional session history.
-//! Only the history service can monitor or write, after explicit host actions.
+//! Only opt-in history monitors; writes require explicit host controls.
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
@@ -73,7 +73,7 @@ pub(crate) fn changed_text(previous: isize) -> Option<(isize, Result<String, Str
 }
 
 #[cfg(target_os = "macos")]
-pub(crate) fn write_history_text(text: &str) -> Result<(), String> {
+pub(crate) fn write_confirmed_text(text: &str) -> Result<(), String> {
     use objc2_app_kit::{NSPasteboard, NSPasteboardTypeString};
     use objc2_foundation::NSString;
     objc2::rc::autoreleasepool(|_| {

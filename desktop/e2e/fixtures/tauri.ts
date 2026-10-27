@@ -38,6 +38,18 @@ export const test = base.extend({
         localStorage.setItem(`${prefix}history:revision`, String(Number(localStorage.getItem(`${prefix}history:revision`) ?? 0) + 1));
       };
       if (!['settings', 'notification'].includes(new URL(location.href).searchParams.get('window') ?? '')) saveHistory(emptyHistory());
+      let shelfActive = false, shelfEpoch = 0, screenEpoch = 0;
+      type ShelfFixture = { id: string; name: string; bytes: number; addedAt: number; expiresAt: number; available: boolean };
+      const shelfEntries = () => JSON.parse(localStorage.getItem(`${prefix}shelf:entries`) ?? '[]') as ShelfFixture[];
+      const saveShelf = (entries: ShelfFixture[]) => localStorage.setItem(`${prefix}shelf:entries`, JSON.stringify(entries));
+      const shelfItem = (id: string, name: string): ShelfFixture => ({ id, name, bytes: 1024, addedAt: Date.now(), expiresAt: Date.now() + 7 * 86400000, available: true });
+      const capturePreview = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAFElEQVR4nGNMmXaCAQaY4CwGBgYAKhoBxrgvo6EAAAAASUVORK5CYII=';
+      if (!['settings', 'notification'].includes(new URL(location.href).searchParams.get('window') ?? '')) localStorage.removeItem(`${prefix}screen:token`);
+      window.addEventListener('pinwall-e2e:shelf-drop', () => {
+        if (!shelfActive) return;
+        const entries = shelfEntries(); const duplicate = entries.some(e => e.id === '4-5-6'); if (!duplicate) entries.push(shelfItem('4-5-6', 'Dropped fixture.txt'));
+        saveShelf(entries); emit('pinwall:shelf-changed', { added: duplicate ? 0 : 1, skipped: duplicate ? 1 : 0 });
+      });
       const settingsKey = `${prefix}file:pinwall-settings.json`;
       if (localStorage.getItem(settingsKey) === null) {
         localStorage.setItem(settingsKey, JSON.stringify({
@@ -256,6 +268,54 @@ export const test = base.extend({
             if (!pkg || !installed.some(widget => widget.id === args.id)) throw new Error('Test widget is not installed');
             return pkg.html;
           }
+          case 'widget_shelf_request': {
+            const action = args.action as { method: string; id?: string };
+            if (action.method === 'activate') { shelfActive = true; shelfEpoch++; }
+            const epoch = shelfEpoch;
+            if (!shelfActive) throw 'tool_cancelled';
+            const failure = localStorage.getItem(`${prefix}shelf:fail`);
+            if (failure && !(failure === 'shelf_corrupt' && action.method === 'clear')) throw failure;
+            let entries = shelfEntries(); let added = 0, skipped = 0;
+            if (action.method === 'add') {
+              if (localStorage.getItem(`${prefix}shelf:delay`) === 'true') await new Promise(resolve => setTimeout(resolve, 400));
+              if (epoch !== shelfEpoch || !shelfActive) throw 'tool_cancelled';
+              if (localStorage.getItem(`${prefix}shelf:cancel`) !== 'true') {
+                for (const item of [shelfItem('1-2-3', 'Fixture document.txt'), shelfItem('2-3-4', 'Reference image.png')]) {
+                  if (entries.some(e => e.id === item.id)) skipped++; else { entries.push(item); added++; }
+                }
+              }
+            } else if (action.method === 'remove') entries = entries.filter(e => e.id !== action.id);
+            else if (action.method === 'clear') { entries = []; localStorage.removeItem(`${prefix}shelf:fail`); }
+            else if (action.method === 'reveal' || action.method === 'export') {
+              const item = entries.find(e => e.id === action.id); if (!item?.available) throw 'shelf_file_unavailable';
+              const failure = localStorage.getItem(`${prefix}shelf:operation-fail`); if (failure) throw failure;
+              localStorage.setItem(`${prefix}shelf:${action.method}`, action.id ?? '');
+            } else if (!['activate','status'].includes(action.method)) throw new Error('Unsupported test shelf action');
+            saveShelf(entries); return { entries, added, skipped };
+          }
+          case 'widget_screen_request': {
+            const action = args.action as { method: string; token?: string; x?: number; y?: number; copy?: boolean };
+            const failure = localStorage.getItem(`${prefix}screen:fail`); if (failure) throw failure;
+            if (action.method === 'capture') {
+              const epoch = ++screenEpoch; localStorage.removeItem(`${prefix}screen:token`);
+              localStorage.setItem(`${prefix}screen:calls`, String(Number(localStorage.getItem(`${prefix}screen:calls`) ?? 0) + 1));
+              if (localStorage.getItem(`${prefix}screen:delay`) === 'true') await new Promise(resolve => setTimeout(resolve, 400));
+              if (epoch !== screenEpoch) throw 'tool_cancelled';
+              if (localStorage.getItem(`${prefix}screen:cancel`) === 'true') return { kind: 'cancelled' };
+              localStorage.setItem(`${prefix}screen:token`, 'captured-region');
+              return { kind: 'capture', image: { token: 'captured-region', width: 800, height: 400, preview: capturePreview } };
+            }
+            if (action.token !== localStorage.getItem(`${prefix}screen:token`)) throw 'screen_expired';
+            if (action.method === 'ocr') return { kind: 'text', text: 'Screen fixture\n屏幕文字' };
+            if (action.method === 'export') { localStorage.setItem(`${prefix}screen:export`, 'true'); return { kind: 'exported', bytes: 1234 }; }
+            if (action.method === 'color') {
+              if (!Number.isInteger(action.x) || !Number.isInteger(action.y) || Number(action.x) < 0 || Number(action.x) >= 800 || Number(action.y) < 0 || Number(action.y) >= 400) throw 'screen_invalid_pixel';
+              localStorage.setItem(`${prefix}screen:pixel`, JSON.stringify({ x: action.x, y: action.y }));
+              if (action.copy) localStorage.setItem(`${prefix}clipboard:lastwrite`, '#0C2238');
+              return { kind: 'color', hex: '#0C2238', r: 12, g: 34, b: 56, copied: action.copy };
+            }
+            throw new Error('Unsupported test screen action');
+          }
           case 'recognize_widget_image': {
             localStorage.setItem(`${prefix}ocr:calls`, String(Number(localStorage.getItem(`${prefix}ocr:calls`) ?? 0) + 1));
             const error = localStorage.getItem(`${prefix}ocr:fail`); if (error) throw error;
@@ -292,6 +352,8 @@ export const test = base.extend({
           case 'revoke_widget_tool': {
             if (args.widgetId === 'com.pinwall.clipboard-history') saveHistory(emptyHistory());
             else if (args.widgetId === 'com.pinwall.image-tools') localStorage.removeItem(`${prefix}images:token`);
+            else if (args.widgetId === 'com.pinwall.file-shelf') { shelfActive = false; shelfEpoch++; }
+            else if (args.widgetId === 'com.pinwall.screen-tools') { screenEpoch++; localStorage.removeItem(`${prefix}screen:token`); }
             else if (args.widgetId !== 'com.pinwall.ocr-note') throw new Error('Unsupported test native tool');
             return null;
           }
@@ -345,8 +407,10 @@ export const test = base.extend({
             powerToken = null; powerStatus = { supported: true, active: false, endsAt: null };
             return null;
           case 'uninstall_widget':
-            if (!['com.pinwall.keep-awake', 'com.pinwall.system-monitor', 'com.pinwall.clipboard-note', 'com.pinwall.ocr-note', 'com.pinwall.image-tools', 'com.pinwall.clipboard-history'].includes(String(args.id))) throw new Error('Unsupported test widget uninstall');
+            if (!['com.pinwall.keep-awake', 'com.pinwall.system-monitor', 'com.pinwall.clipboard-note', 'com.pinwall.ocr-note', 'com.pinwall.image-tools', 'com.pinwall.clipboard-history', 'com.pinwall.file-shelf', 'com.pinwall.screen-tools'].includes(String(args.id))) throw new Error('Unsupported test widget uninstall');
             localStorage.setItem(`${prefix}widgets:installed`, '[]');
+            if (args.id === 'com.pinwall.file-shelf') { shelfActive = false; shelfEpoch++; saveShelf([]); }
+            if (args.id === 'com.pinwall.screen-tools') { screenEpoch++; localStorage.removeItem(`${prefix}screen:token`); }
             if (args.id === 'com.pinwall.clipboard-history') saveHistory(emptyHistory());
             if (args.id === 'com.pinwall.image-tools') localStorage.removeItem(`${prefix}images:token`);
             if (args.id === 'com.pinwall.keep-awake') { powerToken = null; powerStatus = { supported: true, active: false, endsAt: null }; powerLog('uninstall'); }

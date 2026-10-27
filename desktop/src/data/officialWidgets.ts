@@ -7,6 +7,60 @@ export interface OfficialWidgetCatalogItem {
 
 export const OFFICIAL_WIDGETS: OfficialWidgetCatalogItem[] = [
   {
+    sourcePath: "resources/widgets/widget-file-shelf",
+    manifest: {
+      "id": "com.pinwall.file-shelf",
+      "name": "文件暂存 / File Shelf",
+      "description": "保存所选文件的引用，保留七天；原文件不移动。 / Keep selected file references for seven days. Originals stay in place.",
+      "version": "1.0.0",
+      "author": "PinWall Team",
+      "entry": "index.html",
+      "icon": "icon.svg",
+      "type": "official",
+      "category": "productivity",
+      "permissions": [
+        "shelf",
+        "i18n"
+      ],
+      "defaultEnabled": false,
+      "defaultSize": {
+        "width": 260,
+        "height": 240
+      },
+      "minSize": {
+        "width": 210,
+        "height": 210
+      }
+    }
+  },
+  {
+    sourcePath: "resources/widgets/widget-screen-tools",
+    manifest: {
+      "id": "com.pinwall.screen-tools",
+      "name": "屏幕工具 / Screen Tools",
+      "description": "选择屏幕区域，本地识字、取色或保存截图。 / Select a screen region, recognize text or pick a pixel color locally.",
+      "version": "1.0.0",
+      "author": "PinWall Team",
+      "entry": "index.html",
+      "icon": "icon.svg",
+      "type": "official",
+      "category": "productivity",
+      "permissions": [
+        "screenCapture",
+        "i18n"
+      ],
+      "defaultEnabled": false,
+      "defaultSize": {
+        "width": 260,
+        "height": 240
+      },
+      "minSize": {
+        "width": 210,
+        "height": 210
+      }
+    }
+  },
+  {
     sourcePath: "resources/widgets/widget-ocr-note",
     manifest: {
       "id": "com.pinwall.ocr-note",

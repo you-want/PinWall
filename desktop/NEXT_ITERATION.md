@@ -211,3 +211,24 @@ CI 暴露了 `srcDoc` 已提交但消息监听 effect 尚未就绪的测试竞�
 - `CARGO_NET_OFFLINE=true pnpm tauri:build:app`（含 TypeScript/Vite）通过，最终主 JS **716.51 KB**；三项新工具界面懒加载，原有 >500 KB chunk 提示仍存在。`codesign --verify --deep --strict` 通过；六项插件的 **18 个资源文件**与源码逐字节一致。
 - 当前 `.app` 为本机 **x86_64、ad-hoc、无 Team ID、未公证**。没有代替用户执行手工验收，没有合并主分支、创建标签或公开发布；按 `PLUGIN_ACCEPTANCE.md` 执行后才能记录真实原生结果。
 - 无持久化 schema 迁移，无 capability 扩大；新增 image/base64 依赖及锁文件，历史只在会话内存，不提供跨重启恢复。文档链接和 `git diff --check` 通过。
+
+
+## 文件暂存架与屏幕工具（2026-10-27）
+
+延续 `feat/desktop-native-plugins`，独立实现原方案第二阶段的文件暂存、区域截图、屏幕 OCR 和取色；累计八项原生工具、官方目录十二项。均属于 P2 可选能力、安装后默认关闭。原报告是调研时的历史快照，当前实现状态以本节及 `NATIVE_PLUGINS.md` 为准。
+
+- [x] 文件暂存架：原生选择器/Finder 拖入，50 个普通文件引用、单项 100 MiB、7 天逻辑过期、跨启动恢复；搜索、Finder 定位、原子另存副本、移除与确认清空。只保存引用，不移动/删除/执行原文件，不提供拖出或文件备份。
+- [x] 独立 schemaVersion 1 索引、损坏备份和明确重置、未来版本保留；原生文件身份复核，符号链接/路径边界/限额校验。路径仅存本机索引，不进入 iframe/日志；关闭停用撤销迟到操作，繁忙不积压请求。
+- [x] 屏幕工具：用户点击才请求屏幕权限，固定 Apple 截图程序交互选区、Esc 取消/120 秒截止；临时隐藏/恢复墙，本地 Vision 识字并审阅后转便签、原始像素坐标取色/明确复制、PNG 导出。没有录屏/音频/自动截图。
+- [x] 私有临时截图目录正常清理、下次捕获清理崩溃遗留；一张原图/10 分钟逻辑期限、共享图片单操作槽、撤销和退出终止回收子进程；阻塞任务调度前绑定 generation，防止关闭后排队截图再次启动。
+- [x] 修复跨窗口同步重建同值 manifest 导致 WidgetFrame 会话撤销；实际权限变化仍撤销。补齐 StrictMode 暂存架激活后按钮可用性回归。
+- [x] 中英文权限和错误提示、懒加载宿主弹窗、窄窗口截图检查；未扩大 Tauri capability，未改变便签/设置 schema，未触碰其他产品面。
+- [x] README、原生契约和发布 QA 已同步；`PLUGIN_ACCEPTANCE.md` 扩充为 12 步，新增文件暂存和屏幕工具的有序操作及预期。
+- [ ] 真实 Tauri/WKWebView、macOS 屏幕权限授权/拒绝、Finder 拖放、原生选择窗口、托盘退出、显示器/Retina、Intel/Apple Silicon 和核心便签回归由用户统一手工验收，当前不勾选。
+
+自动化验证：`pnpm test:run` **34 个文件 / 253 项通过**；`pnpm build` 通过，主 JS **725.74 KB**，保留既有 >500 KB 提示；`cargo test --offline` **83 项通过 / 4 项原生 smoke 默认忽略**。最后补充排队截图撤销检查后 Rust 全量再次通过。匹配 Chromium 完整浏览器回归 **51 个流程通过（1.5 分钟）**，含新增 7 个流程，产物 `/tmp/pinwall-workspace-final-e2e`；保留未知 IPC/控制台/运行时错误门禁。进程回收测试仅启动 `/bin/sleep`，不捕获真实屏幕。窄窗口截图 `/tmp/pinwall-shelf-narrow.png`、`/tmp/pinwall-screen-narrow.png` 已检查。
+
+尚未实现的原方案后期范围：音频混音/每应用路由、窗口布局/Dock 预览、全局输入/文本展开、硬件控制、视频处理/录屏、应用卸载，以及第三方原生市场、更新回滚、通用插件存储迁移和完整 bridge/网络安全审计。已有媒体 API 仍是占位，不将八项工具实现等同于 Vorssaint 全功能完成。
+
+
+最终包验证：`CARGO_NET_OFFLINE=true pnpm tauri:build:app`（含最新 TypeScript/Vite 构建）通过；`codesign --verify --deep --strict` 通过；八项插件的 **24 个资源文件**与源码逐字节一致。包版本 `0.1.4-beta.3`，本机仍为 **x86_64、ad-hoc、无 Team ID、未公证**；没有启动真实屏幕捕获或代替用户执行手工验收，没有合并主分支、创建标签或公开发布。生成物不提交。

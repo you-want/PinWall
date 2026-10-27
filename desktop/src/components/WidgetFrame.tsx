@@ -1,6 +1,7 @@
-import React, { useRef, useState, useCallback, useEffect } from "react";
+import React, { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import type {
   WidgetInstance,
+  WidgetManifest,
   WidgetSizePreset,
 } from "../types";
 import { WIDGET_SIZE_PRESETS } from "../types";
@@ -24,6 +25,9 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
   const { request: importClipboard, dialog: clipboardDialog } = useClipboardImport();
   const { request: openTool, dialog: toolDialog } = useWidgetTool();
   const { manifest, x, y, size, zIndex, settings, enabled } = instance;
+  // Store synchronization recreates equal JSON objects. Keep the session alive until actual manifest values change.
+  const manifestJson = JSON.stringify(manifest);
+  const sessionManifest = useMemo(() => JSON.parse(manifestJson) as WidgetManifest, [manifestJson]);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -69,7 +73,7 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
     const iframe = iframeRef.current;
     if (!iframe || !entryHtml || !enabled) return;
     const controller = new AbortController();
-    const power = createWidgetPowerSession(manifest);
+    const power = createWidgetPowerSession(sessionManifest);
     const inFlight = new Set<string>();
     let intervalStarted = Date.now();
     let requestCount = 0;
@@ -87,7 +91,7 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
       inFlight.add(request.id);
       let response;
       try {
-        response = await handleBridgeRequest(request, manifest, { signal: controller.signal, power, clipboard: () => importClipboard(controller.signal), tools: kind => openTool(kind, controller.signal) });
+        response = await handleBridgeRequest(request, sessionManifest, { signal: controller.signal, power, clipboard: () => importClipboard(controller.signal), tools: kind => openTool(kind, controller.signal) });
       } catch {
         response = { type: "response", id: request.id, success: false, error: "Widget request failed" };
       } finally {
@@ -102,10 +106,10 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
     return () => {
       window.removeEventListener("message", handler);
       controller.abort();
-      void clearNativeTool(manifest.id).catch(() => console.warn("[WidgetFrame] Native tool cleanup failed"));
+      void clearNativeTool(sessionManifest.id).catch(() => console.warn("[WidgetFrame] Native tool cleanup failed"));
       void power.dispose().catch(() => console.warn("[WidgetFrame] Power session cleanup failed", { widgetId: manifest.id }));
     };
-  }, [manifest, reloadKey, entryHtml, enabled, importClipboard, openTool]);
+  }, [sessionManifest, reloadKey, entryHtml, enabled, importClipboard, openTool]);
 
   // ── 事件推送：向 iframe 广播应用事件 ──
   useEffect(() => {

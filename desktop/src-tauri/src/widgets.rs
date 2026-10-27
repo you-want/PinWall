@@ -107,7 +107,7 @@ fn validate_widget_permission(permission: &str) -> Result<(), String> {
         | "system"
         | "power"
         | "clipboard"
-        | "ocr" | "images" | "clipboardHistory"
+        | "ocr" | "images" | "clipboardHistory" | "shelf" | "screenCapture"
         | "network"
         | "i18n" => Ok(()),
         _ => Err(format!("Widget permission is invalid: {}", permission)),
@@ -162,6 +162,8 @@ fn official_widget_dir_name(id: &str) -> Option<&'static str> {
         "com.pinwall.music" => Some("widget-music"),
         "com.pinwall.keep-awake" => Some("widget-keep-awake"),
         "com.pinwall.clipboard-note" => Some("widget-clipboard-note"),
+        "com.pinwall.file-shelf" => Some("widget-file-shelf"),
+        "com.pinwall.screen-tools" => Some("widget-screen-tools"),
         "com.pinwall.ocr-note" => Some("widget-ocr-note"),
         "com.pinwall.image-tools" => Some("widget-image-tools"),
         "com.pinwall.clipboard-history" => Some("widget-clipboard-history"),
@@ -170,7 +172,7 @@ fn official_widget_dir_name(id: &str) -> Option<&'static str> {
 }
 
 fn is_desktop_widget(id: &str) -> bool {
-    matches!(id, crate::power::WIDGET_ID | "com.pinwall.system-monitor" | crate::clipboard::WIDGET_ID | "com.pinwall.ocr-note" | "com.pinwall.image-tools" | "com.pinwall.clipboard-history")
+    matches!(id, crate::power::WIDGET_ID | "com.pinwall.system-monitor" | crate::clipboard::WIDGET_ID | "com.pinwall.ocr-note" | "com.pinwall.image-tools" | "com.pinwall.clipboard-history" | "com.pinwall.file-shelf" | "com.pinwall.screen-tools")
 }
 
 fn official_widget_source(app: &tauri::AppHandle, id: &str) -> Result<PathBuf, String> {
@@ -285,6 +287,8 @@ fn install_widget_from_source(app: &tauri::AppHandle, source: PathBuf) -> Result
     let dest = widgets_dir(app)?.join(&manifest.id);
     if manifest.id == crate::power::WIDGET_ID { app.state::<crate::power::PowerService>().close_all()?; }
     if manifest.id == crate::clipboard_history::WIDGET_ID { app.state::<crate::clipboard_history::HistoryService>().stop(true)?; }
+    if manifest.id == crate::shelf::WIDGET_ID { app.state::<crate::shelf::ShelfService>().deactivate()?; }
+    if manifest.id == crate::screen_tools::WIDGET_ID { app.state::<crate::screen_tools::ScreenService>().clear()?; }
     if manifest.id == crate::image_tools::IMAGE_ID { app.state::<crate::image_tools::ImageService>().clear()?; }
 
     // 如果已存在则先删除（覆盖安装）
@@ -347,6 +351,8 @@ pub fn uninstall_widget(app: tauri::AppHandle, id: String) -> Result<(), String>
     validate_widget_id(&id)?;
     if id == crate::power::WIDGET_ID { app.state::<crate::power::PowerService>().close_all()?; }
     if id == crate::clipboard_history::WIDGET_ID { app.state::<crate::clipboard_history::HistoryService>().stop(true)?; }
+    if id == crate::shelf::WIDGET_ID { crate::shelf::uninstall(&app)?; }
+    if id == crate::screen_tools::WIDGET_ID { app.state::<crate::screen_tools::ScreenService>().clear()?; }
     if id == crate::image_tools::IMAGE_ID { app.state::<crate::image_tools::ImageService>().clear()?; }
     let dir = widgets_dir(&app)?.join(&id);
     if dir.exists() {
@@ -410,6 +416,8 @@ fn native_tool_files(id: &str) -> Result<[(&'static str, &'static [u8]); 3], Str
         ("icon.svg", include_bytes!(concat!("../../resources/widgets/", $folder, "/icon.svg")).as_slice()),
     ] }; }
     Ok(match id {
+        "com.pinwall.file-shelf" => files!("widget-file-shelf"),
+        "com.pinwall.screen-tools" => files!("widget-screen-tools"),
         "com.pinwall.ocr-note" => files!("widget-ocr-note"),
         "com.pinwall.image-tools" => files!("widget-image-tools"),
         "com.pinwall.clipboard-history" => files!("widget-clipboard-history"),
@@ -626,7 +634,7 @@ mod tests {
     #[test]
     fn image_and_history_tools_require_opt_in_and_exact_bundled_bytes() {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../resources/widgets");
-        for (id, permission) in [(crate::image_tools::OCR_ID, "ocr"), (crate::image_tools::IMAGE_ID, "images"), (crate::clipboard_history::WIDGET_ID, "clipboardHistory")] {
+        for (id, permission) in [(crate::shelf::WIDGET_ID, "shelf"), (crate::screen_tools::WIDGET_ID, "screenCapture"), (crate::image_tools::OCR_ID, "ocr"), (crate::image_tools::IMAGE_ID, "images"), (crate::clipboard_history::WIDGET_ID, "clipboardHistory")] {
             let source = root.join(official_widget_dir_name(id).unwrap());
             let manifest: WidgetManifest = serde_json::from_slice(&std::fs::read(source.join("widget.json")).unwrap()).unwrap();
             validate_manifest(&manifest).unwrap();

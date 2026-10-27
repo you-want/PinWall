@@ -1,14 +1,14 @@
 # 可选原生插件契约
 
-本轮属于 P2 实验能力，复用已有 Widget Hub、安装器和桌面卡片。当前包含防休眠、系统监控、剪贴板转便签、图片识字、图片工具和剪贴板历史，均默认关闭；防休眠需用户主动开始，不自动恢复运行。不新增独立服务进程，不扩大 Tauri capability，不改动便签/设置持久化 schema。
+本轮属于 P2 实验能力，复用已有 Widget Hub、安装器和桌面卡片。当前包含防休眠、系统监控、剪贴板转便签、图片识字、图片工具、剪贴板历史、文件暂存架和屏幕工具，均默认关闭；防休眠需用户主动开始，不自动恢复运行。截图仅按需启动固定系统截图程序，不新增常驻独立服务进程，不扩大 Tauri capability，不改动便签/设置持久化 schema；暂存架使用独立版本化索引。
 
 ## 安装与资源
 
-源码位于 `desktop/resources/widgets/` 的 `widget-keep-awake/`、`widget-system-monitor/`、`widget-clipboard-note/`、`widget-ocr-note/`、`widget-image-tools/`、`widget-clipboard-history/`，随应用打包至 `native-widgets/`；其余官方组件沿用现有资源目录。系统监控保留 ID `com.pinwall.system-monitor`，升级至 2.0；旧版不会自动替换，需从组件中心重新安装。安装后仍存入 AppData 下的 widgets 目录。
+源码位于 `desktop/resources/widgets/` 的 `widget-keep-awake/`、`widget-system-monitor/`、`widget-clipboard-note/`、`widget-ocr-note/`、`widget-image-tools/`、`widget-clipboard-history/`、`widget-file-shelf/`、`widget-screen-tools/`，随应用打包至 `native-widgets/`；其余官方组件沿用现有资源目录。系统监控保留 ID `com.pinwall.system-monitor`，升级至 2.0；旧版不会自动替换，需从组件中心重新安装。安装后仍存入 AppData 下的 widgets 目录。
 
-Manifest 支持可选字段 `defaultEnabled`；原生操作使用独立 `power`、`clipboard` 权限，监控使用已有 `system` 权限。新安装组件按 `defaultEnabled ?? true` 初始化，兼容既有组件；同步已有安装时保留用户的启用选择。六项工具固定为 `false`，安装授权不会启动原生能力。覆盖安装会重新关闭；普通启动同步保留现有启用状态和尺寸。
+Manifest 支持可选字段 `defaultEnabled`；原生操作使用独立 `power`、`clipboard` 权限，监控使用已有 `system` 权限。新安装组件按 `defaultEnabled ?? true` 初始化，兼容既有组件；同步已有安装时保留用户的启用选择。八项工具固定为 `false`，安装授权不会启动原生能力。覆盖安装会重新关闭；普通启动同步保留现有启用状态和尺寸。
 
-`type: official` 不能授予原生权限。Rust 在打开电源会话、读取剪贴板、操作图片或历史前校验各自固定 ID、安装目录及三个入口文件的精确字节，拒绝符号链接、路径逃逸和修改后的组件。更新应用后旧组件内容若不匹配，需要重新安装；UI 提供说明。这是内置可信源机制，不是第三方签名、市场审核或自动更新系统。
+`type: official` 不能授予原生权限。Rust 在打开电源会话、读取剪贴板、操作图片、历史、暂存架或屏幕前校验各自固定 ID、安装目录及三个入口文件的精确字节，拒绝符号链接、路径逃逸和修改后的组件。更新应用后旧组件内容若不匹配，需要重新安装；UI 提供说明。这是内置可信源机制，不是第三方签名、市场审核或自动更新系统。
 
 ## iframe 与消息协议
 
@@ -72,11 +72,11 @@ macOS 使用 IOKit `PreventUserIdleSystemSleep` 和系统 `TimeoutActionRelease`
 | `recognize_widget_image` | 无输入；取消/null 或识别文本 | 选择器由原生打开，Vision accurate 中英文识别，最多 64 KiB UTF-8 |
 | `select_widget_image` | 无输入；取消/null 或 token/尺寸/原大小/PNG 缩略图 | 不接受任意文件路径，原图只在原生内存 |
 | `export_widget_image` | token + width/height/format/quality；取消/null 或尺寸/字节数/格式 | 系统保存选择器，拒绝原图、符号链接、AppData 及扩展名不符 |
-| `revoke_widget_tool` | 三项固定 ID 之一；无返回内容 | main/settings 只可清除选择或停止清空历史，不能启动 |
+| `revoke_widget_tool` | 五项固定 ID 之一；无返回内容 | main/settings 只可清除图像/屏幕选择、停止清空历史或停用暂存架，不能启动 |
 
 图像服务共享单操作槽，拒绝并发 OCR/选择/导出。选择结果只保留一张，10 分钟逻辑过期，关闭图片弹窗、frame 销毁/刷新、停用、卸载、重装或主页面重载清除。选择 token 是宿主内部标识，不充当加密凭证；原生权限和内容校验独立进行。清除使迟到的选择失效；保存前再次确认当前选择。已打开的系统选择器或开始的 Vision 调用不能强制终止，前端取消会丢弃结果，原生槽位等待系统返回。
 
-输入只允许 PNG/JPEG/WebP，按实际内容识别，限制 20 MiB、1600 万像素、8192 单边和 decoder 128 MiB 分配预算，应用 EXIF 方向。输出使用 Lanczos3 缩放、PNG 最佳压缩、WebP 无损和 JPEG 质量 1–100（透明填白），重新编码像素不复制原元数据；体积可能增大。输出通过目标目录内 0600 临时文件、fsync、rename 替换，不修改原图。没有 HEIC/PDF、屏幕捕获、摄像头或批量操作。Vision 直接链接系统 framework，不启动 Swift helper、不访问网络。
+输入只允许 PNG/JPEG/WebP，按实际内容识别，限制 20 MiB、1600 万像素、8192 单边和 decoder 128 MiB 分配预算，应用 EXIF 方向。输出使用 Lanczos3 缩放、PNG 最佳压缩、WebP 无损和 JPEG 质量 1–100（透明填白），重新编码像素不复制原元数据；体积可能增大。输出通过目标目录内 0600 临时文件、fsync、rename 替换，不修改原图。本图片工具没有 HEIC/PDF、摄像头或批量操作；屏幕捕获由独立授权的屏幕工具提供。Vision 直接链接系统 framework，不启动 Swift helper、不访问网络。
 
 新增 image 0.25.9（仅 png/jpeg/webp）和 base64 0.22；锁文件固定传递依赖，objc2-foundation 启用 NSData/NSDictionary/NSError；没有扩大 Tauri capability 或修改持久化 schema。
 
@@ -90,10 +90,34 @@ Start 后仅创建一个 native thread，每 750ms 查询 changeCount，只在�
 
 复制只允许宿主按钮写入已选历史文本；转便签复用确认编辑和同 ID 保存重试，不重新读取当前剪贴板。前端完整快照逐项校验类型和大小，没有把文本回传 iframe/AI/日志。
 
+## 文件暂存架（File Shelf）
+
+固定 `com.pinwall.file-shelf` + 独立高风险 `shelf` 权限。iframe 只能调用无参数 `shelf.open()`，返回 `{closed:true}`，不能传入文件路径、读取索引或文件内容。`widget_shelf_request` 只允许 main 和精确内置内容，严格动作 activate/status/add/remove/clear/export/reveal 拒绝额外字段，IO 在 blocking worker 执行。add 使用原生多文件选择器，拖入路径只来自 main 的 Tauri 原生 DragDrop 事件，且仅在宿主暂存架弹窗打开时接受。宿主事件仅传 added/skipped 或错误代码，不传路径。
+
+AppData/native-tools/shelf.json 使用 schemaVersion 1，保存引用的本地路径、文件名、ID、加入/过期时间及 Unix device/inode；路径不进入 iframe/日志。目录 0700，索引沿用原子替换。最多 50 项、单文件 100 MiB、7 天保留，按打开/操作逻辑清理，无后台计时器。导入不复制内容、不移动原文件；只接受普通文件、按 canonical 路径去重，拒绝目录和末级符号链接。使用前复核路径、文件身份和限额，缺失/替换显示不可用；不提供文件备份、拖出或执行，使用 Finder 定位或另存副本。
+
+关闭/停用/重装/页面重载使 generation 失效并停止接收拖入，保存引用保留；卸载删除索引及其损坏备份，不删除原文件。未来 schema 原样保留并提示升级，损坏索引保留 `.corrupt-backup`，需宿主明确确认清空后才能重置。原生 IO 槽使用 try_lock，繁忙直接提示，不排队累积；慢文件提供者的已开始 IO 仍可能等待系统返回，生命周期锁不跨此 IO 持有。
+
+另存副本通过系统保存窗口，不接受 JS 目标路径；拒绝 AppData、符号链接及覆盖所有已引用原文件。以 64 KiB 分块、0600 同目录临时文件、flush/fsync/rename 导出，逐块及替换前检查撤销，失败清理半成品并保留原目标。已经完成的原子替换不回滚。Finder 定位只揭示文件，不执行文件。
+
+## 屏幕工具（Screen Tools）
+
+固定 `com.pinwall.screen-tools` + 独立高风险 `screenCapture` 权限。iframe 仅能无参数 `screen.open()` 并收到 `{closed:true}`，拿不到截图、OCR 正文、色值、路径或 token。`widget_screen_request` 仅 main + 精确内置内容，动作 capture/ocr/color/export 严格校验。与原图片/OCR服务共享单操作槽，拒绝并发处理；没有通用 shell 或任意命令接口。
+
+用户点击宿主“截取屏幕区域”才调用 CoreGraphics preflight/request 屏幕权限，临时隐藏便签墙，等待合成后通过固定 `/usr/sbin/screencapture -i -s -x -t png` 交互选区。Esc 取消；最长 120 秒，关闭/停用/页面重载/退出会终止并回收截图子进程，通常恢复便签墙及焦点，退出不重新显示窗口。macOS 权限拒绝有重试提示；系统首次授权可能需要重启应用。仅 macOS 可用，不含录屏、音频、全局热键截图或自动捕获。
+
+截图短暂写入 AppData/native-tools/capture-cache 的独立 0700 目录，正常路径用 RAII 清理；异常终止可能遗留文件，下次截图会清理旧缓存。输入限制 20 MiB、1600 万像素、单边 8192、decoder 128 MiB；原图仅保留一张、10 分钟逻辑过期，关闭/停用/卸载/重装/重载/退出清除。不要将“本地处理”理解为截图从不落临时磁盘。
+
+OCR 复用本地 Vision、64 KiB 正文上限，结果进入宿主确认编辑弹窗，确认前不建卡、不调用 AI。取色把预览位置映射到原始像素坐标，支持键盘输入，复制仅由宿主按钮写入计算出的 `#RRGGBB`。PNG 导出经原生保存窗口，拒绝 AppData/符号链接/非 PNG 扩展名，复核 token/期限/generation，再用可取消原子导出；不复制原始元数据。关闭会丢弃迟到识别/选区结果，已开始的 Vision/系统文件窗口可能需等待系统返回。
+
 ## 扩展顺序与未完成范围
 
 后续能力应按“单独 manifest 权限 → 类型化 bridge → 最小原生命令 → 可撤销生命周期 → 错误/离线状态 → 测试和原生 QA”逐个加入。以后新增能力同样需要独立评估读写范围与资源预算，不能通过通用 shell 权限接入。
 
-本轮不提供第三方原生插件执行、开放市场、更新回滚、插件存储迁移或完整网络代理安全方案。已有网络 bridge 的 DNS/重定向策略、AppData asset scope、原子安装等仍需后续审计。iframe 改造和少量可信原生服务不等同于整个 Widget 体系已完成安全化。
+本轮不提供第三方原生插件执行、开放市场、更新回滚、通用插件存储迁移或完整网络代理安全方案。已有网络 bridge 的 DNS/重定向策略、AppData asset scope、原子安装等仍需后续审计。iframe 改造和少量可信原生服务不等同于整个 Widget 体系已完成安全化。
+
+音频混音/每应用路由、窗口布局/Dock 预览、全局输入/文本展开、风扇等硬件控制、视频处理、录屏和应用卸载仍未实现，按原方案分别评估，不算作八项工具交付。
 
 测试入口包括 `src/services/widgetProtocol.test.ts`、`widgetPower.test.ts`、`widgetMetrics.test.ts`、`widgetClipboard.test.ts`、`widgetBridge.test.ts`、宿主弹窗测试，以及 `src-tauri/src/{power,metrics,clipboard}.rs` 和 `e2e/widget-{power,metrics,clipboard}.spec.ts`。新增测试位于 `widgetTools.test.ts`、`image_tools.rs`、`clipboard_history.rs` 和 `e2e/widget-tools.spec.ts`。真实 Tauri 多窗口、文件选择器、通用剪贴板、退出和睡眠唤醒按 `PLUGIN_ACCEPTANCE.md` 与 `RELEASE_QA.md` 验收。
+
+暂存架/屏幕测试补充：`widgetWorkspaceTools.test.ts`、`FileShelfDialog.test.tsx`、WidgetFrame 同值 manifest 会话回归、Rust `shelf.rs`/`screen_tools.rs`/`tool_files.rs`、`e2e/widget-workspace-tools.spec.ts`。屏幕进程退出测试只启动并回收 `/bin/sleep`，不读取真实屏幕。

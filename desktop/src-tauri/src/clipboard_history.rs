@@ -258,7 +258,7 @@ pub async fn widget_history_request(
                 let clipboard = app.state::<crate::clipboard::ClipboardService>();
                 let _guard = clipboard.acquire().map_err(|_| "history_busy")?;
                 #[cfg(target_os = "macos")]
-                crate::clipboard::write_history_text(&text)?;
+                crate::clipboard::write_confirmed_text(&text)?;
                 #[cfg(not(target_os = "macos"))]
                 {
                     let _ = text;
@@ -300,6 +300,8 @@ pub fn revoke_widget_tool(
     }
     match widget_id.as_str() {
         WIDGET_ID => app.state::<HistoryService>().stop(true),
+        crate::shelf::WIDGET_ID => app.state::<crate::shelf::ShelfService>().deactivate(),
+        crate::screen_tools::WIDGET_ID => app.state::<crate::screen_tools::ScreenService>().clear(),
         crate::image_tools::IMAGE_ID => app.state::<crate::image_tools::ImageService>().clear(),
         crate::image_tools::OCR_ID => Ok(()),
         _ => Err("tool_permission_denied".into()),

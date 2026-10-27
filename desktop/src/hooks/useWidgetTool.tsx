@@ -1,5 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import type { NativeTool, ToolResult } from "../services/widgetTools";
+const ShelfDialog = lazy(() => import("../components/FileShelfDialog").then(m => ({ default: m.FileShelfDialog })));
+const ScreenDialog = lazy(() => import("../components/ScreenToolsDialog").then(m => ({ default: m.ScreenToolsDialog })));
 const OcrDialog = lazy(() => import("../components/ClipboardImportDialog").then(m => ({ default: m.ClipboardImportDialog })));
 const ImagesDialog = lazy(() => import("../components/ImageToolsDialog").then(m => ({ default: m.ImageToolsDialog })));
 const HistoryDialog = lazy(() => import("../components/ClipboardHistoryDialog").then(m => ({ default: m.ClipboardHistoryDialog })));
@@ -24,6 +26,6 @@ export function useWidgetTool() {
     current?.signal.removeEventListener("abort", current.abort); current?.resolve({ closed: true });
   }, []);
   return { request, dialog: tool ? <Suspense fallback={null}>
-    {tool === "ocr" ? <OcrDialog source="ocr" onComplete={complete} /> : tool === "images" ? <ImagesDialog onClose={() => complete({ closed: true })} /> : <HistoryDialog onClose={() => complete({ closed: true })} />}
+    {tool === "shelf" ? <ShelfDialog onClose={() => complete({ closed: true })} /> : tool === "screen" ? <ScreenDialog onClose={() => complete({ closed: true })} /> : tool === "ocr" ? <OcrDialog source="ocr" onComplete={complete} /> : tool === "images" ? <ImagesDialog onClose={() => complete({ closed: true })} /> : <HistoryDialog onClose={() => complete({ closed: true })} />}
   </Suspense> : null };
 }

@@ -224,6 +224,8 @@ export type WidgetPermission =
   | "ocr"
   | "images"
   | "clipboardHistory"
+  | "shelf"
+  | "screenCapture"
   | "network"
   | "i18n";
 
