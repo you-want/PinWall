@@ -6,6 +6,7 @@ fn main() {
             .file("src/native/input_tools.m")
             .file("src/native/dock_preview.m")
             .file("src/native/video_tools.m")
+            .file("src/native/maintenance_tools.m")
             .flag("-fobjc-arc")
             .flag("-std=gnu11")
             .flag("-mmacosx-version-min=10.13")
@@ -20,6 +21,7 @@ fn main() {
         println!("cargo:rerun-if-changed=src/native/input_tools.m");
         println!("cargo:rerun-if-changed=src/native/dock_preview.m");
         println!("cargo:rerun-if-changed=src/native/video_tools.m");
+        println!("cargo:rerun-if-changed=src/native/maintenance_tools.m");
     }
     tauri_build::build()
 }

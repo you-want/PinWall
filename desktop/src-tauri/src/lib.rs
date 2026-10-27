@@ -20,6 +20,7 @@ mod utilities;
 mod desktop_tools;
 mod input_tools;
 mod video_tools;
+mod maintenance;
 mod window_layer;
 
 use tauri::Manager;
@@ -38,6 +39,7 @@ pub fn run() {
         .manage(desktop_tools::DesktopService::default())
         .manage(input_tools::InputService::default())
         .manage(video_tools::VideoService::default())
+        .manage(maintenance::MaintenanceService::default())
         .manage(shelf::ShelfService::default())
         .manage(image_tools::ImageService::default())
         .manage(clipboard_history::HistoryService::default())
@@ -107,6 +109,7 @@ pub fn run() {
             widgets::get_system_info,
             input_tools::widget_input_request,
             video_tools::widget_video_request,
+            maintenance::widget_maintenance_request,
             desktop_tools::widget_audio_request,
             desktop_tools::widget_audio_route_request,
             desktop_tools::widget_media_request,
@@ -141,6 +144,7 @@ pub fn run() {
                 if webview.state::<shelf::ShelfService>().deactivate().is_err() {
                     eprintln!("[Shelf] Session cleanup failed");
                 }
+                if webview.state::<maintenance::MaintenanceService>().clear().is_err() { eprintln!("[Maintenance] Reload cleanup failed"); }
                 if webview.state::<video_tools::VideoService>().clear().is_err() { eprintln!("[VideoTools] Reload cleanup failed"); }
                 if webview.state::<input_tools::InputService>().clear().is_err() { eprintln!("[InputTools] Page reload cleanup failed"); }
                 if webview.state::<desktop_tools::DesktopService>().clear().is_err() { eprintln!("[DesktopTools] Page reload cleanup failed"); }
@@ -169,6 +173,7 @@ pub fn run() {
                 if window.state::<clipboard_history::HistoryService>().stop(true).is_err() {
                     eprintln!("[ClipboardHistory] Failed to clear session on window destruction");
                 }
+                if window.state::<maintenance::MaintenanceService>().clear().is_err() { eprintln!("[Maintenance] Window cleanup failed"); }
                 if window.state::<video_tools::VideoService>().clear().is_err() { eprintln!("[VideoTools] Window cleanup failed"); }
                 if window.state::<input_tools::InputService>().clear().is_err() { eprintln!("[InputTools] Window cleanup failed"); }
                 if window.state::<desktop_tools::DesktopService>().clear().is_err() { eprintln!("[DesktopTools] Window cleanup failed"); }
@@ -193,6 +198,7 @@ pub fn run() {
     match application {
         Ok(app) => app.run(|app, event| {
             if matches!(event, tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit) {
+                if app.state::<maintenance::MaintenanceService>().clear().is_err() { eprintln!("[Maintenance] Exit cleanup failed"); }
                 if app.state::<video_tools::VideoService>().clear().is_err() { eprintln!("[VideoTools] Exit cleanup failed"); }
                 if app.state::<input_tools::InputService>().clear().is_err() { eprintln!("[InputTools] Exit cleanup failed"); }
                 if app.state::<desktop_tools::DesktopService>().clear().is_err() { eprintln!("[DesktopTools] Exit cleanup failed"); }

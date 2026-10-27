@@ -1,0 +1,24 @@
+{
+  "id": "com.pinwall.maintenance",
+  "name": "系统维护 / Maintenance",
+  "description": "预览后移入废纸篓、管理 Homebrew 和自己的进程。 / Review trash operations, Homebrew formulas and your processes.",
+  "version": "1.0.0",
+  "author": "PinWall Team",
+  "entry": "index.html",
+  "icon": "icon.svg",
+  "type": "official",
+  "category": "productivity",
+  "permissions": [
+    "maintenance",
+    "i18n"
+  ],
+  "defaultEnabled": false,
+  "defaultSize": {
+    "width": 260,
+    "height": 240
+  },
+  "minSize": {
+    "width": 210,
+    "height": 210
+  }
+}

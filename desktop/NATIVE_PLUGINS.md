@@ -1,12 +1,12 @@
 # 可选原生插件契约
 
-本轮属于 P2 实验能力，复用已有 Widget Hub、安装器和桌面卡片。当前包含防休眠、系统监控、剪贴板转便签、图片识字、图片工具、剪贴板历史、文件暂存架、屏幕工具、本地工具、音频与媒体、窗口工具、输入增强和视频工具，均默认关闭；防休眠需用户主动开始，不自动恢复运行。截图仅按需启动固定系统截图程序，不新增常驻独立服务进程，不扩大 Tauri capability，不改动便签/设置持久化 schema；暂存架使用独立版本化索引。
+本轮属于 P2 实验能力，复用已有 Widget Hub、安装器和桌面卡片。当前包含防休眠、系统监控、剪贴板转便签、图片识字、图片工具、剪贴板历史、文件暂存架、屏幕工具、本地工具、音频与媒体、窗口工具、输入增强、视频工具和系统维护，均默认关闭；防休眠需用户主动开始，不自动恢复运行。截图仅按需启动固定系统截图程序，不新增常驻独立服务进程，不扩大 Tauri capability，不改动便签/设置持久化 schema；暂存架使用独立版本化索引。
 
 ## 安装与资源
 
-源码位于 `desktop/resources/widgets/` 的 `widget-keep-awake/`、`widget-system-monitor/`、`widget-clipboard-note/`、`widget-ocr-note/`、`widget-image-tools/`、`widget-clipboard-history/`、`widget-file-shelf/`、`widget-screen-tools/`、`widget-local-tools/`、`widget-music/`、`widget-window-tools/`、`widget-input-tools/`、`widget-video-tools/`，随应用打包至 `native-widgets/`；其余官方组件沿用现有资源目录。系统监控保留 ID `com.pinwall.system-monitor`，升级至 2.0；旧版不会自动替换，需从组件中心重新安装。安装后仍存入 AppData 下的 widgets 目录。
+源码位于 `desktop/resources/widgets/` 的 `widget-keep-awake/`、`widget-system-monitor/`、`widget-clipboard-note/`、`widget-ocr-note/`、`widget-image-tools/`、`widget-clipboard-history/`、`widget-file-shelf/`、`widget-screen-tools/`、`widget-local-tools/`、`widget-music/`、`widget-window-tools/`、`widget-input-tools/`、`widget-video-tools/`、`widget-maintenance/`，随应用打包至 `native-widgets/`；其余官方组件沿用现有资源目录。系统监控保留 ID `com.pinwall.system-monitor`，升级至 2.0；旧版不会自动替换，需从组件中心重新安装。安装后仍存入 AppData 下的 widgets 目录。
 
-Manifest 支持可选字段 `defaultEnabled`；原生操作使用独立 `power`、`clipboard` 权限，监控使用已有 `system` 权限。新安装组件按 `defaultEnabled ?? true` 初始化，兼容既有组件；同步已有安装时保留用户的启用选择。十三项工具固定为 `false`，安装授权不会启动原生能力。覆盖安装会重新关闭；普通启动同步保留现有启用状态和尺寸。
+Manifest 支持可选字段 `defaultEnabled`；原生操作使用独立 `power`、`clipboard` 权限，监控使用已有 `system` 权限。新安装组件按 `defaultEnabled ?? true` 初始化，兼容既有组件；同步已有安装时保留用户的启用选择。十四项工具固定为 `false`，安装授权不会启动原生能力。覆盖安装会重新关闭；普通启动同步保留现有启用状态和尺寸。
 
 `type: official` 不能授予原生权限。Rust 在打开电源会话、读取剪贴板、操作图片、历史、暂存架或屏幕前校验各自固定 ID、安装目录及三个入口文件的精确字节，拒绝符号链接、路径逃逸和修改后的组件。更新应用后旧组件内容若不匹配，需要重新安装；UI 提供说明。这是内置可信源机制，不是第三方签名、市场审核或自动更新系统。
 
@@ -171,3 +171,16 @@ network bridge 统一走 main 原生 `widget_network_request`，验证已安装 
 录屏只在 Start 后调用固定系统 screencapture，录制主显示器、无麦克风/系统音频、1–300 秒、512 MiB；不接受自定义参数。Stop 以 SIGINT 请求完成并等待最多十秒，Cancel/关闭/停用/重载/隐藏墙/退出终止回收，generation 拒绝排队启动。录制完成后选择保存原始 MOV 或再裁剪导出，关闭丢弃未保存结果。临时目录下次使用清理崩溃遗留。AVFoundation 取消后若系统回调未结束，保留繁忙门槛防止无限积压编码任务。
 
 Objective-C 原生比较结果显式转 BOOL，保证 JSON 输出真正布尔值；真实合成视频和只读设备 smoke 检查该边界。仓库安装/列举清理已退出进程的 .stage-PID-sequence，保留当前/存活进程工作，不跟随链接；独立安全审计仍待执行。
+
+## 系统维护
+
+`com.pinwall.maintenance` / `maintenance`，默认关闭，仅固定可信资源和主宿主可调用。没有自动扫描、永久删除、任意路径/PID/命令接口或管理员权限。原生串行队列在工作线程枚举和 IO，不阻塞主窗口线程。目录、操作预览和进程以会话 token 标识，两分钟有效；执行前复核文件设备/inode 或进程 UID/PID/开始时间/可执行路径。撤销递增 epoch，排队工作拒绝；已开始的移动、信号或软件包脚本不能承诺回滚。
+
+- 应用仅 /Applications 和 ~/Applications 的普通非 Apple、非 PinWall 包；正在运行的应用拒绝卸载。默认只处理所选应用包，同 bundle ID 的 ~/Library/Caches 与 ~/Library/Preferences/name.plist 分别明确勾选。缓存仅用户 Caches 顶层，排除 Apple/PinWall。拒绝入口 symlink/越界，体积估算不跟随内部链接，每个目标最多 20,000 项/一秒，估算不完整会标记。
+- 仅调用系统 Trash API，最多三项目标。部分成功同样保留恢复记录；会话最多二十批，恢复不覆盖重新创建的原位置、不跟随变化的废纸篓项目。重启后依靠 Finder Trash 恢复；卸载插件清除内存预览/恢复记录，废纸篓内文件保持。无额外持久化 schema。
+- 进程只列举当前 UID 的非系统可执行程序，排除 PID 1、自身与 PinWall 包内进程及系统目录；最多 250 项。不暴露命令行参数。预览默认为 SIGTERM，SIGKILL 需单独选择并确认。成功只指 signal 已提交，需刷新确认退出，不声称可恢复未保存状态。
+- Homebrew 只识别标准 canonical executable，固定 list --formula --versions / uninstall --formula name，不接收 shell、任意 brew 参数、cask、安装或更新。关闭自动更新/分析/清理和 stdin；进程组受控，输出最多 1 MiB、formula 最多千项、120 秒截止。卸载预览绑定实际 formula、版本及程序位置，执行前重新列举复核；依赖失败不加 --force。Homebrew 可能运行已安装包的卸载脚本，失败/取消需人工核对软件包状态。
+
+自动化只使用临时目录和链接验证扫描/身份边界，浏览器使用合成 IPC；没有移动真实应用/缓存、发送真实进程信号或执行 Homebrew 卸载。
+
+macOS 仓库安装/读取/恢复在进程内 mutex 外增加包级文件锁；版本化数据事务在加载前获取独立文件锁，两个 app 进程不会并发读取同一旧 revision 再覆盖。锁使用 O_NOFOLLOW、非阻塞 flock，繁忙明确失败，空锁文件保留以维持协调 inode；不保存用户数据。它不构成独立安全审计，其他平台与实机资源/性能仍按原计划验收。

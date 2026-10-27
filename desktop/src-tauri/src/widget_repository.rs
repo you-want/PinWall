@@ -9,6 +9,22 @@ use std::{
     sync::Mutex,
 };
 
+/// Per-file advisory locks supplement the in-process mutex for two app processes.
+struct DataLock { _file:fs::File }
+impl DataLock {
+    fn acquire(path:&Path)->Result<Self,String>{
+        let name=path.file_name().and_then(|n|n.to_str()).ok_or("widget_unsafe_path")?;
+        let lock_path=path.with_file_name(format!(".pinwall-lock-{name}"));
+        let mut options=fs::OpenOptions::new();options.read(true).write(true).create(true);
+        #[cfg(target_os="macos")]{use std::os::unix::fs::OpenOptionsExt;options.mode(0o600).custom_flags(libc::O_NOFOLLOW|libc::O_NONBLOCK);}
+        let file=options.open(&lock_path).map_err(|_|"widget_storage_busy")?;
+        if !file.metadata().map_err(|_|"widget_storage_busy")?.is_file(){return Err("widget_unsafe_path".into());}
+        #[cfg(target_os="macos")]{use std::os::fd::AsRawFd;if unsafe{libc::flock(file.as_raw_fd(),libc::LOCK_EX|libc::LOCK_NB)}!=0{return Err("widget_storage_busy".into());}}
+        Ok(Self{_file:file})
+    }
+}
+pub struct PackageLock { _lock:DataLock }
+pub fn lock_packages(root:&Path)->Result<PackageLock,String>{directory(root)?;Ok(PackageLock{_lock:DataLock::acquire(&root.join("packages")).map_err(|_|"widget_busy")?})}
 pub static PACKAGES: Mutex<()> = Mutex::new(());
 static STORAGE: Mutex<()> = Mutex::new(());
 const MAX_DATA: u64 = 1024 * 1024;
@@ -265,6 +281,7 @@ pub enum Mutation {
 }
 pub fn read(path: &Path) -> Result<HashMap<String, Value>, String> {
     let _lock = STORAGE.lock().map_err(|_| "widget_storage_busy")?;
+    let _file_lock=DataLock::acquire(path)?;
     load_data(path).map(|file| file.data)
 }
 pub fn mutate(path: &Path, mutation: Mutation) -> Result<(), String> {
@@ -292,6 +309,7 @@ fn transaction(
     change: impl FnOnce(&mut HashMap<String, Value>) -> Result<(), String>,
 ) -> Result<(), String> {
     let _lock = STORAGE.lock().map_err(|_| "widget_storage_busy")?;
+    let _file_lock=DataLock::acquire(path)?;
     let mut file = load_data(path)?;
     change(&mut file.data)?;
     validate_data(&file.data)?;
@@ -415,6 +433,12 @@ mod tests {
         .is_err());
         assert_eq!(read(&path).unwrap().len(), 13);
         fs::remove_dir_all(root).unwrap();
+    }
+    #[cfg(target_os="macos")]
+    #[test]
+    fn storage_file_lock_rejects_overlapping_handles_and_symlink_lockfiles(){
+        let root=root();let path=root.join("data.json");let lock=DataLock::acquire(&path).unwrap();assert!(matches!(read(&path),Err(code)if code=="widget_storage_busy"));drop(lock);mutate(&path,Mutation::Set{key:"test".into(),value:Value::from(1)}).unwrap();assert_eq!(read(&path).unwrap()["test"],1);
+        let symlink_path=root.join("other.json");std::os::unix::fs::symlink(&path,root.join(".pinwall-lock-other.json")).unwrap();assert!(DataLock::acquire(&symlink_path).is_err());assert_eq!(read(&path).unwrap()["test"],1);fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn corruption_is_backed_up_and_future_versions_never_overwritten() {

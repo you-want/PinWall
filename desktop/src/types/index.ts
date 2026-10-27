@@ -231,6 +231,7 @@ export type WidgetPermission =
   | "windows"
   | "input"
   | "video"
+  | "maintenance"
   | "network"
   | "i18n";
 

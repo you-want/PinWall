@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import type { NativeTool, ToolResult } from "../services/widgetTools";
+const MaintenanceDialog = lazy(() => import("../components/MaintenanceDialog").then(m => ({ default: m.MaintenanceDialog })));
 const VideoDialog = lazy(() => import("../components/VideoToolsDialog").then(m => ({ default: m.VideoToolsDialog })));
 const InputDialog = lazy(() => import("../components/InputToolsDialog").then(m => ({ default: m.InputToolsDialog })));
 const AudioDialog = lazy(() => import("../components/AudioToolsDialog").then(m => ({ default: m.AudioToolsDialog })));
@@ -31,6 +32,6 @@ export function useWidgetTool() {
     current?.signal.removeEventListener("abort", current.abort); current?.resolve({ closed: true });
   }, []);
   return { request, dialog: tool ? <Suspense fallback={null}>
-    {tool === "video" ? <VideoDialog onClose={() => complete({ closed: true })} /> : tool === "input" ? <InputDialog onClose={() => complete({ closed: true })} /> : tool === "audio" ? <AudioDialog onClose={() => complete({ closed: true })} /> : tool === "windows" ? <WindowsDialog onClose={() => complete({ closed: true })} /> : tool === "utilities" ? <UtilitiesDialog onClose={() => complete({ closed: true })} /> : tool === "shelf" ? <ShelfDialog onClose={() => complete({ closed: true })} /> : tool === "screen" ? <ScreenDialog onClose={() => complete({ closed: true })} /> : tool === "ocr" ? <OcrDialog source="ocr" onComplete={complete} /> : tool === "images" ? <ImagesDialog onClose={() => complete({ closed: true })} /> : <HistoryDialog onClose={() => complete({ closed: true })} />}
+    {tool === "maintenance" ? <MaintenanceDialog onClose={() => complete({ closed: true })} /> : tool === "video" ? <VideoDialog onClose={() => complete({ closed: true })} /> : tool === "input" ? <InputDialog onClose={() => complete({ closed: true })} /> : tool === "audio" ? <AudioDialog onClose={() => complete({ closed: true })} /> : tool === "windows" ? <WindowsDialog onClose={() => complete({ closed: true })} /> : tool === "utilities" ? <UtilitiesDialog onClose={() => complete({ closed: true })} /> : tool === "shelf" ? <ShelfDialog onClose={() => complete({ closed: true })} /> : tool === "screen" ? <ScreenDialog onClose={() => complete({ closed: true })} /> : tool === "ocr" ? <OcrDialog source="ocr" onComplete={complete} /> : tool === "images" ? <ImagesDialog onClose={() => complete({ closed: true })} /> : <HistoryDialog onClose={() => complete({ closed: true })} />}
   </Suspense> : null };
 }

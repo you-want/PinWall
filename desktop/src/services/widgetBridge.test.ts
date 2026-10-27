@@ -124,7 +124,7 @@ describe('widgetBridge', () => {
       const { invoke } = await import('@tauri-apps/api/core');
       vi.mocked(invoke).mockClear();
       const tools = vi.fn().mockResolvedValue({ closed: true });
-      for (const [module, id, permission] of [['video', 'video-tools', 'video'], ['input', 'input-tools', 'input'], ['audio', 'music', 'audio'], ['windows', 'window-tools', 'windows'], ['utilities', 'local-tools', 'utilities'], ['shelf', 'file-shelf', 'shelf'], ['screen', 'screen-tools', 'screenCapture'], ['ocr', 'ocr-note', 'ocr'], ['images', 'image-tools', 'images'], ['clipboardHistory', 'clipboard-history', 'clipboardHistory']] as const) {
+      for (const [module, id, permission] of [['maintenance', 'maintenance', 'maintenance'], ['video', 'video-tools', 'video'], ['input', 'input-tools', 'input'], ['audio', 'music', 'audio'], ['windows', 'window-tools', 'windows'], ['utilities', 'local-tools', 'utilities'], ['shelf', 'file-shelf', 'shelf'], ['screen', 'screen-tools', 'screenCapture'], ['ocr', 'ocr-note', 'ocr'], ['images', 'image-tools', 'images'], ['clipboardHistory', 'clipboard-history', 'clipboardHistory']] as const) {
         const manifest = { ...createTestManifest([permission]), id: `com.pinwall.${id}` };
         for (const request of [makeRequest(module, 'read'), makeRequest(module, 'open', ['path'])]) {
           expect((await handleBridgeRequest(request, manifest, { tools })).success).toBe(false);
@@ -134,7 +134,7 @@ describe('widgetBridge', () => {
         expect((await handleBridgeRequest(makeRequest(module, 'open'), manifest, { tools })).data).toEqual({ closed: true });
         expect(tools).toHaveBeenLastCalledWith(module);
       }
-      expect(tools).toHaveBeenCalledTimes(10);
+      expect(tools).toHaveBeenCalledTimes(11);
       expect(invoke).not.toHaveBeenCalled();
     });
 

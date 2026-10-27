@@ -1,0 +1,6 @@
+import {it,expect,vi} from "vitest";
+import {invoke} from "@tauri-apps/api/core";
+import {validMaintenance,maintenanceRequest} from "./widgetMaintenance";
+vi.mock("@tauri-apps/api/core",()=>({invoke:vi.fn()}));
+it("validates preview objects without trusting source paths or arbitrary process IDs",()=>{expect(validMaintenance({kind:"trash",plan:"abc-123",targets:[{name:"Test.app",bytes:100,complete:true}]})).toBe(true);for(const value of [{kind:"trash",plan:"../../etc",targets:[]},{kind:"signal",plan:"abc",pid:1,name:"system",force:true},{items:[{name:"test",token:"/private/path"}]},{kind:"restored",restored:5,remaining:0,canRestore:true}])expect(validMaintenance(value)).toBe(false);});
+it("only sends opaque reviewed plans and preserves actionable native errors",async()=>{vi.mocked(invoke).mockRejectedValueOnce("maintenance_changed");await expect(maintenanceRequest({method:"execute",plan:"abc-123"},new AbortController().signal)).rejects.toThrow("maintenance_changed");expect(invoke).toHaveBeenCalledWith("widget_maintenance_request",{action:{method:"execute",plan:"abc-123"}});vi.mocked(invoke).mockResolvedValueOnce({kind:"moved",moved:0,partial:true,canRestore:false});expect(await maintenanceRequest({method:"execute",plan:"abc-123"},new AbortController().signal)).toMatchObject({partial:true});});

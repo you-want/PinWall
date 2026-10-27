@@ -279,6 +279,23 @@ export const test = base.extend({
             else throw new Error('Unsupported test mutation');
             localStorage.setItem(key,JSON.stringify(data));return null;
           }
+          case 'widget_maintenance_request': {
+            const action=args.action as {method:string;token?:string;plan?:string;caches?:boolean;preferences?:boolean;force?:boolean;name?:string};
+            const failure=localStorage.getItem(`${prefix}maintenance:fail`);if(failure)throw failure;
+            const token='00000000-0000-4000-8000-000000000003',plan='00000000-0000-4000-8000-000000000004';
+            const canRestore=localStorage.getItem(`${prefix}maintenance:canRestore`)==='true';
+            if(action.method==='apps'||action.method==='caches')return {items:[{token,name:action.method==='apps'?'Synthetic.app':'com.fixture.cache',bundle:'com.fixture.app',location:action.method==='apps'?'/Applications':'~/Library/Caches'}],truncated:false,canRestore};
+            if(action.method==='processes')return {items:[{token,name:'Synthetic process',pid:1234}],truncated:false,canRestore};
+            if(action.method==='brewList')return {items:[{name:'fixture-formula',version:'1.2.3'}]};
+            if(action.method==='prepare'){localStorage.setItem(`${prefix}maintenance:prepared`,JSON.stringify(action));return {kind:'trash',plan,targets:[{name:'Synthetic.app',bytes:1024,complete:true},...(action.preferences?[{name:'com.fixture.app.plist',bytes:100,complete:true}]:[])]};}
+            if(action.method==='prepareProcess')return {kind:'signal',plan,pid:1234,name:'Synthetic process',force:action.force};
+            if(action.method==='brewPrepare')return {kind:'brew',plan,name:action.name,version:'1.2.3'};
+            if(action.method==='execute'){localStorage.setItem(`${prefix}maintenance:canRestore`,'true');localStorage.setItem(`${prefix}maintenance:lastAction`,JSON.stringify(action));return {kind:'moved',moved:2,partial:false,canRestore:true};}
+            if(action.method==='restore'){localStorage.setItem(`${prefix}maintenance:canRestore`,'false');return {kind:'restored',restored:2,remaining:0,canRestore:false};}
+            if(action.method==='signal'){localStorage.setItem(`${prefix}maintenance:lastAction`,JSON.stringify(action));return {kind:'signalled',pid:1234};}
+            if(action.method==='brewExecute'){localStorage.setItem(`${prefix}maintenance:lastAction`,JSON.stringify(action));return {kind:'brewRemoved',name:'fixture-formula'};}
+            throw new Error('Unsupported test maintenance action');
+          }
           case 'widget_video_request': {
             const action=args.action as {method:string;seconds?:number;token?:string;start?:number;end?:number};
             const failure=localStorage.getItem(`${prefix}video:fail`);if(failure)throw failure;
@@ -462,6 +479,7 @@ export const test = base.extend({
           }
           case 'get_widget_history_status': { const state = historyState(); return { recording: state.recording, count: state.entries.length, revision: localStorage.getItem(`${prefix}history:revision`) ?? '0' }; }
           case 'revoke_widget_tool': {
+            if(args.widgetId==='com.pinwall.maintenance')return null;
             if(args.widgetId==='com.pinwall.video-tools'){localStorage.setItem(`${prefix}video:cancelled`,'true');localStorage.setItem(`${prefix}video:recording`,'false');localStorage.removeItem(`${prefix}video:selected`);return null;}
             if(args.widgetId==='com.pinwall.window-tools'){localStorage.setItem(`${prefix}dock:active`,'false');return null;}
             if (args.widgetId === 'com.pinwall.input-tools') localStorage.setItem(`${prefix}input:active`,'false');
@@ -525,7 +543,7 @@ export const test = base.extend({
           case 'uninstall_widget':
             if(args.id==='com.pinwall.video-tools'){localStorage.setItem(`${prefix}video:cancelled`,'true');localStorage.setItem(`${prefix}video:recording`,'false');localStorage.removeItem(`${prefix}video:selected`);}
             if (args.id === 'com.pinwall.input-tools') { localStorage.setItem(`${prefix}input:active`,'false'); localStorage.removeItem(`${prefix}input:profile`); }
-            if (!['com.pinwall.keep-awake', 'com.pinwall.system-monitor', 'com.pinwall.clipboard-note', 'com.pinwall.ocr-note', 'com.pinwall.image-tools', 'com.pinwall.clipboard-history', 'com.pinwall.file-shelf', 'com.pinwall.screen-tools', 'com.pinwall.local-tools', 'com.pinwall.music', 'com.pinwall.window-tools', 'com.pinwall.input-tools', 'com.pinwall.video-tools'].includes(String(args.id))) throw new Error('Unsupported test widget uninstall');
+            if (!['com.pinwall.keep-awake', 'com.pinwall.system-monitor', 'com.pinwall.clipboard-note', 'com.pinwall.ocr-note', 'com.pinwall.image-tools', 'com.pinwall.clipboard-history', 'com.pinwall.file-shelf', 'com.pinwall.screen-tools', 'com.pinwall.local-tools', 'com.pinwall.music', 'com.pinwall.window-tools', 'com.pinwall.input-tools', 'com.pinwall.video-tools', 'com.pinwall.maintenance'].includes(String(args.id))) throw new Error('Unsupported test widget uninstall');
             localStorage.setItem(`${prefix}widgets:installed`, '[]');
             if (args.id === 'com.pinwall.local-tools') localStorage.removeItem(`${prefix}utilities:snippets`);
             if (args.id === 'com.pinwall.file-shelf') { shelfActive = false; shelfEpoch++; saveShelf([]); }
