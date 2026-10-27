@@ -4,6 +4,8 @@ import { revokeWidgetPower } from "./widgetPower";
 import type { Translations } from "../i18n";
 
 export const NATIVE_TOOLS = {
+  audio: { id: "com.pinwall.music", permission: "audio" },
+  windows: { id: "com.pinwall.window-tools", permission: "windows" },
   utilities: { id: "com.pinwall.local-tools", permission: "utilities" },
   shelf: { id: "com.pinwall.file-shelf", permission: "shelf" },
   screen: { id: "com.pinwall.screen-tools", permission: "screenCapture" },
@@ -23,7 +25,7 @@ export type HistoryAction = { method: "status" | "start" | "pause" | "clear" } |
 const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 const integer = (v: unknown, min = 0, max = Number.MAX_SAFE_INTEGER): v is number => typeof v === "number" && Number.isSafeInteger(v) && v >= min && v <= max;
 const dimensions = (v: Record<string, unknown>) => integer(v.width, 1, 8192) && integer(v.height, 1, 8192) && v.width * v.height <= 16_000_000;
-const knownErrors = new Set(["utility_invalid_snippet", "utility_snippet_limit", "utility_unsupported", "widget_storage_corrupt", "widget_storage_future", "widget_storage_limit","shelf_corrupt", "shelf_future_version", "shelf_file_unavailable", "shelf_busy", "screen_permission_denied", "screen_capture_failed", "screen_timeout", "screen_expired", "screen_unsupported", "tool_unsafe_path", "tool_io_failed", "tool_too_large", "clipboard_busy","tool_cancelled", "tool_permission_denied", "tool_reinstall_required", "image_too_large", "image_invalid", "image_busy", "image_source_protected", "image_unsafe_path", "image_expired", "image_save_failed", "image_extension_mismatch", "ocr_no_text", "ocr_text_too_large", "ocr_unsupported", "history_unsupported", "history_busy"]);
+const knownErrors = new Set(["desktop_route_failed", "desktop_route_denied", "desktop_route_format", "desktop_route_expired", "desktop_route_stalled", "desktop_route_cleanup", "desktop_route_duplicate", "desktop_route_limit","desktop_unsupported", "desktop_invalid_action", "desktop_unavailable", "desktop_device_missing", "desktop_device_readonly", "desktop_player_missing", "desktop_automation_denied", "desktop_media_failed", "desktop_accessibility_denied", "desktop_window_expired", "desktop_window_failed", "desktop_no_undo", "desktop_screen_denied", "desktop_timeout","utility_invalid_snippet", "utility_snippet_limit", "utility_unsupported", "widget_storage_corrupt", "widget_storage_future", "widget_storage_limit","shelf_corrupt", "shelf_future_version", "shelf_file_unavailable", "shelf_busy", "screen_permission_denied", "screen_capture_failed", "screen_timeout", "screen_expired", "screen_unsupported", "tool_unsafe_path", "tool_io_failed", "tool_too_large", "clipboard_busy","tool_cancelled", "tool_permission_denied", "tool_reinstall_required", "image_too_large", "image_invalid", "image_busy", "image_source_protected", "image_unsafe_path", "image_expired", "image_save_failed", "image_extension_mismatch", "ocr_no_text", "ocr_text_too_large", "ocr_unsupported", "history_unsupported", "history_busy"]);
 
 export async function toolCall<T>(command: string, args: Record<string, unknown>, signal: AbortSignal, valid: (v: unknown) => v is T): Promise<T> {
   if (signal.aborted) throw new Error("tool_cancelled");
@@ -66,6 +68,20 @@ export async function revokeWidgetTools(widgetId: string): Promise<void> {
 }
 export function toolError(error: unknown, t: Translations): string {
   const code = error instanceof Error ? error.message : "";
+  if (code === "desktop_route_denied") return t.audio_route_denied;
+  if (code === "desktop_route_format") return t.audio_route_format;
+  if (code === "desktop_route_expired") return t.audio_route_expired;
+  if (code === "desktop_route_stalled") return t.audio_route_stalled;
+  if (code === "desktop_route_cleanup") return t.audio_route_cleanup;
+  if (code === "desktop_route_duplicate" || code === "desktop_route_limit") return t.audio_route_limit;
+  if (code === "desktop_unsupported") return t.desktop_unsupported;
+  if (code === "desktop_device_readonly") return t.desktop_readonly;
+  if (code === "desktop_automation_denied") return t.desktop_automation;
+  if (code === "desktop_accessibility_denied") return t.desktop_accessibility;
+  if (code === "desktop_screen_denied") return t.desktop_screen;
+  if (["desktop_device_missing", "desktop_player_missing", "desktop_window_expired", "desktop_no_undo"].includes(code)) return t.desktop_expired;
+  if (code === "desktop_timeout") return t.desktop_timeout;
+  if (code.startsWith("desktop_")) return t.desktop_failed;
   if (code === "utility_invalid_snippet" || code === "utility_snippet_limit" || code === "widget_storage_limit") return t.utility_limits;
   if (code === "widget_storage_corrupt") return t.utility_corrupt;
   if (code === "widget_storage_future") return t.utility_future;

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>NSAppleEventsUsageDescription</key><string>Control the running music player only when you use the optional audio tool.</string>
+<key>NSAudioCaptureUsageDescription</key><string>Route selected application audio locally when you start per-app audio routing.</string>
+</dict></plist>

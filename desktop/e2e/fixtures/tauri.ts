@@ -279,6 +279,49 @@ export const test = base.extend({
             else throw new Error('Unsupported test mutation');
             localStorage.setItem(key,JSON.stringify(data));return null;
           }
+          case 'widget_audio_route_request': {
+            const action=args.action as {method:string;process?:number;pid?:number;device?:number;gain?:number;token?:string};
+            const failure=localStorage.getItem(`${prefix}routes:fail`);if(failure)throw failure;
+            type Route={token:string;name:string;process:number;device:number;gain:number;callbacks:number;dropped:number;missing:number};
+            let routes=JSON.parse(localStorage.getItem(`${prefix}routes:active`)??'[]') as Route[];
+            if(action.method==='start')routes.push({token:'00000000-0000-4000-8000-000000000002',name:'Fixture Player',process:action.process!,device:action.device!,gain:action.gain!,callbacks:4,dropped:0,missing:0});
+            else if(action.method==='stop')routes=routes.filter(r=>r.token!==action.token);
+            else if(action.method==='stopAll')routes=[];
+            else if(action.method==='gain')routes=routes.map(r=>r.token===action.token?{...r,gain:action.gain!}:r);
+            else if(action.method!=='list')throw new Error('Unsupported test routing action');
+            localStorage.setItem(`${prefix}routes:active`,JSON.stringify(routes));
+            return {supported:true,processes:[{id:20,pid:200,name:'Fixture Player'}],routes,lastError:null};
+          }
+          case 'widget_audio_request': {
+            const action=args.action as {method:string;device?:number;direction?:string;value?:number;muted?:boolean};
+            const failure=localStorage.getItem(`${prefix}audio:fail`);if(failure)throw failure;
+            let devices=JSON.parse(localStorage.getItem(`${prefix}audio:devices`)??'null') as {id:number;name:string;direction:string;isDefault:boolean;volume:number|null;muted:boolean|null;canVolume:boolean;canMute:boolean}[]|null;
+            devices??=[{id:1,name:'Built-in speakers',direction:'output',isDefault:true,volume:0.5,muted:false,canVolume:true,canMute:true},{id:2,name:'USB output',direction:'output',isDefault:false,volume:null,muted:null,canVolume:false,canMute:false},{id:3,name:'Built-in microphone',direction:'input',isDefault:true,volume:0.7,muted:false,canVolume:true,canMute:true}];
+            if(action.method==='default')devices=devices.map(d=>({...d,isDefault:d.direction===action.direction?d.id===action.device:d.isDefault}));
+            else if(action.method==='volume')devices=devices.map(d=>d.id===action.device&&d.direction===action.direction?{...d,volume:action.value!}:d);
+            else if(action.method==='mute')devices=devices.map(d=>d.id===action.device&&d.direction===action.direction?{...d,muted:action.muted!}:d);
+            else if(action.method!=='list')throw new Error('Unsupported test audio action');
+            localStorage.setItem(`${prefix}audio:devices`,JSON.stringify(devices));return {devices};
+          }
+          case 'widget_media_request': {
+            const action=args.action as {method:string;player?:string;action?:string};
+            if(action.method==='players')return {players:['com.apple.Music']};
+            const failure=localStorage.getItem(`${prefix}media:fail`);if(failure)throw failure;
+            if(action.method==='control'){localStorage.setItem(`${prefix}media:lastAction`,action.action!);return {ok:true};}
+            if(action.method==='info')return {trackName:'Synthetic fixture song',artistName:'Test artist',albumName:'Test album',isPlaying:true,position:12,duration:180};
+            throw new Error('Unsupported test media action');
+          }
+          case 'widget_window_request': {
+            const action=args.action as {method:string;token?:string;screen?:number;layout?:string};
+            const token='00000000-0000-4000-8000-000000000001';
+            if(action.method==='list')return {permitted:localStorage.getItem(`${prefix}windows:denied`)!=='true',windows:[{token,app:'Fixture Editor',title:'Synthetic document',minimized:false,canPreview:true}],screens:[{id:1,name:'Fixture display',x:-1440,y:0,width:1440,height:850}]};
+            if(action.method==='permission'){localStorage.setItem(`${prefix}windows:permissionRequested`,'true');return {ok:true};}
+            const failure=localStorage.getItem(`${prefix}windows:fail`);if(failure)throw failure;
+            if(action.token!==token)throw 'desktop_window_expired';
+            if(action.method==='preview')return {preview:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg=='};
+            if(['layout','restore','focus'].includes(action.method)){localStorage.setItem(`${prefix}windows:lastAction`,JSON.stringify(action));return {ok:true,clamped:action.method==='layout'&&action.layout==='quarterBottomRight'};}
+            throw new Error('Unsupported test window action');
+          }
           case 'widget_utilities_request': {
             const action = args.action as {method:string;id?:string;title?:string;text?:string};
             if (localStorage.getItem(`${prefix}utilities:fail`)) throw localStorage.getItem(`${prefix}utilities:fail`);
@@ -386,11 +429,12 @@ export const test = base.extend({
           }
           case 'get_widget_history_status': { const state = historyState(); return { recording: state.recording, count: state.entries.length, revision: localStorage.getItem(`${prefix}history:revision`) ?? '0' }; }
           case 'revoke_widget_tool': {
-            if (args.widgetId === 'com.pinwall.clipboard-history') saveHistory(emptyHistory());
+            if (args.widgetId === 'com.pinwall.music') localStorage.setItem(`${prefix}routes:active`,'[]');
+            else if (args.widgetId === 'com.pinwall.clipboard-history') saveHistory(emptyHistory());
             else if (args.widgetId === 'com.pinwall.image-tools') localStorage.removeItem(`${prefix}images:token`);
             else if (args.widgetId === 'com.pinwall.file-shelf') { shelfActive = false; shelfEpoch++; }
             else if (args.widgetId === 'com.pinwall.screen-tools') { screenEpoch++; localStorage.removeItem(`${prefix}screen:token`); }
-            else if (!['com.pinwall.ocr-note', 'com.pinwall.local-tools'].includes(String(args.widgetId))) throw new Error('Unsupported test native tool');
+            else if (!['com.pinwall.ocr-note', 'com.pinwall.local-tools','com.pinwall.music','com.pinwall.window-tools'].includes(String(args.widgetId))) throw new Error('Unsupported test native tool');
             return null;
           }
           case 'get_system_info': {

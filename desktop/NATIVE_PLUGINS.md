@@ -1,12 +1,12 @@
 # 可选原生插件契约
 
-本轮属于 P2 实验能力，复用已有 Widget Hub、安装器和桌面卡片。当前包含防休眠、系统监控、剪贴板转便签、图片识字、图片工具、剪贴板历史、文件暂存架、屏幕工具和本地工具，均默认关闭；防休眠需用户主动开始，不自动恢复运行。截图仅按需启动固定系统截图程序，不新增常驻独立服务进程，不扩大 Tauri capability，不改动便签/设置持久化 schema；暂存架使用独立版本化索引。
+本轮属于 P2 实验能力，复用已有 Widget Hub、安装器和桌面卡片。当前包含防休眠、系统监控、剪贴板转便签、图片识字、图片工具、剪贴板历史、文件暂存架、屏幕工具、本地工具、音频与媒体和窗口工具，均默认关闭；防休眠需用户主动开始，不自动恢复运行。截图仅按需启动固定系统截图程序，不新增常驻独立服务进程，不扩大 Tauri capability，不改动便签/设置持久化 schema；暂存架使用独立版本化索引。
 
 ## 安装与资源
 
-源码位于 `desktop/resources/widgets/` 的 `widget-keep-awake/`、`widget-system-monitor/`、`widget-clipboard-note/`、`widget-ocr-note/`、`widget-image-tools/`、`widget-clipboard-history/`、`widget-file-shelf/`、`widget-screen-tools/`、`widget-local-tools/`，随应用打包至 `native-widgets/`；其余官方组件沿用现有资源目录。系统监控保留 ID `com.pinwall.system-monitor`，升级至 2.0；旧版不会自动替换，需从组件中心重新安装。安装后仍存入 AppData 下的 widgets 目录。
+源码位于 `desktop/resources/widgets/` 的 `widget-keep-awake/`、`widget-system-monitor/`、`widget-clipboard-note/`、`widget-ocr-note/`、`widget-image-tools/`、`widget-clipboard-history/`、`widget-file-shelf/`、`widget-screen-tools/`、`widget-local-tools/`、`widget-music/`、`widget-window-tools/`，随应用打包至 `native-widgets/`；其余官方组件沿用现有资源目录。系统监控保留 ID `com.pinwall.system-monitor`，升级至 2.0；旧版不会自动替换，需从组件中心重新安装。安装后仍存入 AppData 下的 widgets 目录。
 
-Manifest 支持可选字段 `defaultEnabled`；原生操作使用独立 `power`、`clipboard` 权限，监控使用已有 `system` 权限。新安装组件按 `defaultEnabled ?? true` 初始化，兼容既有组件；同步已有安装时保留用户的启用选择。九项工具固定为 `false`，安装授权不会启动原生能力。覆盖安装会重新关闭；普通启动同步保留现有启用状态和尺寸。
+Manifest 支持可选字段 `defaultEnabled`；原生操作使用独立 `power`、`clipboard` 权限，监控使用已有 `system` 权限。新安装组件按 `defaultEnabled ?? true` 初始化，兼容既有组件；同步已有安装时保留用户的启用选择。十一项工具固定为 `false`，安装授权不会启动原生能力。覆盖安装会重新关闭；普通启动同步保留现有启用状态和尺寸。
 
 `type: official` 不能授予原生权限。Rust 在打开电源会话、读取剪贴板、操作图片、历史、暂存架或屏幕前校验各自固定 ID、安装目录及三个入口文件的精确字节，拒绝符号链接、路径逃逸和修改后的组件。更新应用后旧组件内容若不匹配，需要重新安装；UI 提供说明。这是内置可信源机制，不是第三方签名、市场审核或自动更新系统。
 
@@ -72,7 +72,7 @@ macOS 使用 IOKit `PreventUserIdleSystemSleep` 和系统 `TimeoutActionRelease`
 | `recognize_widget_image` | 无输入；取消/null 或识别文本 | 选择器由原生打开，Vision accurate 中英文识别，最多 64 KiB UTF-8 |
 | `select_widget_image` | 无输入；取消/null 或 token/尺寸/原大小/PNG 缩略图 | 不接受任意文件路径，原图只在原生内存 |
 | `export_widget_image` | token + width/height/format/quality；取消/null 或尺寸/字节数/格式 | 系统保存选择器，拒绝原图、符号链接、AppData 及扩展名不符 |
-| `revoke_widget_tool` | 六项固定 ID 之一；无返回内容 | main/settings 只可清除图像/屏幕选择、停止清空历史或停用暂存架，不能启动 |
+| `revoke_widget_tool` | 八项固定 ID 之一；无返回内容 | main/settings 只可清除图像/屏幕选择、停止清空历史或停用暂存架，不能启动 |
 
 图像服务共享单操作槽，拒绝并发 OCR/选择/导出。选择结果只保留一张，10 分钟逻辑过期，关闭图片弹窗、frame 销毁/刷新、停用、卸载、重装或主页面重载清除。选择 token 是宿主内部标识，不充当加密凭证；原生权限和内容校验独立进行。清除使迟到的选择失效；保存前再次确认当前选择。已打开的系统选择器或开始的 Vision 调用不能强制终止，前端取消会丢弃结果，原生槽位等待系统返回。
 
@@ -116,7 +116,7 @@ OCR 复用本地 Vision、64 KiB 正文上限，结果进入宿主确认编辑�
 
 本轮不提供第三方原生插件执行或开放市场服务。已补齐本地包更新/回滚、旧插件数据迁移、原生网络代理和资源 scope；仍需真实生产运行与独立安全审查，不把这些改造当作完整安全认证。iframe 改造和少量可信原生服务不等同于整个 Widget 体系已完成安全化。
 
-音频混音/每应用路由、窗口布局/Dock 预览、全局输入/文本展开、风扇等硬件控制、视频处理、录屏和应用卸载仍未实现，按原方案分别评估，不算作九项工具交付。
+系统 Dock 悬停预览、全局输入/文本展开、风扇等硬件控制、视频处理、录屏和应用卸载仍未实现，继续按原方案推进。音频路由、窗口布局/切换/按需窗口预览的实现及尚未执行的原生验收见下节。
 
 测试入口包括 `src/services/widgetProtocol.test.ts`、`widgetPower.test.ts`、`widgetMetrics.test.ts`、`widgetClipboard.test.ts`、`widgetBridge.test.ts`、宿主弹窗测试，以及 `src-tauri/src/{power,metrics,clipboard}.rs` 和 `e2e/widget-{power,metrics,clipboard}.spec.ts`。新增测试位于 `widgetTools.test.ts`、`image_tools.rs`、`clipboard_history.rs` 和 `e2e/widget-tools.spec.ts`。真实 Tauri 多窗口、文件选择器、通用剪贴板、退出和睡眠唤醒按 `PLUGIN_ACCEPTANCE.md` 与 `RELEASE_QA.md` 验收。
 
@@ -136,3 +136,16 @@ OCR 复用本地 Vision、64 KiB 正文上限，结果进入宿主确认编辑�
 network bridge 统一走 main 原生 `widget_network_request`，验证已安装 manifest 的 network 权限。仅 HTTP(S)、80/443、无 URL 账户密码/fragment；DNS 最长 3 秒，所有地址都须公网，固定解析地址连接，禁环境代理/重定向/隐式凭据；每请求 15 秒、原生总并发 8/每插件 2、输入输出 JSON 各 1 MiB。只保留 accept/content-type/accept-language/x-widget 等少量头；响应不回传完整错误、URL 或路径。关闭 frame 发送取消并丢弃迟到结果；JSON 之外资源不走此接口。资源协议从整个 AppData 收窄为 backgrounds/**，iframe 仍只接受 inline/data/blob 资源。
 
 这些约束不等于允许任意第三方原生执行；原方案剩余项与外部依赖见 `PLUGIN_ROADMAP.md`。
+
+
+## 音频、窗口与桥接实际执行（2026-10-27）
+
+官方目录十四项、可选原生工具十一项。音乐保留 `com.pinwall.music` 升级 2.0，改为 desktop 内置资源和高风险 `audio` 权限，旧版重新安装。`com.pinwall.window-tools` 使用独立高风险 `windows` 权限。iframe 只能打开宿主面板，无法获得设备标识、进程、窗口标题、token 或图像。所有 native request 仅 main，精确资源字节校验；设置窗口只允许撤销。原生实现由 build.rs/cc 编译 Objective-C，链接公开系统 API，ScreenCaptureKit/UserNotifications 弱链接并按系统版本判断。
+
+音频设备：CoreAudio 按需枚举输入/输出、设置默认设备、音量/静音；无主音量时读取首选立体声通道，保留通道比例写入，部分失败尝试恢复。设备只读/断开可处理。明确设置的系统偏好关闭后保留。媒体只控制已经运行的 Music/Spotify，通过固定 Apple Events 脚本读取真实信息和执行固定播放动作，最长脚本超时 5 秒；不启动播放器、不接受任意脚本。新增 `NSAppleEventsUsageDescription`、`NSAudioCaptureUsageDescription` 与 hardened runtime Apple Events entitlement；不扩大 Tauri capability。自动化授权仍由 macOS 按目标应用决定。
+
+每应用路由：macOS 14.2+，显式选择一个正在输出的 CoreAudio process/PID 和设备；最多 4 路，每进程一路、增益 0–100%。进程 tap/私有 aggregate 仅含所选进程，无麦克风子设备；独立 HAL 输出，float32 stereo、8–192 kHz，受限线性采样率转换。每路 65536 帧 stereo 环形内存，实时回调不分配/加锁/写盘/调用 ObjC；欠载填静音、超限丢帧，宿主显示计数。先建立输入/输出，最后才静音原路径；停止先尝试恢复原路径，再销毁输出/tap。驱动拒绝释放时保留回调内存避免 UAF，报 cleanup 失败并由 watchdog 重试，必要时退出应用。1 秒 watchdog 仅有活动资源时存在，检查进程/设备/采样率和无数据流；5 次连续无数据则停止。关闭、停用、卸载、重载和退出清理；隐藏页面停止。迟到启动使用原生 epoch 拒绝。实际音频流/TCC/设备稳定性当前仅列人工验收，不能用 DSP/浏览器模拟宣称通过。
+
+窗口：Accessibility 主动授权入口；最多 64 个普通应用、128 个窗口、3 秒枚举预算、单 AX 消息 150 ms 超时，排除 PinWall。宿主 token 绑定原始 AX 元素；过期拒绝。使用显示器 visibleFrame 转 AX 坐标，支持负坐标、左右/上下/四角、居中与填充；应用尺寸限制会提示，变更失败尝试恢复。保留本次原布局，可明确恢复；刷新复用同一 AX 元素 token，关闭释放。切换仅激活所选应用并 raise 窗口。macOS 14+ 使用 ScreenCaptureKit 按需缩略图，480×最多320像素，PNG≤700 KiB；每次异步等待≤6秒。标题/像素仅宿主，完成后迟到结果丢弃，不持久化；这不是系统 Dock 的悬停预览。
+
+桥接：`settings.get/getAll` 读取当前组件设置，更新值不重建 frame 会话；插件只可 emit `widget:<自身ID>:` 命名空间，不能伪造 ready/核心事件。`notify.send` 验证安装包 notify 权限、标题≤512 B/正文≤8192 B，原生每插件 5 秒限流，首次可能请求系统通知授权；返回 submitted 仅表示 macOS 接受，最终展示受通知设置/专注模式影响，拒绝/超时有错误。通知独立于核心提醒 store，不覆盖便签提醒。旧 `system.getMediaInfo/mediaControl` 返回 `media_use_audio_tool`，不再伪造曲目/成功；需重新安装新的音乐组件。

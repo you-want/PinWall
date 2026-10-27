@@ -148,6 +148,10 @@ describe('WidgetFrame', () => {
     const signal = vi.mocked(handleBridgeRequest).mock.calls[0][2]!.signal!;
     await act(async () => rerender(<WidgetFrame instance={structuredClone(instance)} />));
     expect(signal.aborted).toBe(false);
+    const settingsChanged = structuredClone(instance); settingsChanged.settings = { mode: 'digital', seconds: false };
+    await act(async () => rerender(<WidgetFrame instance={settingsChanged} />));
+    expect(signal.aborted).toBe(false);
+    expect(vi.mocked(handleBridgeRequest).mock.calls[0][2]!.settings!()).toEqual({ mode: 'digital', seconds: false });
     const changed = structuredClone(instance); changed.manifest.permissions = ['i18n'];
     await act(async () => rerender(<WidgetFrame instance={changed} />));
     expect(signal.aborted).toBe(true);

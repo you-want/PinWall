@@ -808,6 +808,7 @@ name = "desktop"
 version = "0.1.4-beta.3"
 dependencies = [
  "base64 0.22.1",
+ "cc",
  "core-foundation-sys",
  "image",
  "libc",

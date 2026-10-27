@@ -17,6 +17,7 @@ mod widgets;
 mod widget_repository;
 mod widget_network;
 mod utilities;
+mod desktop_tools;
 mod window_layer;
 
 use tauri::Manager;
@@ -32,6 +33,7 @@ pub fn run() {
         .manage(clipboard::ClipboardService::default())
         .manage(screen_tools::ScreenService::default())
         .manage(widget_network::NetworkService::default())
+        .manage(desktop_tools::DesktopService::default())
         .manage(shelf::ShelfService::default())
         .manage(image_tools::ImageService::default())
         .manage(clipboard_history::HistoryService::default())
@@ -99,6 +101,11 @@ pub fn run() {
             widgets::get_widget_rollback,
             widgets::rollback_widget,
             widgets::get_system_info,
+            desktop_tools::widget_audio_request,
+            desktop_tools::widget_audio_route_request,
+            desktop_tools::widget_media_request,
+            desktop_tools::widget_window_request,
+            desktop_tools::widget_notification_request,
             widget_network::widget_network_request,
             widget_network::cancel_widget_network,
             utilities::widget_utilities_request,
@@ -153,6 +160,7 @@ pub fn run() {
                 if window.state::<clipboard_history::HistoryService>().stop(true).is_err() {
                     eprintln!("[ClipboardHistory] Failed to clear session on window destruction");
                 }
+                if window.state::<desktop_tools::DesktopService>().clear().is_err() { eprintln!("[DesktopTools] Window cleanup failed"); }
                 if window.state::<image_tools::ImageService>().clear().is_err() {
                     eprintln!("[ImageTools] Failed to clear selection on window destruction");
                 }
@@ -172,6 +180,7 @@ pub fn run() {
     match application {
         Ok(app) => app.run(|app, event| {
             if matches!(event, tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit) {
+                if app.state::<desktop_tools::DesktopService>().clear().is_err() { eprintln!("[DesktopTools] Exit cleanup failed"); }
                 if app.state::<screen_tools::ScreenService>().shutdown().is_err() { eprintln!("[ScreenTools] Exit cleanup failed"); }
                 if app.state::<shelf::ShelfService>().deactivate().is_err() { eprintln!("[Shelf] Exit cleanup failed"); }
                 if app.state::<clipboard_history::HistoryService>().stop(true).is_err() { eprintln!("[ClipboardHistory] Exit cleanup failed"); }

@@ -45,7 +45,7 @@ export function validWidgetArguments(request: WidgetBridgeRequest): boolean {
     case "power.start": return args.length === 1 && typeof first === "number" && Number.isInteger(first) && first >= 1 && first <= 480;
     case "power.status": case "power.stop":
     case "clipboard.openImport":
-    case "shelf.open": case "screen.open": case "utilities.open":
+    case "shelf.open": case "screen.open": case "utilities.open": case "audio.open": case "windows.open":
     case "ocr.open": case "images.open": case "clipboardHistory.open": case "clipboardHistory.status":
     case "storage.clear": case "theme.get": case "i18n.getLocale": case "settings.getAll":
     case "app.getVersion": case "app.getLocale":
@@ -65,7 +65,7 @@ export function validWidgetArguments(request: WidgetBridgeRequest): boolean {
       return first.reminderTime === undefined || first.reminderTime === null || text(first.reminderTime);
     }
     case "cards.update": return args.length === 2 && key(first) && object(second) && (second.content === undefined || text(second.content));
-    case "notify.send": return args.length === 1 && object(first) && text(first.title) && text(first.body);
+    case "notify.send": return args.length === 1 && object(first) && text(first.title) && first.title.trim().length>0 && new TextEncoder().encode(first.title).length<=512 && text(first.body) && new TextEncoder().encode(first.body).length<=8192;
     case "ai.generate": return args.length <= 1 && (first === undefined || text(first));
     case "system.mediaControl": return args.length === 1 && ["play", "pause", "toggle", "next", "previous", "playPause"].includes(String(first));
     case "network.get": case "network.post": return args.length >= 1 && args.length <= 2 && text(first) && (second === undefined || object(second));

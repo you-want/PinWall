@@ -1,0 +1,24 @@
+{
+  "id": "com.pinwall.window-tools",
+  "name": "窗口工具 / Window Tools",
+  "description": "窗口布局、切换和按需预览。 / Arrange, switch and preview application windows.",
+  "version": "1.0.0",
+  "author": "PinWall Team",
+  "entry": "index.html",
+  "icon": "icon.svg",
+  "type": "official",
+  "category": "productivity",
+  "permissions": [
+    "windows",
+    "i18n"
+  ],
+  "defaultEnabled": false,
+  "defaultSize": {
+    "width": 260,
+    "height": 240
+  },
+  "minSize": {
+    "width": 210,
+    "height": 210
+  }
+}

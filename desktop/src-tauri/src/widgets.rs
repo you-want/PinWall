@@ -108,7 +108,7 @@ fn validate_widget_permission(permission: &str) -> Result<(), String> {
         | "system"
         | "power"
         | "clipboard"
-        | "ocr" | "images" | "clipboardHistory" | "shelf" | "screenCapture" | "utilities"
+        | "ocr" | "images" | "clipboardHistory" | "shelf" | "screenCapture" | "utilities" | "audio" | "windows"
         | "network"
         | "i18n" => Ok(()),
         _ => Err(format!("Widget permission is invalid: {}", permission)),
@@ -171,6 +171,7 @@ fn official_widget_dir_name(id: &str) -> Option<&'static str> {
         "com.pinwall.music" => Some("widget-music"),
         "com.pinwall.keep-awake" => Some("widget-keep-awake"),
         "com.pinwall.clipboard-note" => Some("widget-clipboard-note"),
+        "com.pinwall.window-tools" => Some("widget-window-tools"),
         "com.pinwall.local-tools" => Some("widget-local-tools"),
         "com.pinwall.file-shelf" => Some("widget-file-shelf"),
         "com.pinwall.screen-tools" => Some("widget-screen-tools"),
@@ -182,7 +183,7 @@ fn official_widget_dir_name(id: &str) -> Option<&'static str> {
 }
 
 fn is_desktop_widget(id: &str) -> bool {
-    matches!(id, crate::power::WIDGET_ID | "com.pinwall.system-monitor" | crate::clipboard::WIDGET_ID | "com.pinwall.ocr-note" | "com.pinwall.image-tools" | "com.pinwall.clipboard-history" | "com.pinwall.file-shelf" | "com.pinwall.screen-tools" | "com.pinwall.local-tools")
+    matches!(id, crate::power::WIDGET_ID | "com.pinwall.system-monitor" | crate::clipboard::WIDGET_ID | "com.pinwall.ocr-note" | "com.pinwall.image-tools" | "com.pinwall.clipboard-history" | "com.pinwall.file-shelf" | "com.pinwall.screen-tools" | "com.pinwall.local-tools" | "com.pinwall.music" | "com.pinwall.window-tools")
 }
 
 fn official_widget_source(app: &tauri::AppHandle, id: &str) -> Result<PathBuf, String> {
@@ -275,6 +276,7 @@ fn install_checked(app: &tauri::AppHandle, source: PathBuf, expected: Option<(&s
     crate::widget_repository::install(&root, &source, &manifest.id, |stage| {
         let staged = read_manifest(stage)?;
         if staged.id != manifest.id || staged.permissions != manifest.permissions || staged.version != manifest.version { return Err("widget_package_changed".into()); }
+        if matches!(manifest.id.as_str(), crate::desktop_tools::AUDIO_ID | crate::desktop_tools::WINDOWS_ID) { app.state::<crate::desktop_tools::DesktopService>().clear_widget(&manifest.id)?; }
         if manifest.id == crate::power::WIDGET_ID { app.state::<crate::power::PowerService>().close_all()?; }
         if manifest.id == crate::clipboard_history::WIDGET_ID { app.state::<crate::clipboard_history::HistoryService>().stop(true)?; }
         if manifest.id == crate::shelf::WIDGET_ID { app.state::<crate::shelf::ShelfService>().deactivate()?; }
@@ -337,6 +339,7 @@ pub fn uninstall_widget(window: tauri::WebviewWindow, app: tauri::AppHandle, id:
     require_host(window.label())?;
     validate_widget_id(&id)?;
     let _lock = crate::widget_repository::PACKAGES.lock().map_err(|_| "widget_busy")?;
+    if matches!(id.as_str(), crate::desktop_tools::AUDIO_ID | crate::desktop_tools::WINDOWS_ID) { app.state::<crate::desktop_tools::DesktopService>().clear_widget(&id)?; }
     if id == crate::power::WIDGET_ID { app.state::<crate::power::PowerService>().close_all()?; }
     if id == crate::clipboard_history::WIDGET_ID { app.state::<crate::clipboard_history::HistoryService>().stop(true)?; }
     if id == crate::utilities::WIDGET_ID {
@@ -403,6 +406,8 @@ fn native_tool_files(id: &str) -> Result<[(&'static str, &'static [u8]); 3], Str
         ("icon.svg", include_bytes!(concat!("../../resources/widgets/", $folder, "/icon.svg")).as_slice()),
     ] }; }
     Ok(match id {
+        "com.pinwall.music" => files!("widget-music"),
+        "com.pinwall.window-tools" => files!("widget-window-tools"),
         "com.pinwall.local-tools" => files!("widget-local-tools"),
         "com.pinwall.file-shelf" => files!("widget-file-shelf"),
         "com.pinwall.screen-tools" => files!("widget-screen-tools"),
@@ -471,12 +476,7 @@ fn system_info(state: &crate::metrics::MetricsService, category: &str) -> Result
             Reading::Ok(value) => Ok(serde_json::json!({ "total": value.total, "used": value.in_use, "free": value.total - value.in_use })),
             _ => Err("metrics_unavailable".into()),
         },
-        // Legacy media functionality is outside the metrics feature's scope.
-        "getMediaInfo" => Ok(serde_json::json!({
-            "trackName": "PinWall Focus", "artistName": "Local Demo", "albumName": "Desktop Session",
-            "isPlaying": false, "position": 0, "duration": 180, "volume": 0.7
-        })),
-        "mediaControl" => Ok(serde_json::json!({ "ok": true })),
+        "getMediaInfo" | "mediaControl" => Err("media_use_audio_tool".into()),
         _ => Err("metrics_unknown_method".into()),
     }
 }
@@ -622,7 +622,7 @@ mod tests {
     #[test]
     fn image_and_history_tools_require_opt_in_and_exact_bundled_bytes() {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../resources/widgets");
-        for (id, permission) in [(crate::utilities::WIDGET_ID, "utilities"), (crate::shelf::WIDGET_ID, "shelf"), (crate::screen_tools::WIDGET_ID, "screenCapture"), (crate::image_tools::OCR_ID, "ocr"), (crate::image_tools::IMAGE_ID, "images"), (crate::clipboard_history::WIDGET_ID, "clipboardHistory")] {
+        for (id, permission) in [(crate::desktop_tools::AUDIO_ID,"audio"), (crate::desktop_tools::WINDOWS_ID,"windows"), (crate::utilities::WIDGET_ID, "utilities"), (crate::shelf::WIDGET_ID, "shelf"), (crate::screen_tools::WIDGET_ID, "screenCapture"), (crate::image_tools::OCR_ID, "ocr"), (crate::image_tools::IMAGE_ID, "images"), (crate::clipboard_history::WIDGET_ID, "clipboardHistory")] {
             let source = root.join(official_widget_dir_name(id).unwrap());
             let manifest: WidgetManifest = serde_json::from_slice(&std::fs::read(source.join("widget.json")).unwrap()).unwrap();
             validate_manifest(&manifest).unwrap();

@@ -26,11 +26,11 @@ import { NATIVE_TOOLS, historyStatus, type NativeTool, type ToolResult } from ".
  */
 
 /** 事件订阅器 */
-type EventSubscriber = (event: string, payload: any) => void;
+type EventSubscriber = (event: string, payload: unknown) => void;
 const eventSubscribers = new Map<string, Set<EventSubscriber>>();
 
 /** 向所有订阅者广播应用事件（供 Widget 监听） */
-export function emitWidgetEvent(event: string, payload?: any) {
+export function emitWidgetEvent(event: string, payload?: unknown) {
   const subs = eventSubscribers.get("*");
   subs?.forEach((cb) => cb(event, payload));
   const specific = eventSubscribers.get(event);
@@ -62,7 +62,7 @@ function errorResponse(id: string, error: string): WidgetBridgeResponse {
 }
 
 /** 构建成功响应 */
-function successResponse(id: string, data?: any): WidgetBridgeResponse {
+function successResponse(id: string, data?: unknown): WidgetBridgeResponse {
   return { type: "response", id, success: true, data };
 }
 
@@ -75,7 +75,7 @@ function successResponse(id: string, data?: any): WidgetBridgeResponse {
 export async function handleBridgeRequest(
   request: WidgetBridgeRequest,
   manifest: WidgetManifest,
-  context?: { signal?: AbortSignal; power?: ReturnType<typeof createWidgetPowerSession>; clipboard?: () => Promise<ClipboardNoteResult>; tools?: (kind: NativeTool) => Promise<ToolResult> }
+  context?: { settings?: () => Record<string, unknown>; signal?: AbortSignal; power?: ReturnType<typeof createWidgetPowerSession>; clipboard?: () => Promise<ClipboardNoteResult>; tools?: (kind: NativeTool) => Promise<ToolResult> }
 ): Promise<WidgetBridgeResponse> {
   if (!parseWidgetRequest(request) || !validWidgetArguments(request)) {
     return errorResponse(typeof request?.id === "string" ? request.id.slice(0, 128) : "invalid", "Invalid widget request");
@@ -162,7 +162,7 @@ export async function handleBridgeRequest(
         },
       });
     } catch (err: any) {
-      return errorResponse(id, `Theme error: ${err?.message || err}`);
+      return errorResponse(id, "widget_theme_failed");
     }
   }
 
@@ -180,21 +180,20 @@ export async function handleBridgeRequest(
   if (module === "notify") {
     if (method !== "send") return errorResponse(id, "Unknown notify method");
     try {
-      const [_title, _body] = args;
-      // In Tauri, notifications are sent via the notification window or system API
-      // For now, acknowledge the request — actual delivery is handled by the app layer
-      return successResponse(id);
-    } catch (err: any) {
-      return errorResponse(id, `Notify error: ${err?.message || err}`);
+      const result=await invoke<unknown>("widget_notification_request",{widgetId:manifest.id,title:args[0].title,body:args[0].body});
+      if (!result || typeof result!=="object" || !("submitted" in result) || result.submitted!==true) return errorResponse(id,"widget_notification_failed");
+      return successResponse(id,{submitted:true});
+    } catch (failure: unknown) {
+      const code=typeof failure==="string"?failure:"";
+      return errorResponse(id,["widget_notification_denied","widget_notification_limit","widget_notification_timeout","desktop_unsupported"].includes(code)?code:"widget_notification_failed");
     }
   }
 
   // ── settings（Widget 自身的设置，基础能力）──
   if (module === "settings") {
     if (method !== "get" && method !== "getAll") return errorResponse(id, "Unknown settings method");
-    // Widget 设置由 widgetStore 管理，通过 WidgetFrame 的 props 传入
-    // 此处返回空，实际通过 iframe 初始化时注入
-    return successResponse(id, {});
+    const settings = context?.settings?.() ?? {};
+    return successResponse(id, method === "getAll" ? settings : Object.prototype.hasOwnProperty.call(settings,args[0]) ? settings[args[0]] : null);
   }
 
   // === 以下模块需要对应权限 ===
@@ -237,7 +236,7 @@ export async function handleBridgeRequest(
           return errorResponse(id, `Unknown cards method: ${method}`);
       }
     } catch (err: any) {
-      return errorResponse(id, `Cards error: ${err?.message || err}`);
+      return errorResponse(id, "widget_cards_failed");
     }
   }
 
@@ -278,7 +277,7 @@ export async function handleBridgeRequest(
       const result = await generateNoteContent(settings.ai!, args[0] || "", lang);
       return successResponse(id, result);
     } catch (err: any) {
-      return errorResponse(id, `AI error: ${err?.message || err}`);
+      return errorResponse(id, "widget_ai_failed");
     }
   }
 
@@ -288,6 +287,7 @@ export async function handleBridgeRequest(
       return errorResponse(id, "Permission denied: system");
     }
     if (!["getMetrics", "getCPUUsage", "getBattery", "getMemoryInfo", "getMediaInfo", "mediaControl"].includes(method)) return errorResponse(id, "Unknown system method");
+    if (method === "getMediaInfo" || method === "mediaControl") return errorResponse(id, "media_use_audio_tool");
     if (method === "getMetrics") {
       try { return successResponse(id, await readWidgetMetrics()); }
       catch { return errorResponse(id, "metrics_unavailable"); }
@@ -296,7 +296,7 @@ export async function handleBridgeRequest(
       const info = await invoke<any>("get_system_info", { category: method });
       return successResponse(id, info);
     } catch (err: any) {
-      return errorResponse(id, `System error: ${err?.message || err}`);
+      return errorResponse(id, "metrics_unavailable");
     }
   }
 
@@ -321,7 +321,9 @@ export async function handleBridgeRequest(
     // events 模块的事件推送由 WidgetFrame 单独处理（subscribe 模式）
     // 此处仅处理主动 emit
     if (method === "emit") {
-      emitWidgetEvent(args[0], args[1]);
+      const event=args[0] as string;
+      if (!event.startsWith(`widget:${manifest.id}:`) || !/^[a-zA-Z0-9:._-]{1,256}$/.test(event)) return errorResponse(id,"Widget events must use their own namespace");
+      emitWidgetEvent(event, args[1]);
       return successResponse(id);
     }
     return errorResponse(id, `Unknown events method: ${method}`);

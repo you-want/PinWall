@@ -227,6 +227,8 @@ export type WidgetPermission =
   | "shelf"
   | "screenCapture"
   | "utilities"
+  | "audio"
+  | "windows"
   | "network"
   | "i18n";
 

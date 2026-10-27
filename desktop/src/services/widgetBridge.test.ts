@@ -33,6 +33,7 @@ vi.mock('@/services/storage', () => ({
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn().mockImplementation((cmd: string, args?: any) => {
+    if (cmd === 'widget_notification_request') return Promise.resolve({submitted:true});
     if (cmd === 'read_widget_storage') return Promise.resolve({ testKey: 'testValue' });
     if (cmd === 'widget_network_request') return Promise.resolve({status:200,data:{ok:true}});
     if (cmd === 'mutate_widget_storage') return Promise.resolve();
@@ -123,7 +124,7 @@ describe('widgetBridge', () => {
       const { invoke } = await import('@tauri-apps/api/core');
       vi.mocked(invoke).mockClear();
       const tools = vi.fn().mockResolvedValue({ closed: true });
-      for (const [module, id, permission] of [['utilities', 'local-tools', 'utilities'], ['shelf', 'file-shelf', 'shelf'], ['screen', 'screen-tools', 'screenCapture'], ['ocr', 'ocr-note', 'ocr'], ['images', 'image-tools', 'images'], ['clipboardHistory', 'clipboard-history', 'clipboardHistory']] as const) {
+      for (const [module, id, permission] of [['audio', 'music', 'audio'], ['windows', 'window-tools', 'windows'], ['utilities', 'local-tools', 'utilities'], ['shelf', 'file-shelf', 'shelf'], ['screen', 'screen-tools', 'screenCapture'], ['ocr', 'ocr-note', 'ocr'], ['images', 'image-tools', 'images'], ['clipboardHistory', 'clipboard-history', 'clipboardHistory']] as const) {
         const manifest = { ...createTestManifest([permission]), id: `com.pinwall.${id}` };
         for (const request of [makeRequest(module, 'read'), makeRequest(module, 'open', ['path'])]) {
           expect((await handleBridgeRequest(request, manifest, { tools })).success).toBe(false);
@@ -133,7 +134,7 @@ describe('widgetBridge', () => {
         expect((await handleBridgeRequest(makeRequest(module, 'open'), manifest, { tools })).data).toEqual({ closed: true });
         expect(tools).toHaveBeenLastCalledWith(module);
       }
-      expect(tools).toHaveBeenCalledTimes(6);
+      expect(tools).toHaveBeenCalledTimes(8);
       expect(invoke).not.toHaveBeenCalled();
     });
 
@@ -228,11 +229,17 @@ describe('widgetBridge', () => {
   });
 
   describe('notify module', () => {
-    it('handles notify without error', async () => {
+    it('submits a bounded native notification without acknowledging a placeholder', async () => {
       const manifest = createTestManifest();
       const req = makeRequest('notify', 'send', [{ title: 'Test', body: 'Hello' }]);
       const res = await handleBridgeRequest(req, manifest);
-      expect(res.success).toBe(true);
+      expect(res).toMatchObject({success:true,data:{submitted:true}});
+      const { invoke }=await import('@tauri-apps/api/core');expect(invoke).toHaveBeenCalledWith('widget_notification_request',{widgetId:manifest.id,title:'Test',body:'Hello'});
+    });
+    it('reports denied delivery and rejects oversized notifications before native IO',async()=>{
+      const {invoke}=await import('@tauri-apps/api/core');vi.mocked(invoke).mockClear();
+      expect((await handleBridgeRequest(makeRequest('notify','send',[{title:'Test',body:'x'.repeat(8193)}]),createTestManifest(['notify']))).success).toBe(false);expect(invoke).not.toHaveBeenCalled();
+      vi.mocked(invoke).mockRejectedValueOnce('widget_notification_denied');expect(await handleBridgeRequest(makeRequest('notify','send',[{title:'Test',body:'Hello'}]),createTestManifest(['notify']))).toMatchObject({success:false,error:'widget_notification_denied'});
     });
   });
 
@@ -348,22 +355,12 @@ describe('widgetBridge', () => {
       expect(res.data.total).toBe(17179869184);
     });
 
-    it('returns media info for the official music widget fallback', async () => {
-      const manifest = createTestManifest(['system']);
-      const req = makeRequest('system', 'getMediaInfo');
-      const res = await handleBridgeRequest(req, manifest);
-
-      expect(res.success).toBe(true);
-      expect(res.data.trackName).toBe('PinWall Focus');
-    });
-
-    it('accepts media control commands for the official music widget', async () => {
-      const manifest = createTestManifest(['system']);
-      const req = makeRequest('system', 'mediaControl', ['play']);
-      const res = await handleBridgeRequest(req, manifest);
-
-      expect(res.success).toBe(true);
-      expect(res.data).toEqual({ ok: true });
+    it('rejects legacy media stubs and directs users to the host-owned audio tool', async () => {
+      const { invoke } = await import('@tauri-apps/api/core');vi.mocked(invoke).mockClear();
+      for (const request of [makeRequest('system','getMediaInfo'),makeRequest('system','mediaControl',['play'])]) {
+        expect(await handleBridgeRequest(request,createTestManifest(['system']))).toMatchObject({success:false,error:'media_use_audio_tool'});
+      }
+      expect(invoke).not.toHaveBeenCalled();
     });
   });
 
@@ -404,10 +401,21 @@ describe('widgetBridge', () => {
     });
   });
 
+  it('reads only the current widget settings, including false values and missing keys',async()=>{
+    const context={settings:()=>({seconds:false,color:'purple'})};const manifest=createTestManifest([]);
+    expect((await handleBridgeRequest(makeRequest('settings','get',['seconds']),manifest,context)).data).toBe(false);
+    expect((await handleBridgeRequest(makeRequest('settings','get',['missing']),manifest,context)).data).toBeNull();
+    expect((await handleBridgeRequest(makeRequest('settings','getAll'),manifest,context)).data).toEqual({seconds:false,color:'purple'});
+  });
+  it('prevents plugins from spoofing host ready events or another widget namespace',async()=>{
+    const handler=vi.fn(),unsub=subscribeWidgetEvent('*',handler);
+    for(const event of ['pinwall:ready','card:created','widget:com.other.widget:update'])expect((await handleBridgeRequest(makeRequest('events','emit',[event,{}]),createTestManifest(['events']))).success).toBe(false);
+    expect(handler).not.toHaveBeenCalled();unsub();
+  });
   describe('events module', () => {
     it('emits events', async () => {
       const manifest = createTestManifest(['events']);
-      const req = makeRequest('events', 'emit', ['test:event', { foo: 'bar' }]);
+      const req = makeRequest('events', 'emit', ['widget:com.test.widget:test-event', { foo: 'bar' }]);
       const res = await handleBridgeRequest(req, manifest);
       expect(res.success).toBe(true);
     });

@@ -241,3 +241,14 @@ CI 暴露了 `srcDoc` 已提交但消息监听 effect 尚未就绪的测试竞�
 本地包增加权限预览/确认、限额暂存、原子替换、旧版保留/回滚和中断恢复；回滚默认关闭，数据不降级。插件存储 schemaVersion 1、revision、旧数据迁移、串行原子增删清空、损坏备份/未来版本拒写。网络改走受限原生 HTTP 代理，公开 DNS 校验并固定解析地址，禁止代理/重定向/凭证，限制响应和并发，支持取消。资源协议范围收窄到背景目录。
 
 验证：前端 36 个文件 / 258 项通过，TypeScript/Vite 构建通过（主 JS 733.43 KB，既有 >500 KB 提示）；Rust 92 项通过 / 4 项原生 smoke 忽略；全量浏览器 53 项通过（1.6 分钟，`/tmp/pinwall-repository-full-e2e`）。原生检查按 `PLUGIN_ACCEPTANCE.md` 最后统一执行，保持未勾选。现有 .app 对应上一提交，尚未重新打包本轮。未修改核心便签/设置 schema 或扩大 capability。
+
+
+## 音频与窗口原生工具（2026-10-27 续）
+
+- 新音乐 v2 保留 `com.pinwall.music`，迁入 desktop 内置资源，独立 `audio` 权限、默认关闭；旧版需重新安装。CoreAudio 音频设备、输入/输出默认切换、音量/静音，Music/Spotify 固定 Apple Events 真实媒体控制。
+- macOS 14.2+ 显式每进程 tap + 私有 aggregate + HAL 输出，最多四路独立增益/设备。内存实时 ring/采样率转换、资源预算、epoch 撤销、1 秒 watchdog、驱动拒绝释放时避免 UAF；不录麦克风、不保存音频，关闭/停用/重载/卸载/退出清理，系统设备偏好保留。
+- 新窗口工具，辅助功能按需授权，受限窗口枚举、跨显示器布局/切换、原布局恢复和 macOS 14+ ScreenCaptureKit 按需缩略图；排除自身、标题/图像留在宿主。系统 Dock 悬停预览仍待实现。
+- 桥接真实读取组件自身设置，限制插件事件命名空间，系统通知实际提交并处理授权/限流；旧媒体占位接口返回明确错误。新增 Objective-C 构建和公开系统 framework，弱链接新版 API；添加 Apple Events entitlement/用途和音频捕获用途说明，Tauri capability 未扩大。
+- 目录十四项、原生工具十一项；`PLUGIN_ACCEPTANCE.md` 扩为十五步，真实音频/TCC/窗口/多显示器验收保持未勾选。完整原始队列见 `PLUGIN_ROADMAP.md`，不把本阶段当作全部完成。
+
+验证：前端 37 个文件 / 263 项，Rust 99 项 / 5 项 smoke 忽略，TypeScript/Vite 构建、55 项全量浏览器通过（`/tmp/pinwall-desktop-all-e2e`）。只读 CoreAudio 设备 smoke 通过；DSP 和负坐标布局测试使用合成数据，没有启动实际 tap、操作其他应用窗口或发系统通知。`.app` 构建、严格签名检查、包内 33 个插件资源和两个用途说明核对通过；本机仍 x86_64、ad-hoc、无 Team ID、未公证。最后加入窗口关闭清理后，相关 2 项浏览器流程、7 项 WidgetFrame 测试、资源篡改校验和增量打包再次通过；最终签名、弱链接、用途说明和 33 项资源已核对。原有 >500 KB chunk 提示保留（主 JS 747.85 KB，面板懒加载）。

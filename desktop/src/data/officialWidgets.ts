@@ -6,6 +6,9 @@ export interface OfficialWidgetCatalogItem {
 }
 
 export const OFFICIAL_WIDGETS: OfficialWidgetCatalogItem[] = [
+  { sourcePath: "resources/widgets/widget-music", manifest: {"id": "com.pinwall.music", "name": "音频与媒体 / Audio & Media", "description": "音频设备、音量和运行中的播放器。 / Audio devices, volume and running music players.", "version": "2.0.0", "author": "PinWall Team", "entry": "index.html", "icon": "icon.svg", "type": "official", "category": "productivity", "permissions": ["audio", "i18n"], "defaultEnabled": false, "defaultSize": {"width": 260, "height": 240}, "minSize": {"width": 210, "height": 210}} },
+  { sourcePath: "resources/widgets/widget-window-tools", manifest: {"id": "com.pinwall.window-tools", "name": "窗口工具 / Window Tools", "description": "窗口布局、切换和按需预览。 / Arrange, switch and preview application windows.", "version": "1.0.0", "author": "PinWall Team", "entry": "index.html", "icon": "icon.svg", "type": "official", "category": "productivity", "permissions": ["windows", "i18n"], "defaultEnabled": false, "defaultSize": {"width": 260, "height": 240}, "minSize": {"width": 210, "height": 210}} },
+
   { sourcePath: "resources/widgets/widget-local-tools", manifest: {"id": "com.pinwall.local-tools", "name": "本地工具 / Local Tools", "description": "链接清理、计算器和可搜索的文本片段库。 / Clean links, calculate and keep searchable text snippets locally.", "version": "1.0.0", "author": "PinWall Team", "entry": "index.html", "icon": "icon.svg", "type": "official", "category": "productivity", "permissions": ["utilities", "i18n"], "defaultEnabled": false, "defaultSize": {"width": 260, "height": 240}, "minSize": {"width": 210, "height": 210}} },
   {
     sourcePath: "resources/widgets/widget-file-shelf",
@@ -265,23 +268,5 @@ export const OFFICIAL_WIDGETS: OfficialWidgetCatalogItem[] = [
       minSize: { width: 210, height: 300 }
     },
   },
-  {
-    sourcePath: "../widgets/widget-music",
-    manifest: {
-      id: "com.pinwall.music",
-      name: "音乐控制",
-      description: "控制当前播放的音乐",
-      version: "1.0.0",
-      author: "PinWall Team",
-      entry: "index.html",
-      icon: "icon.svg",
-      type: "official",
-      category: "entertainment",
-      permissions: ["theme", "i18n", "system"],
-      defaultSize: { width: 240, height: 160 },
-      minSize: { width: 200, height: 120 },
-      maxSize: { width: 380, height: 250 },
-      settings: [],
-    },
-  },
+
 ];

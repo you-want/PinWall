@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use tauri::Manager;
+static OPERATIONS: std::sync::Mutex<()> = std::sync::Mutex::new(());
 pub const WIDGET_ID: &str = "com.pinwall.local-tools";
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -73,6 +74,7 @@ pub async fn widget_utilities_request(
     crate::metrics::require_main(window.label())?;
     crate::widgets::verify_native_tool(&app, WIDGET_ID)?;
     tauri::async_runtime::spawn_blocking(move || {
+        let _operation = OPERATIONS.lock().map_err(|_| "utility_unavailable")?;
         if let Action::Copy { text } = &action {
             if text.is_empty() || text.len() > 64 * 1024 {
                 return Err("utility_invalid_snippet".into());

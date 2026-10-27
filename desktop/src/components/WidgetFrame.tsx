@@ -28,6 +28,7 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
   // Store synchronization recreates equal JSON objects. Keep the session alive until actual manifest values change.
   const manifestJson = JSON.stringify(manifest);
   const sessionManifest = useMemo(() => JSON.parse(manifestJson) as WidgetManifest, [manifestJson]);
+  const settingsRef = useRef(settings); settingsRef.current = settings;
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -91,7 +92,7 @@ export function WidgetFrame({ instance, variant = "freeform" }: WidgetFrameProps
       inFlight.add(request.id);
       let response;
       try {
-        response = await handleBridgeRequest(request, sessionManifest, { signal: controller.signal, power, clipboard: () => importClipboard(controller.signal), tools: kind => openTool(kind, controller.signal) });
+        response = await handleBridgeRequest(request, sessionManifest, { settings: () => settingsRef.current, signal: controller.signal, power, clipboard: () => importClipboard(controller.signal), tools: kind => openTool(kind, controller.signal) });
       } catch {
         response = { type: "response", id: request.id, success: false, error: "Widget request failed" };
       } finally {

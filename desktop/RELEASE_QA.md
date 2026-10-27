@@ -167,7 +167,7 @@ This is the primary path for trusted, optional widgets.
 - [ ] Install Clock from the Official Widget Hub without choosing a folder.
 - [ ] Install Weather and confirm the high-risk `network` permission prompt appears before install.
 - [ ] Install System Monitor and confirm the high-risk `system` permission prompt appears before install.
-- [ ] Enabled widgets appear on the main wall immediately; all nine native tools are disabled after installation until explicitly enabled; Keep Awake and Clipboard History also require an explicit Start.
+- [ ] Enabled widgets appear on the main wall immediately; all eleven native tools are disabled after installation until explicitly enabled; Keep Awake and Clipboard History also require an explicit Start.
 - [ ] Installed widgets survive app quit and restart.
 - [ ] Installed widgets can be toggled off and on.
 - [ ] Installed widgets can be removed.
@@ -238,7 +238,7 @@ Direct API smoke and browser IPC mocks do not verify actual Tauri/TCC authorizat
 
 ## Image To Note, Image Tools And Clipboard History (Experimental)
 
-Follow the ordered Chinese checklist in [PLUGIN_ACCEPTANCE.md](./PLUGIN_ACCEPTANCE.md) for all nine native tools. Manual gates below remain unchecked until performed in Tauri.
+Follow the ordered Chinese checklist in [PLUGIN_ACCEPTANCE.md](./PLUGIN_ACCEPTANCE.md) for all eleven native tools. Manual gates below remain unchecked until performed in Tauri.
 
 - [ ] Install the three new tools with distinct permission explanations, initially disabled; enabling must not select a file, create a note or start clipboard recording.
 - [ ] OCR: select Chinese/English PNG/JPEG/WebP, review/edit and create once; cancel, no text, corrupt/oversized input and late results never create notes automatically.
@@ -276,6 +276,14 @@ Browser IPC mocks and synthetic child-process tests do not satisfy these real TC
 - [ ] Review local package permissions before installation; check cancellation, bounded staging, update failure preserving the working package, interrupted replacement recovery and permission-reviewed disabled rollback without data downgrade.
 - [ ] Verify production asset scope permits background images and denies other AppData resources. Test native public DNS pinning, private/reserved IPv4/IPv6, proxy bypass, redirect refusal, response limits and cancellation.
 - [ ] Check main-only native operations, Chinese/English, narrow WKWebView, native confirmation and real quit/restart. Browser mocks do not satisfy these gates.
+
+## Audio And Window Tools (Experimental, macOS)
+
+- [ ] Reinstall Music v2 (same ID), verify disabled by default and the distinct audio permission. Exercise real CoreAudio input/output/default/volume/mute controls; read-only devices stay usable.
+- [ ] Running Music/Spotify only: real metadata and playback commands; Automation denial/retry, no fake media or silent success. Inspect the Apple Events entitlement and usage strings in the packaged app.
+- [ ] macOS 14.2+ process taps: two synthetic audio sources, independent per-process gain/mute, multiple outputs/mixing, denied capture, unsupported formats, process exit/device removal/sample-rate change, cleanup on close/disable/reload/uninstall/exit. Verify no microphone or audio files, no persistent route restoration, and bounded realtime CPU over 30 minutes.
+- [ ] Window tools: Accessibility denial/grant, cross-display layouts including negative origins, application size constraints, explicit undo, switching, and macOS 14+ ScreenCaptureKit preview permission/timeout/closed windows. PinWall windows excluded; titles and previews never reach iframe.
+- [ ] Real system widget notification delivery/denial/rate limits respects Focus settings and does not replace core reminder state.
 
 ## Visual And Performance Checks
 
