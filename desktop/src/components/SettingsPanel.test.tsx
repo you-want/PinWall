@@ -15,6 +15,9 @@ vi.mock('@tauri-apps/plugin-dialog', () => ({
 }));
 
 vi.mock('@/services/widgetLoader', () => ({
+  previewWidgetInstall: vi.fn().mockResolvedValue({ id: 'com.local.clock', name: 'Local Clock', version: '1.0.0', permissions: ['storage'] }),
+  previousWidgetVersion: vi.fn().mockResolvedValue(null),
+  rollbackWidget: vi.fn(),
   installWidgetFromPathWithResult: vi.fn().mockResolvedValue({
     manifest: {
       id: 'com.local.clock',
@@ -169,9 +172,32 @@ describe('SettingsPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /\+ Choose Folder/ }));
 
     await waitFor(() => {
-      expect(service.installWidgetFromPathWithResult).toHaveBeenCalledWith('/trusted/widget');
+      expect(service.installWidgetFromPathWithResult).toHaveBeenCalledWith('/trusted/widget', expect.objectContaining({ id: 'com.local.clock', permissions: ['storage'] }));
       expect(screen.getByText('Local Clock installed')).toBeInTheDocument();
     });
+  });
+
+  it('does not install a local package after permission review is cancelled', async () => {
+    const service = await import('@/services/widgetLoader');
+    vi.mocked(service.installWidgetFromPathWithResult).mockClear();
+    vi.mocked(window.confirm).mockReturnValueOnce(false);
+    renderSettings();fireEvent.click(screen.getByRole('button',{name:'Experimental'}));
+    fireEvent.click(screen.getByRole('button',{name:/\+ Choose Folder/}));
+    await waitFor(()=>expect(service.previewWidgetInstall).toHaveBeenCalledWith('/trusted/widget'));
+    expect(service.installWidgetFromPathWithResult).not.toHaveBeenCalled();
+  });
+  it('keeps the current package when rollback permission review is cancelled', async () => {
+    const service = await import('@/services/widgetLoader');
+    const manifest: WidgetManifest = {id:'com.test.rollback',name:'Rollback Tool',description:'Test',version:'1.0.0',author:'Test',entry:'index.html',icon:'icon.svg',type:'community',category:'utility',permissions:['storage'],defaultSize:{width:200,height:200}};
+    useWidgetStore.getState().installWidget({...manifest,version:'2.0.0'});
+    vi.mocked(service.previousWidgetVersion).mockResolvedValueOnce(manifest);
+    vi.mocked(window.confirm).mockReturnValueOnce(false);
+    renderSettings();fireEvent.click(screen.getByRole('button',{name:'Experimental'}));
+    const row=screen.getByText('Rollback Tool').closest('.ap-widget-installed-row') as HTMLElement;
+    fireEvent.click(within(row).getByRole('button',{name:'Roll back'}));
+    await waitFor(()=>expect(window.confirm).toHaveBeenCalled());
+    expect(service.rollbackWidget).not.toHaveBeenCalled();
+    expect(useWidgetStore.getState().widgets.find(w=>w.manifest.id===manifest.id)?.manifest.version).toBe('2.0.0');
   });
 
   it('keeps power enabled when native revocation fails, and allows retry', async () => {

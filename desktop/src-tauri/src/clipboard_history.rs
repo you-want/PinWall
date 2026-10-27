@@ -299,6 +299,7 @@ pub fn revoke_widget_tool(
         return Err("tool_permission_denied".into());
     }
     match widget_id.as_str() {
+        crate::utilities::WIDGET_ID => Ok(()),
         WIDGET_ID => app.state::<HistoryService>().stop(true),
         crate::shelf::WIDGET_ID => app.state::<crate::shelf::ShelfService>().deactivate(),
         crate::screen_tools::WIDGET_ID => app.state::<crate::screen_tools::ScreenService>().clear(),

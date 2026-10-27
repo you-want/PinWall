@@ -34,7 +34,8 @@ vi.mock('@/services/storage', () => ({
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn().mockImplementation((cmd: string, args?: any) => {
     if (cmd === 'read_widget_storage') return Promise.resolve({ testKey: 'testValue' });
-    if (cmd === 'write_widget_storage') return Promise.resolve();
+    if (cmd === 'widget_network_request') return Promise.resolve({status:200,data:{ok:true}});
+    if (cmd === 'mutate_widget_storage') return Promise.resolve();
     if (cmd === 'get_app_version') return Promise.resolve('0.1.3');
     if (cmd === 'get_system_info') {
       if (args?.category === 'getMetrics') return Promise.resolve({ sampledAt: 1234, cpu: { status: 'ok', value: 25 }, memory: { status: 'ok', value: { total: 8192, inUse: 4096 } }, battery: { status: 'notPresent' } });
@@ -122,7 +123,7 @@ describe('widgetBridge', () => {
       const { invoke } = await import('@tauri-apps/api/core');
       vi.mocked(invoke).mockClear();
       const tools = vi.fn().mockResolvedValue({ closed: true });
-      for (const [module, id, permission] of [['shelf', 'file-shelf', 'shelf'], ['screen', 'screen-tools', 'screenCapture'], ['ocr', 'ocr-note', 'ocr'], ['images', 'image-tools', 'images'], ['clipboardHistory', 'clipboard-history', 'clipboardHistory']] as const) {
+      for (const [module, id, permission] of [['utilities', 'local-tools', 'utilities'], ['shelf', 'file-shelf', 'shelf'], ['screen', 'screen-tools', 'screenCapture'], ['ocr', 'ocr-note', 'ocr'], ['images', 'image-tools', 'images'], ['clipboardHistory', 'clipboard-history', 'clipboardHistory']] as const) {
         const manifest = { ...createTestManifest([permission]), id: `com.pinwall.${id}` };
         for (const request of [makeRequest(module, 'read'), makeRequest(module, 'open', ['path'])]) {
           expect((await handleBridgeRequest(request, manifest, { tools })).success).toBe(false);
@@ -132,7 +133,7 @@ describe('widgetBridge', () => {
         expect((await handleBridgeRequest(makeRequest(module, 'open'), manifest, { tools })).data).toEqual({ closed: true });
         expect(tools).toHaveBeenLastCalledWith(module);
       }
-      expect(tools).toHaveBeenCalledTimes(5);
+      expect(tools).toHaveBeenCalledTimes(6);
       expect(invoke).not.toHaveBeenCalled();
     });
 
@@ -177,10 +178,8 @@ describe('widgetBridge', () => {
       const res = await handleBridgeRequest(req, manifest);
 
       expect(res.success).toBe(true);
-      expect(invoke).toHaveBeenCalledWith('read_widget_storage', { id: 'com.test.widget' });
-      expect(invoke).toHaveBeenCalledWith('write_widget_storage', {
-        id: 'com.test.widget',
-        data: expect.objectContaining({ newKey: 'newValue' }),
+      expect(invoke).toHaveBeenCalledWith('mutate_widget_storage', {
+        id: 'com.test.widget', mutation: { method: 'set', key: 'newKey', value: 'newValue' },
       });
     });
 
@@ -198,9 +197,8 @@ describe('widgetBridge', () => {
       const res = await handleBridgeRequest(req, manifest);
 
       expect(res.success).toBe(true);
-      expect(invoke).toHaveBeenCalledWith('write_widget_storage', {
-        id: 'com.test.widget',
-        data: {},
+      expect(invoke).toHaveBeenCalledWith('mutate_widget_storage', {
+        id: 'com.test.widget', mutation: { method: 'clear' },
       });
     });
   });
@@ -369,102 +367,20 @@ describe('widgetBridge', () => {
     });
   });
 
-  describe('network module (with permission)', () => {
-    beforeEach(() => {
-      const mockHeaders = new Map<string, string>([['content-type', 'application/json']]);
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-        status: 200,
-        headers: { get: (k: string) => mockHeaders.get(k) ?? null },
-        json: vi.fn().mockResolvedValue({ ok: true }),
-      }));
+  describe('network proxy boundary', () => {
+    it('sends declared requests through the native proxy, never renderer fetch', async () => {
+      const { invoke } = await import('@tauri-apps/api/core');
+      vi.mocked(invoke).mockClear(); const fetchSpy = vi.spyOn(globalThis, 'fetch');
+      const response = await handleBridgeRequest(makeRequest('network', 'get', ['https://api.example.com/data']), createTestManifest(['network']));
+      expect(response).toMatchObject({ success:true, data:{status:200,data:{ok:true}} });
+      expect(invoke).toHaveBeenCalledWith('widget_network_request', { request: expect.objectContaining({widgetId:'com.test.widget',method:'get',url:'https://api.example.com/data'}) });
+      expect(fetchSpy).not.toHaveBeenCalled();
     });
-
-    afterEach(() => {
-      vi.unstubAllGlobals();
-    });
-
-    it('performs allowed get requests without credentials', async () => {
-      const manifest = createTestManifest(['network']);
-      const req = makeRequest('network', 'get', ['https://api.example.com/data']);
-      const res = await handleBridgeRequest(req, manifest);
-
-      expect(res.success).toBe(true);
-      expect(fetch).toHaveBeenCalledWith('https://api.example.com/data', {
-        method: 'GET',
-        headers: {},
-        credentials: 'omit',
-        redirect: 'manual',
-      });
-    });
-
-    it('filters sensitive request headers', async () => {
-      const manifest = createTestManifest(['network']);
-      const req = makeRequest('network', 'post', [
-        'https://api.example.com/data',
-        {
-          headers: {
-            Authorization: 'Bearer secret',
-            Cookie: 'sid=secret',
-            'X-Widget': 'clock',
-          },
-          body: { hello: 'world' },
-        },
-      ]);
-      const res = await handleBridgeRequest(req, manifest);
-
-      expect(res.success).toBe(true);
-      expect(fetch).toHaveBeenCalledWith('https://api.example.com/data', {
-        method: 'POST',
-        headers: {
-          'X-Widget': 'clock',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ hello: 'world' }),
-        credentials: 'omit',
-        redirect: 'manual',
-      });
-    });
-
-    it('rejects localhost and private network URLs', async () => {
-      const manifest = createTestManifest(['network']);
-
-      for (const url of [
-        'http://localhost:3000',
-        'http://127.0.0.1:5173',
-        'http://192.168.1.2',
-        'http://10.0.0.2',
-        'http://172.16.0.2',
-        'http://device.local/status',
-      ]) {
-        const res = await handleBridgeRequest(makeRequest('network', 'get', [url]), manifest);
-        expect(res.success).toBe(false);
-        expect(res.error).toContain('Network URL host is not allowed');
-      }
-      expect(fetch).not.toHaveBeenCalled();
-    });
-
-    it('rejects non-http protocols', async () => {
-      const manifest = createTestManifest(['network']);
-      const res = await handleBridgeRequest(
-        makeRequest('network', 'get', ['file:///Users/test/.ssh/id_rsa']),
-        manifest,
-      );
-
-      expect(res.success).toBe(false);
-      expect(res.error).toContain('Network URL protocol must be http or https');
-      expect(fetch).not.toHaveBeenCalled();
-    });
-
-    it('rejects unsupported network methods', async () => {
-      const manifest = createTestManifest(['network']);
-      const res = await handleBridgeRequest(
-        makeRequest('network', 'delete', ['https://api.example.com/data']),
-        manifest,
-      );
-
-      expect(res.success).toBe(false);
-      expect(res.error).toContain('Unknown network method: delete');
-      expect(fetch).not.toHaveBeenCalled();
+    it('denies malformed or undeclared requests before native IO', async () => {
+      const { invoke } = await import('@tauri-apps/api/core'); vi.mocked(invoke).mockClear();
+      expect((await handleBridgeRequest(makeRequest('network', 'get', ['https://example.com']), createTestManifest([]))).success).toBe(false);
+      expect((await handleBridgeRequest(makeRequest('network', 'get', [123]), createTestManifest(['network']))).success).toBe(false);
+      expect(invoke).not.toHaveBeenCalled();
     });
   });
 

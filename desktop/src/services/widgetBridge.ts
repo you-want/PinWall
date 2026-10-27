@@ -1,3 +1,4 @@
+import { widgetNetwork } from "./widgetNetwork";
 import { invoke } from "@tauri-apps/api/core";
 import type {
   WidgetManifest,
@@ -27,25 +28,6 @@ import { NATIVE_TOOLS, historyStatus, type NativeTool, type ToolResult } from ".
 /** 事件订阅器 */
 type EventSubscriber = (event: string, payload: any) => void;
 const eventSubscribers = new Map<string, Set<EventSubscriber>>();
-
-const BLOCKED_NETWORK_HOSTS = new Set([
-  "localhost",
-  "0.0.0.0",
-  "127.0.0.1",
-  "::1",
-]);
-
-const BLOCKED_NETWORK_HEADER_NAMES = new Set([
-  "authorization",
-  "cookie",
-  "host",
-  "origin",
-  "referer",
-  "sec-fetch-site",
-  "sec-fetch-mode",
-  "sec-fetch-dest",
-  "user-agent",
-]);
 
 /** 向所有订阅者广播应用事件（供 Widget 监听） */
 export function emitWidgetEvent(event: string, payload?: any) {
@@ -82,63 +64,6 @@ function errorResponse(id: string, error: string): WidgetBridgeResponse {
 /** 构建成功响应 */
 function successResponse(id: string, data?: any): WidgetBridgeResponse {
   return { type: "response", id, success: true, data };
-}
-
-function isPrivateIpv4(hostname: string): boolean {
-  const parts = hostname.split(".").map((part) => Number(part));
-  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
-    return false;
-  }
-  const [a, b] = parts;
-  return (
-    a === 10 ||
-    a === 127 ||
-    (a === 169 && b === 254) ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 168)
-  );
-}
-
-function assertAllowedNetworkUrl(input: unknown): URL {
-  if (typeof input !== "string" || input.trim() === "") {
-    throw new Error("Network URL must be a non-empty string");
-  }
-
-  const parsed = new URL(input);
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-    throw new Error("Network URL protocol must be http or https");
-  }
-
-  const hostname = parsed.hostname.toLowerCase();
-  if (
-    BLOCKED_NETWORK_HOSTS.has(hostname) ||
-    hostname.endsWith(".local") ||
-    isPrivateIpv4(hostname)
-  ) {
-    throw new Error("Network URL host is not allowed");
-  }
-
-  return parsed;
-}
-
-function sanitizeNetworkHeaders(headers: unknown): Record<string, string> {
-  if (!headers || typeof headers !== "object" || Array.isArray(headers)) {
-    return {};
-  }
-
-  return Object.entries(headers as Record<string, unknown>).reduce<Record<string, string>>(
-    (acc, [name, value]) => {
-      const normalizedName = name.toLowerCase();
-      if (BLOCKED_NETWORK_HEADER_NAMES.has(normalizedName)) {
-        return acc;
-      }
-      if (typeof value === "string") {
-        acc[name] = value;
-      }
-      return acc;
-    },
-    {}
-  );
 }
 
 /**
@@ -201,31 +126,20 @@ export async function handleBridgeRequest(
           const value = data?.[args[0]] ?? null;
           return successResponse(id, value);
         }
-        case "set": {
-          const data = await invoke<Record<string, any>>("read_widget_storage", {
-            id: manifest.id,
-          });
-          data[args[0]] = args[1];
-          await invoke("write_widget_storage", { id: manifest.id, data });
+        case "set":
+          await invoke("mutate_widget_storage", { id: manifest.id, mutation: { method: "set", key: args[0], value: args[1] ?? null } });
           return successResponse(id);
-        }
-        case "remove": {
-          const data = await invoke<Record<string, any>>("read_widget_storage", {
-            id: manifest.id,
-          });
-          delete data[args[0]];
-          await invoke("write_widget_storage", { id: manifest.id, data });
+        case "remove":
+          await invoke("mutate_widget_storage", { id: manifest.id, mutation: { method: "remove", key: args[0] } });
           return successResponse(id);
-        }
-        case "clear": {
-          await invoke("write_widget_storage", { id: manifest.id, data: {} });
+        case "clear":
+          await invoke("mutate_widget_storage", { id: manifest.id, mutation: { method: "clear" } });
           return successResponse(id);
-        }
         default:
           return errorResponse(id, `Unknown storage method: ${method}`);
       }
     } catch (err: any) {
-      return errorResponse(id, `Storage error: ${err?.message || err}`);
+      return errorResponse(id, "widget_storage_failed");
     }
   }
 
@@ -392,44 +306,10 @@ export async function handleBridgeRequest(
       return errorResponse(id, "Permission denied: network");
     }
     try {
-      const [url, options] = args;
-      if (method !== "get" && method !== "post") {
-        return errorResponse(id, `Unknown network method: ${method}`);
-      }
-      const parsedUrl = assertAllowedNetworkUrl(url);
-      const headers = sanitizeNetworkHeaders(options?.headers);
-      const fetchOptions: RequestInit = {
-        method: method === "post" ? "POST" : "GET",
-        headers,
-        credentials: "omit",
-        redirect: "manual", // Do not follow redirects — prevents host bypass via 3xx
-      };
-      if (context?.signal) fetchOptions.signal = context.signal;
-      if (method === "post" && options?.body) {
-        let bodyStr: string;
-        if (typeof options.body === "string") {
-          bodyStr = options.body;
-        } else {
-          bodyStr = JSON.stringify(options.body);
-        }
-        // Enforce 10 MB body limit
-        if (bodyStr.length > 10 * 1024 * 1024) {
-          return errorResponse(id, "Request body exceeds 10MB limit");
-        }
-        fetchOptions.body = bodyStr;
-        (fetchOptions.headers as Record<string, string>)["Content-Type"] ??=
-          "application/json";
-      }
-      const res = await fetch(parsedUrl.toString(), fetchOptions);
-      // Only accept application/json responses
-      const contentType = (res.headers.get("content-type") || "").toLowerCase();
-      if (!contentType.includes("application/json")) {
-        return errorResponse(id, "Response is not JSON");
-      }
-      const data = await res.json();
-      return successResponse(id, { status: res.status, data });
-    } catch (err: any) {
-      return errorResponse(id, `Network error: ${err?.message || err}`);
+      if (method !== "get" && method !== "post") return errorResponse(id, "Unknown network method");
+      return successResponse(id, await widgetNetwork(manifest.id, method, args[0], args[1], context?.signal));
+    } catch (error: unknown) {
+      return errorResponse(id, error instanceof Error ? error.message : "widget_network_unavailable");
     }
   }
 

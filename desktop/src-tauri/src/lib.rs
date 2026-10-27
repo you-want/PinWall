@@ -14,6 +14,9 @@ mod screen_tools;
 mod tool_files;
 mod tray;
 mod widgets;
+mod widget_repository;
+mod widget_network;
+mod utilities;
 mod window_layer;
 
 use tauri::Manager;
@@ -28,6 +31,7 @@ pub fn run() {
         .manage(metrics::MetricsService::default())
         .manage(clipboard::ClipboardService::default())
         .manage(screen_tools::ScreenService::default())
+        .manage(widget_network::NetworkService::default())
         .manage(shelf::ShelfService::default())
         .manage(image_tools::ImageService::default())
         .manage(clipboard_history::HistoryService::default())
@@ -85,12 +89,19 @@ pub fn run() {
             tray::update_shortcut_display,
             widgets::list_installed_widgets,
             widgets::install_widget,
+            widgets::preview_widget_install,
             widgets::install_official_widget,
             widgets::read_widget_entry_html,
             widgets::uninstall_widget,
             widgets::read_widget_storage,
             widgets::write_widget_storage,
+            widgets::mutate_widget_storage,
+            widgets::get_widget_rollback,
+            widgets::rollback_widget,
             widgets::get_system_info,
+            widget_network::widget_network_request,
+            widget_network::cancel_widget_network,
+            utilities::widget_utilities_request,
             power::open_widget_power_session,
             power::widget_power_request,
             power::close_widget_power_session,

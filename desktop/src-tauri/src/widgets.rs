@@ -19,10 +19,11 @@ pub struct WidgetManifest {
     pub permissions: Vec<String>,
     #[serde(rename = "defaultSize")]
     pub default_size: WidgetSize,
-    #[serde(rename = "minSize")]
+    #[serde(rename = "minSize", skip_serializing_if = "Option::is_none")]
     pub min_size: Option<WidgetSize>,
-    #[serde(rename = "maxSize")]
+    #[serde(rename = "maxSize", skip_serializing_if = "Option::is_none")]
     pub max_size: Option<WidgetSize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub settings: Option<Vec<serde_json::Value>>,
     #[serde(rename = "installedPath", default, skip_serializing_if = "Option::is_none")]
     pub installed_path: Option<String>,
@@ -62,7 +63,7 @@ fn validate_widget_id(id: &str) -> Result<(), String> {
 
 fn validate_widget_file_path(path: &str, field: &str) -> Result<(), String> {
     let candidate = PathBuf::from(path);
-    if candidate.is_absolute() || path.contains('\\') {
+    if path.is_empty() || path.contains('\0') || candidate.is_absolute() || path.contains('\\') || candidate.components().any(|c| matches!(c, std::path::Component::CurDir)) {
         return Err(format!("Widget {} must be a relative POSIX path", field));
     }
     if candidate
@@ -107,7 +108,7 @@ fn validate_widget_permission(permission: &str) -> Result<(), String> {
         | "system"
         | "power"
         | "clipboard"
-        | "ocr" | "images" | "clipboardHistory" | "shelf" | "screenCapture"
+        | "ocr" | "images" | "clipboardHistory" | "shelf" | "screenCapture" | "utilities"
         | "network"
         | "i18n" => Ok(()),
         _ => Err(format!("Widget permission is invalid: {}", permission)),
@@ -129,28 +130,36 @@ fn validate_manifest(manifest: &WidgetManifest) -> Result<(), String> {
     if manifest.version.trim().is_empty() {
         return Err("Widget version is required".to_string());
     }
-    if manifest.default_size.width <= 0.0 || manifest.default_size.height <= 0.0 {
+    if !manifest.default_size.width.is_finite() || !manifest.default_size.height.is_finite() || manifest.default_size.width <= 0.0 || manifest.default_size.height <= 0.0 || manifest.default_size.width > 10000.0 || manifest.default_size.height > 10000.0 {
         return Err("Widget default size must be positive".to_string());
     }
     Ok(())
 }
 
 fn validate_manifest_files(source: &PathBuf, manifest: &WidgetManifest) -> Result<(), String> {
-    for (field, relative_path) in [
-        ("entry", manifest.entry.as_str()),
-        ("icon", manifest.icon.as_str()),
-    ] {
-        let full_path = source.join(relative_path);
-        let metadata = std::fs::symlink_metadata(&full_path)
-            .map_err(|_| format!("Widget {} file does not exist: {}", field, relative_path))?;
-        if metadata.file_type().is_symlink() {
-            return Err(format!("Widget {} cannot be a symlink", field));
+    let root = source.canonicalize().map_err(|_| "widget_unsafe_path")?;
+    let metadata = std::fs::symlink_metadata(source).map_err(|_| "widget_io")?;
+    if metadata.file_type().is_symlink() || !metadata.is_dir() { return Err("widget_unsafe_path".into()); }
+    for relative in [&manifest.entry, &manifest.icon] {
+        let mut path = source.clone();
+        for component in std::path::Path::new(relative).components() {
+            path.push(component);
+            if std::fs::symlink_metadata(&path).map_err(|_| "widget_io")?.file_type().is_symlink() { return Err("widget_unsafe_path".into()); }
         }
-        if !metadata.is_file() {
-            return Err(format!("Widget {} must be a file", field));
-        }
+        let metadata = std::fs::metadata(&path).map_err(|_| "widget_io")?;
+        if !metadata.is_file() || metadata.len() > 2 * 1024 * 1024 || !path.canonicalize().map_err(|_| "widget_io")?.starts_with(&root) { return Err("widget_unsafe_path".into()); }
     }
     Ok(())
+}
+fn read_manifest(source: &std::path::Path) -> Result<WidgetManifest, String> {
+    let bytes = crate::tool_files::read_bounded(&source.join("widget.json"), 64 * 1024)?;
+    let manifest: WidgetManifest = serde_json::from_slice(&bytes).map_err(|_| "widget_manifest_invalid")?;
+    validate_manifest(&manifest)?;
+    validate_manifest_files(&source.to_path_buf(), &manifest)?;
+    Ok(manifest)
+}
+fn require_host(label: &str) -> Result<(), String> {
+    if matches!(label, "main" | "settings") { Ok(()) } else { Err("widget_permission_denied".into()) }
 }
 
 fn official_widget_dir_name(id: &str) -> Option<&'static str> {
@@ -162,6 +171,7 @@ fn official_widget_dir_name(id: &str) -> Option<&'static str> {
         "com.pinwall.music" => Some("widget-music"),
         "com.pinwall.keep-awake" => Some("widget-keep-awake"),
         "com.pinwall.clipboard-note" => Some("widget-clipboard-note"),
+        "com.pinwall.local-tools" => Some("widget-local-tools"),
         "com.pinwall.file-shelf" => Some("widget-file-shelf"),
         "com.pinwall.screen-tools" => Some("widget-screen-tools"),
         "com.pinwall.ocr-note" => Some("widget-ocr-note"),
@@ -172,7 +182,7 @@ fn official_widget_dir_name(id: &str) -> Option<&'static str> {
 }
 
 fn is_desktop_widget(id: &str) -> bool {
-    matches!(id, crate::power::WIDGET_ID | "com.pinwall.system-monitor" | crate::clipboard::WIDGET_ID | "com.pinwall.ocr-note" | "com.pinwall.image-tools" | "com.pinwall.clipboard-history" | "com.pinwall.file-shelf" | "com.pinwall.screen-tools")
+    matches!(id, crate::power::WIDGET_ID | "com.pinwall.system-monitor" | crate::clipboard::WIDGET_ID | "com.pinwall.ocr-note" | "com.pinwall.image-tools" | "com.pinwall.clipboard-history" | "com.pinwall.file-shelf" | "com.pinwall.screen-tools" | "com.pinwall.local-tools")
 }
 
 fn official_widget_source(app: &tauri::AppHandle, id: &str) -> Result<PathBuf, String> {
@@ -206,98 +216,72 @@ fn widgets_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         .app_data_dir()
         .map_err(|e| e.to_string())?
         .join("widgets");
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    Ok(dir)
+    std::fs::create_dir_all(&dir).map_err(|_| "widget_io")?;
+    if std::fs::symlink_metadata(&dir).map_err(|_| "widget_io")?.file_type().is_symlink() { return Err("widget_unsafe_path".into()); }
+    dir.canonicalize().map_err(|_| "widget_io".into())
 }
 
 /// 列出所有已安装 Widget 的 manifest
 #[tauri::command]
-pub fn list_installed_widgets(app: tauri::AppHandle) -> Result<Vec<WidgetManifest>, String> {
+pub fn list_installed_widgets(window: tauri::WebviewWindow, app: tauri::AppHandle) -> Result<Vec<WidgetManifest>, String> {
+    require_host(window.label())?;
+    let _lock = crate::widget_repository::PACKAGES.lock().map_err(|_| "widget_busy")?;
     let dir = widgets_dir(&app)?;
+    // Recover an interrupted replacement before listing; hidden backup/staging directories are never plugins.
+    for entry in std::fs::read_dir(&dir).map_err(|_| "widget_io")? {
+        let entry = entry.map_err(|_| "widget_io")?;
+        let name = entry.file_name(); let name = name.to_string_lossy();
+        if let Some(id) = name.strip_prefix(".previous-") { if validate_widget_id(id).is_ok() { crate::widget_repository::recover(&dir, id)?; } }
+    }
     let mut manifests = Vec::new();
-
-    let entries = std::fs::read_dir(&dir).map_err(|e| e.to_string())?;
-    for entry in entries {
-        let entry = entry.map_err(|e| e.to_string())?;
-        if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-            continue;
-        }
-        let manifest_path = entry.path().join("widget.json");
-        if !manifest_path.exists() {
-            continue;
-        }
-        match std::fs::read_to_string(&manifest_path) {
-            Ok(content) => match serde_json::from_str::<WidgetManifest>(&content) {
-                Ok(mut manifest) => match validate_manifest(&manifest) {
-                    Ok(()) => {
-                        manifest.installed_path = Some(entry.path().to_string_lossy().to_string());
-                        manifests.push(manifest);
-                    },
-                    Err(e) => {
-                        eprintln!(
-                            "[Widget] Invalid manifest for {:?}: {}",
-                            entry.file_name(),
-                            e
-                        );
-                    }
-                },
-                Err(e) => {
-                    eprintln!(
-                        "[Widget] Failed to parse manifest for {:?}: {}",
-                        entry.file_name(),
-                        e
-                    );
-                }
+    for entry in std::fs::read_dir(&dir).map_err(|_| "widget_io")? {
+        let entry = entry.map_err(|_| "widget_io")?;
+        let id = entry.file_name().to_string_lossy().to_string();
+        if validate_widget_id(&id).is_err() { continue; }
+        match read_manifest(&entry.path()) {
+            Ok(mut manifest) if manifest.id == id => {
+                manifest.installed_path = Some(entry.path().to_string_lossy().to_string());
+                manifests.push(manifest);
             },
-            Err(e) => {
-                eprintln!(
-                    "[Widget] Failed to read manifest for {:?}: {}",
-                    entry.file_name(),
-                    e
-                );
-            }
+            _ => eprintln!("[Widget] Invalid installed package skipped"),
         }
     }
-
     Ok(manifests)
+}
+
+#[tauri::command]
+pub fn preview_widget_install(window: tauri::WebviewWindow, path: String) -> Result<WidgetManifest, String> {
+    require_host(window.label())?;
+    read_manifest(std::path::Path::new(&path))
 }
 
 /// 从本地路径安装 Widget（复制整个目录到 widgets/{id}/）
 #[tauri::command]
-pub fn install_widget(app: tauri::AppHandle, path: String) -> Result<WidgetManifest, String> {
+pub fn install_widget(window: tauri::WebviewWindow, app: tauri::AppHandle, path: String, id: String, version: String, permissions: Vec<String>) -> Result<WidgetManifest, String> {
+    require_host(window.label())?;
     let source = PathBuf::from(&path);
-    install_widget_from_source(&app, source)
+    install_checked(&app, source, Some((&id, &version, &permissions)))
 }
 
 fn install_widget_from_source(app: &tauri::AppHandle, source: PathBuf) -> Result<WidgetManifest, String> {
-    if !source.exists() {
-        return Err("Source path does not exist".to_string());
-    }
-
-    // 读取并校验 manifest
-    let manifest_path = source.join("widget.json");
-    let manifest_content =
-        std::fs::read_to_string(&manifest_path).map_err(|e| format!("Cannot read widget.json: {}", e))?;
-    let manifest: WidgetManifest =
-        serde_json::from_str(&manifest_content).map_err(|e| format!("Invalid widget.json: {}", e))?;
-    validate_manifest(&manifest)?;
-    validate_manifest_files(&source, &manifest)?;
-
-    // 目标目录
-    let dest = widgets_dir(app)?.join(&manifest.id);
-    if manifest.id == crate::power::WIDGET_ID { app.state::<crate::power::PowerService>().close_all()?; }
-    if manifest.id == crate::clipboard_history::WIDGET_ID { app.state::<crate::clipboard_history::HistoryService>().stop(true)?; }
-    if manifest.id == crate::shelf::WIDGET_ID { app.state::<crate::shelf::ShelfService>().deactivate()?; }
-    if manifest.id == crate::screen_tools::WIDGET_ID { app.state::<crate::screen_tools::ScreenService>().clear()?; }
-    if manifest.id == crate::image_tools::IMAGE_ID { app.state::<crate::image_tools::ImageService>().clear()?; }
-
-    // 如果已存在则先删除（覆盖安装）
-    if dest.exists() {
-        std::fs::remove_dir_all(&dest).map_err(|e| e.to_string())?;
-    }
-
-    // 递归复制
-    copy_dir_recursive(&source, &dest)?;
+    install_checked(app, source, None)
+}
+fn install_checked(app: &tauri::AppHandle, source: PathBuf, expected: Option<(&str, &str, &[String])>) -> Result<WidgetManifest, String> {
+    let _lock = crate::widget_repository::PACKAGES.lock().map_err(|_| "widget_busy")?;
+    let manifest = read_manifest(&source)?;
+    if expected.is_some_and(|(id, version, permissions)| manifest.id != id || manifest.version != version || manifest.permissions != permissions) { return Err("widget_package_changed".into()); }
+    let root = widgets_dir(app)?;
+    let dest = root.join(&manifest.id);
+    crate::widget_repository::install(&root, &source, &manifest.id, |stage| {
+        let staged = read_manifest(stage)?;
+        if staged.id != manifest.id || staged.permissions != manifest.permissions || staged.version != manifest.version { return Err("widget_package_changed".into()); }
+        if manifest.id == crate::power::WIDGET_ID { app.state::<crate::power::PowerService>().close_all()?; }
+        if manifest.id == crate::clipboard_history::WIDGET_ID { app.state::<crate::clipboard_history::HistoryService>().stop(true)?; }
+        if manifest.id == crate::shelf::WIDGET_ID { app.state::<crate::shelf::ShelfService>().deactivate()?; }
+        if manifest.id == crate::screen_tools::WIDGET_ID { app.state::<crate::screen_tools::ScreenService>().clear()?; }
+        if manifest.id == crate::image_tools::IMAGE_ID { app.state::<crate::image_tools::ImageService>().clear()?; }
+        Ok(())
+    })?;
 
     let mut installed_manifest = manifest;
     installed_manifest.installed_path = Some(dest.to_string_lossy().to_string());
@@ -306,64 +290,67 @@ fn install_widget_from_source(app: &tauri::AppHandle, source: PathBuf) -> Result
 
 /// 安装内置官方 Widget（从打包资源或开发目录复制到用户 widgets 目录）
 #[tauri::command]
-pub fn install_official_widget(app: tauri::AppHandle, id: String) -> Result<WidgetManifest, String> {
+pub fn install_official_widget(window: tauri::WebviewWindow, app: tauri::AppHandle, id: String) -> Result<WidgetManifest, String> {
+    require_host(window.label())?;
     let source = official_widget_source(&app, &id)?;
     install_widget_from_source(&app, source)
 }
 
 /// 读取已安装 Widget 的入口 HTML，用于前端 iframe srcDoc 渲染。
 #[tauri::command]
-pub fn read_widget_entry_html(app: tauri::AppHandle, id: String) -> Result<String, String> {
+pub fn read_widget_entry_html(window: tauri::WebviewWindow, app: tauri::AppHandle, id: String) -> Result<String, String> {
+    crate::metrics::require_main(window.label())?;
     validate_widget_id(&id)?;
+    let _lock = crate::widget_repository::PACKAGES.lock().map_err(|_| "widget_busy")?;
+    let root = widgets_dir(&app)?;
+    crate::widget_repository::recover(&root, &id)?;
+    let directory = root.join(&id); let manifest = read_manifest(&directory)?;
+    if manifest.id != id { return Err("widget_manifest_invalid".into()); }
+    String::from_utf8(crate::tool_files::read_bounded(&directory.join(manifest.entry), 2 * 1024 * 1024)?).map_err(|_| "widget_entry_invalid".into())
+}
 
-    let widget_dir = widgets_dir(&app)?.join(&id);
-    if !widget_dir.exists() {
-        return Err("Widget is not installed".to_string());
-    }
-
-    let manifest_path = widget_dir.join("widget.json");
-    let manifest_content = std::fs::read_to_string(&manifest_path)
-        .map_err(|e| format!("Cannot read widget.json: {}", e))?;
-    let manifest: WidgetManifest = serde_json::from_str(&manifest_content)
-        .map_err(|e| format!("Invalid widget.json: {}", e))?;
-    validate_manifest(&manifest)?;
-    if manifest.id != id {
-        return Err("Widget manifest id does not match installed directory".to_string());
-    }
-
-    let entry_path = widget_dir.join(&manifest.entry);
-    let metadata = std::fs::symlink_metadata(&entry_path)
-        .map_err(|_| format!("Widget entry file does not exist: {}", manifest.entry))?;
-    if metadata.file_type().is_symlink() {
-        return Err("Widget entry cannot be a symlink".to_string());
-    }
-    if !metadata.is_file() {
-        return Err("Widget entry must be a file".to_string());
-    }
-
-    std::fs::read_to_string(&entry_path)
-        .map_err(|e| format!("Cannot read widget entry: {}", e))
+#[tauri::command]
+pub fn get_widget_rollback(window: tauri::WebviewWindow, app: tauri::AppHandle, id: String) -> Result<Option<WidgetManifest>, String> {
+    require_host(window.label())?; validate_widget_id(&id)?;
+    let _lock = crate::widget_repository::PACKAGES.lock().map_err(|_| "widget_busy")?;
+    let path = crate::widget_repository::previous(&widgets_dir(&app)?, &id);
+    if !path.exists() { return Ok(None); }
+    let mut manifest = read_manifest(&path)?;
+    if manifest.id != id { return Err("widget_manifest_invalid".into()); }
+    manifest.default_enabled = Some(false);
+    Ok(Some(manifest))
+}
+#[tauri::command]
+pub fn rollback_widget(window: tauri::WebviewWindow, app: tauri::AppHandle, id: String, version: String, permissions: Vec<String>) -> Result<WidgetManifest, String> {
+    require_host(window.label())?; validate_widget_id(&id)?;
+    let path = crate::widget_repository::previous(&widgets_dir(&app)?, &id);
+    let preview = read_manifest(&path)?;
+    if preview.id != id || preview.version != version || preview.permissions != permissions { return Err("widget_package_changed".into()); }
+    let mut manifest = install_checked(&app, path, Some((&id, &version, &permissions)))?;
+    manifest.default_enabled = Some(false);
+    Ok(manifest)
 }
 
 /// 卸载 Widget（删除 widgets/{id}/ 目录及其存储数据）
 #[tauri::command]
-pub fn uninstall_widget(app: tauri::AppHandle, id: String) -> Result<(), String> {
+pub fn uninstall_widget(window: tauri::WebviewWindow, app: tauri::AppHandle, id: String) -> Result<(), String> {
+    require_host(window.label())?;
     validate_widget_id(&id)?;
+    let _lock = crate::widget_repository::PACKAGES.lock().map_err(|_| "widget_busy")?;
     if id == crate::power::WIDGET_ID { app.state::<crate::power::PowerService>().close_all()?; }
     if id == crate::clipboard_history::WIDGET_ID { app.state::<crate::clipboard_history::HistoryService>().stop(true)?; }
+    if id == crate::utilities::WIDGET_ID {
+        let path=crate::tool_files::storage_root(&app)?.join("snippets.json");
+        for path in [path.clone(),path.with_extension("json.corrupt-backup")] { if std::fs::symlink_metadata(&path).is_ok() { std::fs::remove_file(path).map_err(|_|"widget_io")?; } }
+    }
     if id == crate::shelf::WIDGET_ID { crate::shelf::uninstall(&app)?; }
     if id == crate::screen_tools::WIDGET_ID { app.state::<crate::screen_tools::ScreenService>().clear()?; }
     if id == crate::image_tools::IMAGE_ID { app.state::<crate::image_tools::ImageService>().clear()?; }
-    let dir = widgets_dir(&app)?.join(&id);
-    if dir.exists() {
-        std::fs::remove_dir_all(&dir).map_err(|e| e.to_string())?;
-    }
-
-    // 清理存储数据
-    let storage_path = widgets_dir(&app)?
-        .join(format!("{}_storage.json", id));
-    if storage_path.exists() {
-        let _ = std::fs::remove_file(&storage_path);
+    let root = widgets_dir(&app)?;
+    crate::widget_repository::uninstall(&root, &id)?;
+    let storage_path = root.join(format!("{}_storage.json", id));
+    for path in [storage_path.clone(), storage_path.with_extension("json.corrupt-backup")] {
+        if std::fs::symlink_metadata(&path).is_ok() { std::fs::remove_file(path).map_err(|_| "widget_io")?; }
     }
 
     Ok(())
@@ -416,6 +403,7 @@ fn native_tool_files(id: &str) -> Result<[(&'static str, &'static [u8]); 3], Str
         ("icon.svg", include_bytes!(concat!("../../resources/widgets/", $folder, "/icon.svg")).as_slice()),
     ] }; }
     Ok(match id {
+        "com.pinwall.local-tools" => files!("widget-local-tools"),
         "com.pinwall.file-shelf" => files!("widget-file-shelf"),
         "com.pinwall.screen-tools" => files!("widget-screen-tools"),
         "com.pinwall.ocr-note" => files!("widget-ocr-note"),
@@ -432,35 +420,23 @@ pub fn verify_native_tool(app: &tauri::AppHandle, id: &str) -> Result<(), String
 
 /// 读取 Widget 存储数据
 #[tauri::command]
-pub fn read_widget_storage(
-    app: tauri::AppHandle,
-    id: String,
-) -> Result<HashMap<String, serde_json::Value>, String> {
-    validate_widget_id(&id)?;
-    let storage_path = widgets_dir(&app)?
-        .join(format!("{}_storage.json", id));
-    if !storage_path.exists() {
-        return Ok(HashMap::new());
-    }
-    let content = std::fs::read_to_string(&storage_path).map_err(|e| e.to_string())?;
-    let data: HashMap<String, serde_json::Value> =
-        serde_json::from_str(&content).unwrap_or_default();
-    Ok(data)
+pub fn read_widget_storage(window: tauri::WebviewWindow, app: tauri::AppHandle, id: String) -> Result<HashMap<String, serde_json::Value>, String> {
+    storage_path(&window, &app, &id).and_then(|path| crate::widget_repository::read(&path))
 }
-
-/// 写入 Widget 存储数据
+fn storage_path(window: &tauri::WebviewWindow, app: &tauri::AppHandle, id: &str) -> Result<PathBuf, String> {
+    crate::metrics::require_main(window.label())?; validate_widget_id(id)?;
+    let root = widgets_dir(app)?;
+    let manifest = read_manifest(&root.join(id))?;
+    if manifest.id != id || !manifest.permissions.iter().any(|p| p == "storage") { return Err("widget_permission_denied".into()); }
+    Ok(root.join(format!("{}_storage.json", id)))
+}
 #[tauri::command]
-pub fn write_widget_storage(
-    app: tauri::AppHandle,
-    id: String,
-    data: HashMap<String, serde_json::Value>,
-) -> Result<(), String> {
-    validate_widget_id(&id)?;
-    let storage_path = widgets_dir(&app)?
-        .join(format!("{}_storage.json", id));
-    let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
-    std::fs::write(&storage_path, json).map_err(|e| e.to_string())?;
-    Ok(())
+pub fn mutate_widget_storage(window: tauri::WebviewWindow, app: tauri::AppHandle, id: String, mutation: crate::widget_repository::Mutation) -> Result<(), String> {
+    crate::widget_repository::mutate(&storage_path(&window, &app, &id)?, mutation)
+}
+#[tauri::command]
+pub fn write_widget_storage(window: tauri::WebviewWindow, app: tauri::AppHandle, id: String, data: HashMap<String, serde_json::Value>) -> Result<(), String> {
+    crate::widget_repository::replace(&storage_path(&window, &app, &id)?, data)
 }
 
 /// 获取系统信息（供 Widget system API 使用）
@@ -507,6 +483,7 @@ fn system_info(state: &crate::metrics::MetricsService, category: &str) -> Result
 
 // ── 辅助函数 ──
 
+#[cfg(test)]
 fn copy_dir_recursive(src: &PathBuf, dst: &PathBuf) -> Result<(), String> {
     std::fs::create_dir_all(dst).map_err(|e| e.to_string())?;
     for entry in std::fs::read_dir(src).map_err(|e| e.to_string())? {
@@ -575,6 +552,17 @@ mod tests {
     }
 
     #[test]
+    fn serialized_manifests_omit_absent_optional_fields_instead_of_invalid_nulls() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../resources/widgets/widget-local-tools");
+        let manifest = read_manifest(&root).unwrap();
+        let value = serde_json::to_value(manifest).unwrap();
+        assert!(value.get("maxSize").is_none());
+        assert!(value.get("settings").is_none());
+        assert!(value.get("installedPath").is_none());
+        assert_eq!(value["defaultEnabled"], false);
+    }
+
+    #[test]
     fn maps_only_known_official_widget_ids() {
         assert_eq!(official_widget_dir_name("com.pinwall.clock"), Some("widget-clock"));
         assert_eq!(official_widget_dir_name("com.pinwall.weather"), Some("widget-weather"));
@@ -634,7 +622,7 @@ mod tests {
     #[test]
     fn image_and_history_tools_require_opt_in_and_exact_bundled_bytes() {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../resources/widgets");
-        for (id, permission) in [(crate::shelf::WIDGET_ID, "shelf"), (crate::screen_tools::WIDGET_ID, "screenCapture"), (crate::image_tools::OCR_ID, "ocr"), (crate::image_tools::IMAGE_ID, "images"), (crate::clipboard_history::WIDGET_ID, "clipboardHistory")] {
+        for (id, permission) in [(crate::utilities::WIDGET_ID, "utilities"), (crate::shelf::WIDGET_ID, "shelf"), (crate::screen_tools::WIDGET_ID, "screenCapture"), (crate::image_tools::OCR_ID, "ocr"), (crate::image_tools::IMAGE_ID, "images"), (crate::clipboard_history::WIDGET_ID, "clipboardHistory")] {
             let source = root.join(official_widget_dir_name(id).unwrap());
             let manifest: WidgetManifest = serde_json::from_slice(&std::fs::read(source.join("widget.json")).unwrap()).unwrap();
             validate_manifest(&manifest).unwrap();
@@ -753,4 +741,11 @@ mod tests {
 
         std::fs::remove_dir_all(&temp_root).unwrap();
     }
+}
+
+pub(crate) fn require_widget_permission(app: &tauri::AppHandle, id: &str, permission: &str) -> Result<(), String> {
+    validate_widget_id(id)?;
+    let manifest=read_manifest(&widgets_dir(app)?.join(id))?;
+    if manifest.id!=id || !manifest.permissions.iter().any(|p|p==permission) { return Err("widget_permission_denied".into()); }
+    Ok(())
 }

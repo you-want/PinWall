@@ -6,6 +6,7 @@ export interface OfficialWidgetCatalogItem {
 }
 
 export const OFFICIAL_WIDGETS: OfficialWidgetCatalogItem[] = [
+  { sourcePath: "resources/widgets/widget-local-tools", manifest: {"id": "com.pinwall.local-tools", "name": "本地工具 / Local Tools", "description": "链接清理、计算器和可搜索的文本片段库。 / Clean links, calculate and keep searchable text snippets locally.", "version": "1.0.0", "author": "PinWall Team", "entry": "index.html", "icon": "icon.svg", "type": "official", "category": "productivity", "permissions": ["utilities", "i18n"], "defaultEnabled": false, "defaultSize": {"width": 260, "height": 240}, "minSize": {"width": 210, "height": 210}} },
   {
     sourcePath: "resources/widgets/widget-file-shelf",
     manifest: {

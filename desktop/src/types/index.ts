@@ -226,6 +226,7 @@ export type WidgetPermission =
   | "clipboardHistory"
   | "shelf"
   | "screenCapture"
+  | "utilities"
   | "network"
   | "i18n";
 

@@ -255,6 +255,42 @@ export const test = base.extend({
             return null;
           case 'list_installed_widgets':
             return JSON.parse(localStorage.getItem(`${prefix}widgets:installed`) ?? '[]');
+          case 'get_widget_rollback':
+            return JSON.parse(localStorage.getItem(`${prefix}widgets:previous`) ?? 'null');
+          case 'rollback_widget': {
+            const previous = JSON.parse(localStorage.getItem(`${prefix}widgets:previous`) ?? 'null') as Args | null;
+            if (!previous || previous.id !== args.id || previous.version !== args.version || JSON.stringify(previous.permissions) !== JSON.stringify(args.permissions)) throw 'widget_package_changed';
+            const installed = JSON.parse(localStorage.getItem(`${prefix}widgets:installed`) ?? '[]') as Args[];
+            localStorage.setItem(`${prefix}widgets:previous`, JSON.stringify(installed[0] ?? null));
+            const manifest = { ...previous, defaultEnabled: false };
+            localStorage.setItem(`${prefix}widgets:installed`, JSON.stringify([manifest]));
+            return manifest;
+          }
+          case 'read_widget_storage':
+            return JSON.parse(localStorage.getItem(`${prefix}widget-data:${args.id}`) ?? '{}');
+          case 'mutate_widget_storage': {
+            const mutation = args.mutation as {method:string;key?:string;value?:unknown};
+            const key = `${prefix}widget-data:${args.id}`;
+            const data = JSON.parse(localStorage.getItem(key) ?? '{}') as Record<string,unknown>;
+            if (mutation.method === 'clear') { localStorage.setItem(key,'{}'); return null; }
+            if (!mutation.key || ['__proto__','constructor','prototype'].includes(mutation.key)) throw 'widget_storage_invalid';
+            if (mutation.method === 'set') data[mutation.key] = mutation.value;
+            else if (mutation.method === 'remove') delete data[mutation.key];
+            else throw new Error('Unsupported test mutation');
+            localStorage.setItem(key,JSON.stringify(data));return null;
+          }
+          case 'widget_utilities_request': {
+            const action = args.action as {method:string;id?:string;title?:string;text?:string};
+            if (localStorage.getItem(`${prefix}utilities:fail`)) throw localStorage.getItem(`${prefix}utilities:fail`);
+            const key = `${prefix}utilities:snippets`;
+            let entries = JSON.parse(localStorage.getItem(key) ?? '[]') as {id:string;title:string;text:string}[];
+            if (action.method === 'copy') { localStorage.setItem(`${prefix}clipboard:lastwrite`,action.text ?? ''); return []; }
+            if (action.method === 'save') { entries=entries.filter(e=>e.id!==action.id);entries.push({id:action.id!,title:action.title!,text:action.text!}); }
+            else if (action.method === 'remove') entries=entries.filter(e=>e.id!==action.id);
+            else if (action.method === 'clear') entries=[];
+            else if (action.method !== 'list') throw new Error('Unsupported test utility action');
+            localStorage.setItem(key,JSON.stringify(entries));return entries;
+          }
           case 'install_official_widget': {
             const pkg = JSON.parse(localStorage.getItem(`${prefix}widgets:package`) ?? 'null') as { manifest: Args; html: string } | null;
             if (!pkg || pkg.manifest.id !== args.id) throw new Error('Unsupported test widget package');
@@ -354,7 +390,7 @@ export const test = base.extend({
             else if (args.widgetId === 'com.pinwall.image-tools') localStorage.removeItem(`${prefix}images:token`);
             else if (args.widgetId === 'com.pinwall.file-shelf') { shelfActive = false; shelfEpoch++; }
             else if (args.widgetId === 'com.pinwall.screen-tools') { screenEpoch++; localStorage.removeItem(`${prefix}screen:token`); }
-            else if (args.widgetId !== 'com.pinwall.ocr-note') throw new Error('Unsupported test native tool');
+            else if (!['com.pinwall.ocr-note', 'com.pinwall.local-tools'].includes(String(args.widgetId))) throw new Error('Unsupported test native tool');
             return null;
           }
           case 'get_system_info': {
@@ -407,8 +443,9 @@ export const test = base.extend({
             powerToken = null; powerStatus = { supported: true, active: false, endsAt: null };
             return null;
           case 'uninstall_widget':
-            if (!['com.pinwall.keep-awake', 'com.pinwall.system-monitor', 'com.pinwall.clipboard-note', 'com.pinwall.ocr-note', 'com.pinwall.image-tools', 'com.pinwall.clipboard-history', 'com.pinwall.file-shelf', 'com.pinwall.screen-tools'].includes(String(args.id))) throw new Error('Unsupported test widget uninstall');
+            if (!['com.pinwall.keep-awake', 'com.pinwall.system-monitor', 'com.pinwall.clipboard-note', 'com.pinwall.ocr-note', 'com.pinwall.image-tools', 'com.pinwall.clipboard-history', 'com.pinwall.file-shelf', 'com.pinwall.screen-tools', 'com.pinwall.local-tools'].includes(String(args.id))) throw new Error('Unsupported test widget uninstall');
             localStorage.setItem(`${prefix}widgets:installed`, '[]');
+            if (args.id === 'com.pinwall.local-tools') localStorage.removeItem(`${prefix}utilities:snippets`);
             if (args.id === 'com.pinwall.file-shelf') { shelfActive = false; shelfEpoch++; saveShelf([]); }
             if (args.id === 'com.pinwall.screen-tools') { screenEpoch++; localStorage.removeItem(`${prefix}screen:token`); }
             if (args.id === 'com.pinwall.clipboard-history') saveHistory(emptyHistory());

@@ -30,6 +30,8 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 image = { version = "=0.25.9", default-features = false, features = ["png", "jpeg", "webp"] }
 base64 = "0.22"
+reqwest = { version = "=0.13.4", default-features = false, features = ["rustls", "json"] }
+tokio = { version = "1", features = ["net", "time", "sync"] }
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-autostart = "2.5.1"

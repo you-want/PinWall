@@ -23,7 +23,7 @@ const VALID_WIDGET_PERMISSIONS = new Set<WidgetPermission>([
   "system",
   "power",
   "clipboard",
-  "ocr", "images", "clipboardHistory", "shelf", "screenCapture",
+  "ocr", "images", "clipboardHistory", "shelf", "screenCapture", "utilities",
   "network",
   "i18n",
 ]);
@@ -44,30 +44,16 @@ export async function loadInstalledWidgets(): Promise<WidgetManifest[]> {
   }
 }
 
-/** 通过 Tauri command 从本地路径安装 Widget */
-export async function installWidgetFromPath(sourcePath: string): Promise<WidgetManifest | null> {
-  try {
-    const manifest = await invoke<WidgetManifest>("install_widget", { path: sourcePath });
-    if (validateManifest(manifest)) {
-      return manifest;
-    }
-    console.warn("[WidgetLoader] Invalid manifest after install:", manifest);
-    return null;
-  } catch (err) {
-    console.error("[WidgetLoader] Install failed:", err);
-    return null;
-  }
-}
-
 export interface WidgetInstallResult {
   manifest: WidgetManifest | null;
   error?: string;
 }
 
 /** 通过 Tauri command 从本地路径安装 Widget，并返回可展示的失败原因 */
-export async function installWidgetFromPathWithResult(sourcePath: string): Promise<WidgetInstallResult> {
+export async function installWidgetFromPathWithResult(sourcePath: string, approved: WidgetManifest): Promise<WidgetInstallResult> {
   try {
-    const manifest = await invoke<WidgetManifest>("install_widget", { path: sourcePath });
+    const preview = approved;
+    const manifest = await invoke<WidgetManifest>("install_widget", { path: sourcePath, id: preview.id, version: preview.version, permissions: preview.permissions });
     if (validateManifest(manifest)) {
       return { manifest };
     }
@@ -151,8 +137,9 @@ function isValidWidgetSize(size: unknown): size is WidgetManifest["defaultSize"]
   return (
     typeof value.width === "number" &&
     typeof value.height === "number" &&
-    value.width > 0 &&
-    value.height > 0
+    Number.isFinite(value.width) && Number.isFinite(value.height) &&
+    value.width > 0 && value.width <= 10000 &&
+    value.height > 0 && value.height <= 10000
   );
 }
 
@@ -173,21 +160,39 @@ function hasValidPermissions(permissions: unknown): permissions is WidgetPermiss
 }
 
 /** 校验 Widget Manifest 是否合法 */
-export function validateManifest(manifest: any): manifest is WidgetManifest {
-  if (!manifest) return false;
-  if (!isValidWidgetId(manifest.id)) return false;
-  if (typeof manifest.name !== "string" || !manifest.name) return false;
-  if (typeof manifest.description !== "string") return false;
-  if (typeof manifest.author !== "string") return false;
-  if (typeof manifest.version !== "string") return false;
-  if (!isValidWidgetType(manifest.type)) return false;
-  if (!isValidWidgetCategory(manifest.category)) return false;
-  if (!isSafeWidgetRelativePath(manifest.entry)) return false;
-  if (!isSafeWidgetRelativePath(manifest.icon)) return false;
-  if (!hasValidPermissions(manifest.permissions)) return false;
-  if (manifest.defaultEnabled !== undefined && typeof manifest.defaultEnabled !== "boolean") return false;
-  if (!isValidWidgetSize(manifest.defaultSize)) return false;
-  if (manifest.minSize !== undefined && !isValidWidgetSize(manifest.minSize)) return false;
-  if (manifest.maxSize !== undefined && !isValidWidgetSize(manifest.maxSize)) return false;
+export function validateManifest(manifest: unknown): manifest is WidgetManifest {
+  if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) return false;
+  const value = manifest as Record<string, unknown>;
+  if (!isValidWidgetId(value.id)) return false;
+  if (typeof value.name !== "string" || !value.name) return false;
+  if (typeof value.description !== "string") return false;
+  if (typeof value.author !== "string") return false;
+  if (typeof value.version !== "string") return false;
+  if (!isValidWidgetType(value.type)) return false;
+  if (!isValidWidgetCategory(value.category)) return false;
+  if (!isSafeWidgetRelativePath(value.entry)) return false;
+  if (!isSafeWidgetRelativePath(value.icon)) return false;
+  if (!hasValidPermissions(value.permissions)) return false;
+  if (value.defaultEnabled !== undefined && typeof value.defaultEnabled !== "boolean") return false;
+  if (!isValidWidgetSize(value.defaultSize)) return false;
+  if (value.minSize !== undefined && !isValidWidgetSize(value.minSize)) return false;
+  if (value.maxSize !== undefined && !isValidWidgetSize(value.maxSize)) return false;
   return true;
+}
+
+export async function previewWidgetInstall(path: string): Promise<WidgetManifest> {
+  const value: unknown = await invoke("preview_widget_install", { path });
+  if (!validateManifest(value)) throw new Error("widget_manifest_invalid");
+  return value;
+}
+export async function previousWidgetVersion(id: string): Promise<WidgetManifest | null> {
+  const value: unknown = await invoke("get_widget_rollback", { id });
+  if (value === null) return null;
+  if (!validateManifest(value)) throw new Error("widget_manifest_invalid");
+  return value;
+}
+export async function rollbackWidget(manifest: WidgetManifest): Promise<WidgetManifest> {
+  const value: unknown = await invoke("rollback_widget", { id: manifest.id, version: manifest.version, permissions: manifest.permissions });
+  if (!validateManifest(value)) throw new Error("widget_manifest_invalid");
+  return { ...value, defaultEnabled: false };
 }

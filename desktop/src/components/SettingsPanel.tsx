@@ -12,7 +12,7 @@ import {
 } from "../types";
 import { ShortcutRecorder } from "./ShortcutRecorder";
 import { useWidgetStore } from "../stores/widgetStore";
-import { installOfficialWidget, installWidgetFromPathWithResult, uninstallWidget } from "../services/widgetLoader";
+import { installOfficialWidget, installWidgetFromPathWithResult, previewWidgetInstall, previousWidgetVersion, rollbackWidget, uninstallWidget } from "../services/widgetLoader";
 import { detectCurrentCity } from "../services/weatherService";
 import { OFFICIAL_WIDGETS } from "../data/officialWidgets";
 import {
@@ -803,14 +803,30 @@ function WidgetExtensionsSection() {
   };
 
   const handleInstall = async () => {
-    const selected = await open({
-      directory: true,
-      title: lang === "zh" ? "选择可信小组件目录" : "Select Trusted Widget Directory",
-    });
-    if (selected) {
-      const result = await installWidgetFromPathWithResult(selected as string);
+    try {
+      const selected = await open({ directory: true, title: lang === "zh" ? "选择可信小组件目录" : "Select Trusted Widget Directory" });
+      if (typeof selected !== "string") return;
+      const manifest = await previewWidgetInstall(selected);
+      const permissions = manifest.permissions.map(p => `${getWidgetPermissionLabel(p, lang)}: ${getWidgetPermissionDescription(p, lang)}`).join("\n");
+      if (!window.confirm(`${t.widget_review_install}\n${manifest.name} v${manifest.version}\n${permissions}`)) return;
+      setInstallingId(manifest.id);
+      const result = await installWidgetFromPathWithResult(selected, manifest);
       finishInstall(result.manifest, result.error);
-    }
+    } catch { setWidgetStatus(t.widget_package_failed); }
+    finally { setInstallingId(null); }
+  };
+  const handleRollback = async (id: string) => {
+    try {
+      setInstallingId(id);
+      const manifest = await previousWidgetVersion(id);
+      if (!manifest) { setWidgetStatus(t.widget_no_previous); return; }
+      const permissions = manifest.permissions.map(p => `${getWidgetPermissionLabel(p, lang)}: ${getWidgetPermissionDescription(p, lang)}`).join("\n");
+      if (!window.confirm(`${t.widget_review_rollback}\n${manifest.name} v${manifest.version}\n${permissions}`)) return;
+      await revokeWidgetTools(id);
+      useWidgetStore.getState().installWidget(await rollbackWidget(manifest));
+      setWidgetStatus(t.widget_rollback_done);
+    } catch { setWidgetStatus(t.widget_package_failed); }
+    finally { setInstallingId(null); }
   };
 
   const handleUninstall = async (id: string) => {
@@ -877,6 +893,8 @@ function WidgetExtensionsSection() {
                 lang={lang}
                 onToggle={(enabled) => void handleToggle(w.manifest.id, enabled)}
                 onUninstall={() => handleUninstall(w.manifest.id)}
+                onRollback={() => void handleRollback(w.manifest.id)}
+                busy={installingId !== null}
               />
               {w !== widgets[widgets.length - 1] && <div className="ap-divider" />}
             </div>
@@ -947,13 +965,18 @@ function InstalledWidgetRow({
   lang,
   onToggle,
   onUninstall,
+  onRollback,
+  busy,
 }: {
   manifest: WidgetManifest;
   enabled: boolean;
   lang: "zh" | "en";
   onToggle: (enabled: boolean) => void;
   onUninstall: () => void;
+  onRollback: () => void;
+  busy: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <div className="ap-row ap-row-toggle">
       <div className="min-w-0 pr-4">
@@ -970,8 +993,9 @@ function InstalledWidgetRow({
         </div>
         <WidgetPermissionChips permissions={manifest.permissions} lang={lang} />
       </div>
-      <div className="flex items-center gap-3">
-        <button className="text-xs text-red-400/70 hover:text-red-400 transition-colors cursor-pointer" onClick={onUninstall}>
+      <div className="flex flex-wrap items-center gap-3">
+        <button className="text-xs text-white/60" disabled={busy} onClick={onRollback}>{t.widget_rollback}</button>
+        <button className="text-xs text-red-400/70 hover:text-red-400 transition-colors cursor-pointer" disabled={busy} onClick={onUninstall}>
           {lang === "zh" ? "移除" : "Remove"}
         </button>
         <label className="ap-switch">

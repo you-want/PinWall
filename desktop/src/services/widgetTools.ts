@@ -4,6 +4,7 @@ import { revokeWidgetPower } from "./widgetPower";
 import type { Translations } from "../i18n";
 
 export const NATIVE_TOOLS = {
+  utilities: { id: "com.pinwall.local-tools", permission: "utilities" },
   shelf: { id: "com.pinwall.file-shelf", permission: "shelf" },
   screen: { id: "com.pinwall.screen-tools", permission: "screenCapture" },
   ocr: { id: "com.pinwall.ocr-note", permission: "ocr" },
@@ -22,7 +23,7 @@ export type HistoryAction = { method: "status" | "start" | "pause" | "clear" } |
 const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 const integer = (v: unknown, min = 0, max = Number.MAX_SAFE_INTEGER): v is number => typeof v === "number" && Number.isSafeInteger(v) && v >= min && v <= max;
 const dimensions = (v: Record<string, unknown>) => integer(v.width, 1, 8192) && integer(v.height, 1, 8192) && v.width * v.height <= 16_000_000;
-const knownErrors = new Set(["shelf_corrupt", "shelf_future_version", "shelf_file_unavailable", "shelf_busy", "screen_permission_denied", "screen_capture_failed", "screen_timeout", "screen_expired", "screen_unsupported", "tool_unsafe_path", "tool_io_failed", "tool_too_large", "clipboard_busy","tool_cancelled", "tool_permission_denied", "tool_reinstall_required", "image_too_large", "image_invalid", "image_busy", "image_source_protected", "image_unsafe_path", "image_expired", "image_save_failed", "image_extension_mismatch", "ocr_no_text", "ocr_text_too_large", "ocr_unsupported", "history_unsupported", "history_busy"]);
+const knownErrors = new Set(["utility_invalid_snippet", "utility_snippet_limit", "utility_unsupported", "widget_storage_corrupt", "widget_storage_future", "widget_storage_limit","shelf_corrupt", "shelf_future_version", "shelf_file_unavailable", "shelf_busy", "screen_permission_denied", "screen_capture_failed", "screen_timeout", "screen_expired", "screen_unsupported", "tool_unsafe_path", "tool_io_failed", "tool_too_large", "clipboard_busy","tool_cancelled", "tool_permission_denied", "tool_reinstall_required", "image_too_large", "image_invalid", "image_busy", "image_source_protected", "image_unsafe_path", "image_expired", "image_save_failed", "image_extension_mismatch", "ocr_no_text", "ocr_text_too_large", "ocr_unsupported", "history_unsupported", "history_busy"]);
 
 export async function toolCall<T>(command: string, args: Record<string, unknown>, signal: AbortSignal, valid: (v: unknown) => v is T): Promise<T> {
   if (signal.aborted) throw new Error("tool_cancelled");
@@ -65,6 +66,10 @@ export async function revokeWidgetTools(widgetId: string): Promise<void> {
 }
 export function toolError(error: unknown, t: Translations): string {
   const code = error instanceof Error ? error.message : "";
+  if (code === "utility_invalid_snippet" || code === "utility_snippet_limit" || code === "widget_storage_limit") return t.utility_limits;
+  if (code === "widget_storage_corrupt") return t.utility_corrupt;
+  if (code === "widget_storage_future") return t.utility_future;
+  if (code === "utility_unsupported") return t.tools_unsupported;
   if (code === "shelf_corrupt") return t.shelf_corrupt;
   if (code === "shelf_future_version") return t.shelf_future;
   if (code === "shelf_file_unavailable") return t.shelf_unavailable;

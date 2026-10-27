@@ -1,12 +1,12 @@
 # 可选原生插件契约
 
-本轮属于 P2 实验能力，复用已有 Widget Hub、安装器和桌面卡片。当前包含防休眠、系统监控、剪贴板转便签、图片识字、图片工具、剪贴板历史、文件暂存架和屏幕工具，均默认关闭；防休眠需用户主动开始，不自动恢复运行。截图仅按需启动固定系统截图程序，不新增常驻独立服务进程，不扩大 Tauri capability，不改动便签/设置持久化 schema；暂存架使用独立版本化索引。
+本轮属于 P2 实验能力，复用已有 Widget Hub、安装器和桌面卡片。当前包含防休眠、系统监控、剪贴板转便签、图片识字、图片工具、剪贴板历史、文件暂存架、屏幕工具和本地工具，均默认关闭；防休眠需用户主动开始，不自动恢复运行。截图仅按需启动固定系统截图程序，不新增常驻独立服务进程，不扩大 Tauri capability，不改动便签/设置持久化 schema；暂存架使用独立版本化索引。
 
 ## 安装与资源
 
-源码位于 `desktop/resources/widgets/` 的 `widget-keep-awake/`、`widget-system-monitor/`、`widget-clipboard-note/`、`widget-ocr-note/`、`widget-image-tools/`、`widget-clipboard-history/`、`widget-file-shelf/`、`widget-screen-tools/`，随应用打包至 `native-widgets/`；其余官方组件沿用现有资源目录。系统监控保留 ID `com.pinwall.system-monitor`，升级至 2.0；旧版不会自动替换，需从组件中心重新安装。安装后仍存入 AppData 下的 widgets 目录。
+源码位于 `desktop/resources/widgets/` 的 `widget-keep-awake/`、`widget-system-monitor/`、`widget-clipboard-note/`、`widget-ocr-note/`、`widget-image-tools/`、`widget-clipboard-history/`、`widget-file-shelf/`、`widget-screen-tools/`、`widget-local-tools/`，随应用打包至 `native-widgets/`；其余官方组件沿用现有资源目录。系统监控保留 ID `com.pinwall.system-monitor`，升级至 2.0；旧版不会自动替换，需从组件中心重新安装。安装后仍存入 AppData 下的 widgets 目录。
 
-Manifest 支持可选字段 `defaultEnabled`；原生操作使用独立 `power`、`clipboard` 权限，监控使用已有 `system` 权限。新安装组件按 `defaultEnabled ?? true` 初始化，兼容既有组件；同步已有安装时保留用户的启用选择。八项工具固定为 `false`，安装授权不会启动原生能力。覆盖安装会重新关闭；普通启动同步保留现有启用状态和尺寸。
+Manifest 支持可选字段 `defaultEnabled`；原生操作使用独立 `power`、`clipboard` 权限，监控使用已有 `system` 权限。新安装组件按 `defaultEnabled ?? true` 初始化，兼容既有组件；同步已有安装时保留用户的启用选择。九项工具固定为 `false`，安装授权不会启动原生能力。覆盖安装会重新关闭；普通启动同步保留现有启用状态和尺寸。
 
 `type: official` 不能授予原生权限。Rust 在打开电源会话、读取剪贴板、操作图片、历史、暂存架或屏幕前校验各自固定 ID、安装目录及三个入口文件的精确字节，拒绝符号链接、路径逃逸和修改后的组件。更新应用后旧组件内容若不匹配，需要重新安装；UI 提供说明。这是内置可信源机制，不是第三方签名、市场审核或自动更新系统。
 
@@ -72,7 +72,7 @@ macOS 使用 IOKit `PreventUserIdleSystemSleep` 和系统 `TimeoutActionRelease`
 | `recognize_widget_image` | 无输入；取消/null 或识别文本 | 选择器由原生打开，Vision accurate 中英文识别，最多 64 KiB UTF-8 |
 | `select_widget_image` | 无输入；取消/null 或 token/尺寸/原大小/PNG 缩略图 | 不接受任意文件路径，原图只在原生内存 |
 | `export_widget_image` | token + width/height/format/quality；取消/null 或尺寸/字节数/格式 | 系统保存选择器，拒绝原图、符号链接、AppData 及扩展名不符 |
-| `revoke_widget_tool` | 五项固定 ID 之一；无返回内容 | main/settings 只可清除图像/屏幕选择、停止清空历史或停用暂存架，不能启动 |
+| `revoke_widget_tool` | 六项固定 ID 之一；无返回内容 | main/settings 只可清除图像/屏幕选择、停止清空历史或停用暂存架，不能启动 |
 
 图像服务共享单操作槽，拒绝并发 OCR/选择/导出。选择结果只保留一张，10 分钟逻辑过期，关闭图片弹窗、frame 销毁/刷新、停用、卸载、重装或主页面重载清除。选择 token 是宿主内部标识，不充当加密凭证；原生权限和内容校验独立进行。清除使迟到的选择失效；保存前再次确认当前选择。已打开的系统选择器或开始的 Vision 调用不能强制终止，前端取消会丢弃结果，原生槽位等待系统返回。
 
@@ -114,10 +114,25 @@ OCR 复用本地 Vision、64 KiB 正文上限，结果进入宿主确认编辑�
 
 后续能力应按“单独 manifest 权限 → 类型化 bridge → 最小原生命令 → 可撤销生命周期 → 错误/离线状态 → 测试和原生 QA”逐个加入。以后新增能力同样需要独立评估读写范围与资源预算，不能通过通用 shell 权限接入。
 
-本轮不提供第三方原生插件执行、开放市场、更新回滚、通用插件存储迁移或完整网络代理安全方案。已有网络 bridge 的 DNS/重定向策略、AppData asset scope、原子安装等仍需后续审计。iframe 改造和少量可信原生服务不等同于整个 Widget 体系已完成安全化。
+本轮不提供第三方原生插件执行或开放市场服务。已补齐本地包更新/回滚、旧插件数据迁移、原生网络代理和资源 scope；仍需真实生产运行与独立安全审查，不把这些改造当作完整安全认证。iframe 改造和少量可信原生服务不等同于整个 Widget 体系已完成安全化。
 
-音频混音/每应用路由、窗口布局/Dock 预览、全局输入/文本展开、风扇等硬件控制、视频处理、录屏和应用卸载仍未实现，按原方案分别评估，不算作八项工具交付。
+音频混音/每应用路由、窗口布局/Dock 预览、全局输入/文本展开、风扇等硬件控制、视频处理、录屏和应用卸载仍未实现，按原方案分别评估，不算作九项工具交付。
 
 测试入口包括 `src/services/widgetProtocol.test.ts`、`widgetPower.test.ts`、`widgetMetrics.test.ts`、`widgetClipboard.test.ts`、`widgetBridge.test.ts`、宿主弹窗测试，以及 `src-tauri/src/{power,metrics,clipboard}.rs` 和 `e2e/widget-{power,metrics,clipboard}.spec.ts`。新增测试位于 `widgetTools.test.ts`、`image_tools.rs`、`clipboard_history.rs` 和 `e2e/widget-tools.spec.ts`。真实 Tauri 多窗口、文件选择器、通用剪贴板、退出和睡眠唤醒按 `PLUGIN_ACCEPTANCE.md` 与 `RELEASE_QA.md` 验收。
 
 暂存架/屏幕测试补充：`widgetWorkspaceTools.test.ts`、`FileShelfDialog.test.tsx`、WidgetFrame 同值 manifest 会话回归、Rust `shelf.rs`/`screen_tools.rs`/`tool_files.rs`、`e2e/widget-workspace-tools.spec.ts`。屏幕进程退出测试只启动并回收 `/bin/sleep`，不读取真实屏幕。
+
+
+## 本地工具与插件仓库（2026-10-27 续）
+
+固定 `com.pinwall.local-tools` + 高风险 `utilities` 权限；iframe 只能 `utilities.open()`，不能传入待复制文字或读取片段。宿主 `widget_utilities_request` 严格枚举 list/save/remove/clear/copy。链接/计算在宿主离线纯函数完成，不使用 eval、网络或全局输入。链接仅删已知追踪参数，检测已知签名/token 参数则保留原链接；不能识别所有自定义签名，结果需用户审阅。计算器支持基础运算、幂、弧度三角函数等单参函数，512 字符/256 token/32 层括号/有限浮点结果，非财务精确计算。
+
+片段仅在 AppData/native-tools/snippets.json，经版本化原生数据事务持久化；100 条、标题 256 字节、正文 64 KiB、总量 1 MiB。只在明确点击 Copy 后写入文本，不读剪贴板。关闭/停用保留片段，卸载清理片段及损坏备份。发起后已开始的保存可完成；关闭丢弃迟到 UI 结果。
+
+包安装限制 32 MiB、256 个文件/目录、12 层、入口/图标 2 MiB、manifest 64 KiB，拒绝符号链接与特殊文件。先复制到私有 staging，完整验证后切换；先前版本保留在隐藏 previous 目录。切换失败恢复旧版，启动列表补偿中断；备份目录不作为插件渲染。本地安装先原生预览，确认 ID/版本/权限后安装，再次校验；回滚也审阅权限、默认停用，不降级数据。当前为同进程事务，不承诺不同应用进程同时修改同一 AppData 的事务隔离。
+
+插件 storage 使用 schemaVersion 1 + revision + data，兼容旧裸 map，在首次成功修改时迁移。只允许已安装且声明 storage 的 main 调用；mutate 原生串行读改写，避免前端 read-modify-write 覆盖，失败原子保留，损坏备份并拒绝继续写入，未来版本不覆盖；1 MiB/256 键/20 层上限。回滚不回滚数据，旧版应用需遵守未来 schema 拒绝策略。损坏数据无自动重置入口，需从已知有效备份恢复，不能通过 clear 静默覆盖。
+
+network bridge 统一走 main 原生 `widget_network_request`，验证已安装 manifest 的 network 权限。仅 HTTP(S)、80/443、无 URL 账户密码/fragment；DNS 最长 3 秒，所有地址都须公网，固定解析地址连接，禁环境代理/重定向/隐式凭据；每请求 15 秒、原生总并发 8/每插件 2、输入输出 JSON 各 1 MiB。只保留 accept/content-type/accept-language/x-widget 等少量头；响应不回传完整错误、URL 或路径。关闭 frame 发送取消并丢弃迟到结果；JSON 之外资源不走此接口。资源协议从整个 AppData 收窄为 backgrounds/**，iframe 仍只接受 inline/data/blob 资源。
+
+这些约束不等于允许任意第三方原生执行；原方案剩余项与外部依赖见 `PLUGIN_ROADMAP.md`。

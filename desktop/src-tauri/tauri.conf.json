@@ -52,7 +52,7 @@
       "csp": { "frame-src": "'self'" },
       "assetProtocol": {
         "enable": true,
-        "scope": ["$APPDATA/**"]
+        "scope": ["$APPDATA/backgrounds/**"]
       }
     }
   },

@@ -163,11 +163,11 @@ Automated vault tests use an in-memory adapter and temporary files. They do not 
 
 This is the primary path for trusted, optional widgets.
 
-- [ ] All twelve official widgets are listed: Clock, Weather, Pomodoro, System Monitor, Music Control, Keep Awake, Clipboard to Note, Image to Note, Image Tools, Clipboard History, File Shelf, and Screen Tools.
+- [ ] All thirteen official widgets are listed: Clock, Weather, Pomodoro, System Monitor, Music Control, Keep Awake, Clipboard to Note, Image to Note, Image Tools, Clipboard History, File Shelf, Screen Tools, and Local Tools.
 - [ ] Install Clock from the Official Widget Hub without choosing a folder.
 - [ ] Install Weather and confirm the high-risk `network` permission prompt appears before install.
 - [ ] Install System Monitor and confirm the high-risk `system` permission prompt appears before install.
-- [ ] Enabled widgets appear on the main wall immediately; all eight native tools are disabled after installation until explicitly enabled; Keep Awake and Clipboard History also require an explicit Start.
+- [ ] Enabled widgets appear on the main wall immediately; all nine native tools are disabled after installation until explicitly enabled; Keep Awake and Clipboard History also require an explicit Start.
 - [ ] Installed widgets survive app quit and restart.
 - [ ] Installed widgets can be toggled off and on.
 - [ ] Installed widgets can be removed.
@@ -238,7 +238,7 @@ Direct API smoke and browser IPC mocks do not verify actual Tauri/TCC authorizat
 
 ## Image To Note, Image Tools And Clipboard History (Experimental)
 
-Follow the ordered Chinese checklist in [PLUGIN_ACCEPTANCE.md](./PLUGIN_ACCEPTANCE.md) for all eight native tools. Manual gates below remain unchecked until performed in Tauri.
+Follow the ordered Chinese checklist in [PLUGIN_ACCEPTANCE.md](./PLUGIN_ACCEPTANCE.md) for all nine native tools. Manual gates below remain unchecked until performed in Tauri.
 
 - [ ] Install the three new tools with distinct permission explanations, initially disabled; enabling must not select a file, create a note or start clipboard recording.
 - [ ] OCR: select Chinese/English PNG/JPEG/WebP, review/edit and create once; cancel, no text, corrupt/oversized input and late results never create notes automatically.
@@ -269,6 +269,13 @@ Use steps 8–9 of [PLUGIN_ACCEPTANCE.md](./PLUGIN_ACCEPTANCE.md); keep every na
 - [ ] Confirm no background screen capture, recording, network/AI calls or permanent clipboard writes except the explicit Copy color action. Core notes, reminders, tray and click-through still work with these tools disabled.
 
 Browser IPC mocks and synthetic child-process tests do not satisfy these real TCC, Finder, dialog, window or hardware gates.
+
+## Local Tools, Package Recovery And Network Boundary
+
+- [ ] Follow step 10 in PLUGIN_ACCEPTANCE.md: offline link cleaning/calculation and searchable/editable/persistent snippets; explicit copies, clear confirmation, limits and corrupt/future-data preservation.
+- [ ] Review local package permissions before installation; check cancellation, bounded staging, update failure preserving the working package, interrupted replacement recovery and permission-reviewed disabled rollback without data downgrade.
+- [ ] Verify production asset scope permits background images and denies other AppData resources. Test native public DNS pinning, private/reserved IPv4/IPv6, proxy bypass, redirect refusal, response limits and cancellation.
+- [ ] Check main-only native operations, Chinese/English, narrow WKWebView, native confirmation and real quit/restart. Browser mocks do not satisfy these gates.
 
 ## Visual And Performance Checks
 
