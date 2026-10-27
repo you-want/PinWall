@@ -272,3 +272,11 @@ CI 暴露了 `srcDoc` 已提交但消息监听 effect 尚未就绪的测试竞�
 macOS 包替换/读取/恢复增加进程间 advisory lock；插件数据事务与输入规则/文本片段的读写也使用独立文件锁。锁文件无正文，保留空文件用于稳定 inode 协调，不能随意删除正在使用的锁。拒绝锁路径 symlink，繁忙快速返回；既有原子写与迁移规则保持。
 
 验证：前端 40 个文件 / 272 项、TypeScript/Vite 构建通过（主 JS 771.64 KB，既有大 chunk 提示保留）；Rust 110 项通过 / 7 项 smoke 默认忽略，显式只读应用/进程 inventory smoke 通过。临时目录身份替换/链接扫描、跨句柄锁和 symlink 锁拒绝测试通过。58 项完整浏览器通过（`/tmp/pinwall-maintenance-all-e2e`），窄窗口已检查。`.app` 打包、严格签名和 42 个资源字节核对通过，仍为 x86_64/ad-hoc/未公证。没有移动用户应用/缓存、没有发送实际进程信号或运行 Homebrew 卸载；人工验收清单现十八步，全部保持未勾选。未增加 capability 或修改核心便签 schema。
+
+## 第三方可信市场（2026-10-27 续）
+
+替换未接入的假安装页，新增懒加载第三方市场。默认关闭/无地址或根公钥/不自动联网；用户独立核对根公钥后手动刷新。Ed25519 根签审核目录与发布者签名包分离，精确 SHA256/manifest/权限绑定，目录过期/最高 revision/同版本摘要防回退。下载沿用公开 DNS 固定、无代理/重定向、HTTPS、超时/容量限制。准备和确认都重新验证目录，2 分钟内存预览、取消/重载/退出 epoch、私有暂存和原子安装；安装/更新默认关闭，既有上一版本回滚保留。第三方不能获得官方 ID 或原生权限。
+
+新增 Node 离线 keygen/package/inspect/review --approve/catalog 工具与只读 localhost 源站，私钥不托管；源站需运营方另配 HTTPS。inspect 解出受限普通资源供人工代码/资源审查，不执行插件。协议、上限、撤销、运维和限制见 MARKETPLACE_TRUST.md。独立公钥、域名/TLS 和真实审核身份尚需发行者配置；iframe 没有进程级 CPU 硬隔离，仅接收人工审查的单文件 Web 插件，不能宣称允许任意匿名代码。
+
+验证：前端 41 文件 / 274 项通过，Node 4 项签名/审核/只读源站测试通过；Rust 117 项通过 / 7 项 smoke 默认忽略，含 Node→Rust 公开验签向量（无私钥）。TypeScript/Vite、`.app`、strict codesign 和 42 资源字节核对通过；主 JS 776.57 KB，原有大 chunk 提示保留，市场面板按需加载。首次 6 worker 与 release 编译并行时音频流程整体 30 秒超时，编译结束以 3 worker 重跑全量 59 项全部通过，未放宽断言/超时（`/tmp/pinwall-marketplace-all-e2e-confirmed`）。窄窗口截图已检查。保持 x86_64/ad-hoc/无 Team ID/未公证，未部署公网、未执行用户原生验收；清单现十九步，全部待最后验收。

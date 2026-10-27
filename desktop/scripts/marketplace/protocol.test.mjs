@@ -1,0 +1,26 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,readFile,writeFile,mkdir,rm,symlink,stat} from 'node:fs/promises';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+import {generateKeyPairSync} from 'node:crypto';
+import {envelope,openEnvelope,rawPublicKey,sha256,validatePackage,validPath} from './protocol.mjs';
+import {run} from './cli.mjs';
+import {startServer} from './server.mjs';
+const manifest={id:'org.example.fixture',version:'1.0.0',name:'Fixture',description:'Single file',author:'Test',entry:'index.html',icon:'icon.svg',type:'community',category:'utility',permissions:['storage'],defaultEnabled:false,defaultSize:{width:240,height:160}};
+const pkg=()=>({schemaVersion:1,id:manifest.id,version:manifest.version,files:[{path:'widget.json',data:Buffer.from(JSON.stringify(manifest)).toString('base64')},{path:'index.html',data:Buffer.from('<p>offline</p>').toString('base64')},{path:'icon.svg',data:Buffer.from('<svg/>').toString('base64')}]});
+test('exact signatures reject payload, signature and key substitution',()=>{const k=generateKeyPairSync('ed25519'),other=generateKeyPairSync('ed25519'),signed=envelope(pkg(),k.privateKey),raw=rawPublicKey(k.privateKey);assert.deepEqual(openEnvelope(signed,raw),pkg());assert.throws(()=>openEnvelope(signed,rawPublicKey(other.privateKey)));const changed=JSON.parse(signed);changed.payload=Buffer.from(JSON.stringify({...pkg(),version:'9.0.0'})).toString('base64');assert.throws(()=>openEnvelope(Buffer.from(JSON.stringify(changed)),raw));assert.throws(()=>openEnvelope(signed,raw,1));});
+test('package validator rejects native permissions, official identity and unsafe files',()=>{for(const path of ['../x.js','/x.js','a//b.js','.x.json','a/./b.js','native.dylib','a\\b.js'])assert.equal(validPath(path),false);for(const mutation of [m=>m.permissions=['input'],m=>m.type='official',m=>m.defaultEnabled=true,m=>m.installedPath='/tmp/arbitrary']){const p=pkg(),m={...manifest};mutation(m);p.files[0].data=Buffer.from(JSON.stringify(m)).toString('base64');assert.throws(()=>validatePackage(p));}const p=pkg();p.files.push({path:'INDEX.html',data:''});assert.throws(()=>validatePackage(p));});
+test('publisher package → explicit offline review → independent root catalog, with private keys outside hosting',async()=>{const root=await mkdtemp(join(tmpdir(),'pinwall-market-cli-'));try{
+ const widget=join(root,'widget');await mkdir(widget);for(const f of pkg().files)await writeFile(join(widget,f.path),Buffer.from(f.data,'base64'));
+ const publisher=join(root,'publisher'),reviewer=join(root,'reviewer');await run(['keygen',publisher]);await run(['keygen',reviewer]);assert.equal((await stat(join(publisher,'private.pem'))).mode&0o777,0o600);
+ const packagePath=join(root,'package.pwx');await run(['package',widget,join(publisher,'private.pem'),packagePath]);const signed=await readFile(packagePath),hash=sha256(signed);
+ await run(['inspect',packagePath,join(publisher,'public.txt'),join(root,'inspect')]);assert.equal(await readFile(join(root,'inspect','index.html'),'utf8'),'<p>offline</p>');
+ const approval=join(root,'approval.json');await assert.rejects(run(['review',packagePath,'publisher',join(publisher,'public.txt'),'https://example.com/package.pwx',approval]));
+ await run(['review',packagePath,'publisher',join(publisher,'public.txt'),`https://example.com/packages/${hash}.pwx`,approval,'--approve','Fixture reviewer']);
+ const catalogPath=join(root,'catalog.json');await run(['catalog',join(reviewer,'private.pem'),'1','3600',catalogPath,approval]);
+ const reviewerKey=(await readFile(join(reviewer,'public.txt'),'utf8')).trim();const catalog=openEnvelope(await readFile(catalogPath),reviewerKey);assert.equal(catalog.entries[0].sha256,hash);assert.notEqual(catalog.publishers[0].key,(await readFile(join(reviewer,'public.txt'),'utf8')).trim());assert.throws(()=>openEnvelope(signed,reviewerKey));
+ await assert.rejects(run(['catalog',join(reviewer,'private.pem'),'2','3600',catalogPath,approval]));
+ await symlink(join(widget,'index.html'),join(widget,'linked.html'));await assert.rejects(run(['package',widget,join(publisher,'private.pem'),join(root,'unsafe.pwx')]));
+}finally{await rm(root,{recursive:true,force:true});}});
+test('static origin serves only catalog and digest-named packages and rejects private keys and path escapes',async()=>{const root=await mkdtemp(join(tmpdir(),'pinwall-market-origin-'));let server;try{await mkdir(join(root,'packages'));await writeFile(join(root,'catalog.json'),'{}');await writeFile(join(root,'private.pem'),'never serve');const digest='a'.repeat(64);await writeFile(join(root,'packages',digest+'.pwx'),'{}');await symlink(join(root,'private.pem'),join(root,'packages','b'.repeat(64)+'.pwx'));server=await startServer(root,0);const base=`http://127.0.0.1:${server.address().port}`;assert.equal((await fetch(base+'/catalog.json')).status,200);assert.equal((await fetch(base+`/packages/${digest}.pwx`)).status,200);for(const path of ['/private.pem','/%2e%2e/private.pem','/catalog.json?path=private.pem','/packages/'+'b'.repeat(64)+'.pwx'])assert.equal((await fetch(base+path)).status,404);assert.equal((await fetch(base+'/catalog.json',{method:'POST',body:'x'})).status,405);}finally{if(server)await new Promise(done=>server.close(done));await rm(root,{recursive:true,force:true});}});

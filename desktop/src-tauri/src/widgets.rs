@@ -37,7 +37,7 @@ pub struct WidgetSize {
     pub height: f64,
 }
 
-fn validate_widget_id(id: &str) -> Result<(), String> {
+pub(crate) fn validate_widget_id(id: &str) -> Result<(), String> {
     if id.len() < 5 || id.len() > 120 {
         return Err("Widget id length is invalid".to_string());
     }
@@ -115,7 +115,7 @@ fn validate_widget_permission(permission: &str) -> Result<(), String> {
     }
 }
 
-fn validate_manifest(manifest: &WidgetManifest) -> Result<(), String> {
+pub(crate) fn validate_manifest(manifest: &WidgetManifest) -> Result<(), String> {
     validate_widget_id(&manifest.id)?;
     validate_widget_type(&manifest.widget_type)?;
     validate_widget_category(&manifest.category)?;
@@ -151,7 +151,7 @@ fn validate_manifest_files(source: &PathBuf, manifest: &WidgetManifest) -> Resul
     }
     Ok(())
 }
-fn read_manifest(source: &std::path::Path) -> Result<WidgetManifest, String> {
+pub(crate) fn read_manifest(source: &std::path::Path) -> Result<WidgetManifest, String> {
     let bytes = crate::tool_files::read_bounded(&source.join("widget.json"), 64 * 1024)?;
     let manifest: WidgetManifest = serde_json::from_slice(&bytes).map_err(|_| "widget_manifest_invalid")?;
     validate_manifest(&manifest)?;
@@ -272,7 +272,7 @@ pub fn install_widget(window: tauri::WebviewWindow, app: tauri::AppHandle, path:
 fn install_widget_from_source(app: &tauri::AppHandle, source: PathBuf) -> Result<WidgetManifest, String> {
     install_checked(app, source, None)
 }
-fn install_checked(app: &tauri::AppHandle, source: PathBuf, expected: Option<(&str, &str, &[String])>) -> Result<WidgetManifest, String> {
+pub(crate) fn install_checked(app: &tauri::AppHandle, source: PathBuf, expected: Option<(&str, &str, &[String])>) -> Result<WidgetManifest, String> {
     let _lock = crate::widget_repository::PACKAGES.lock().map_err(|_| "widget_busy")?;
     let manifest = read_manifest(&source)?;
     if expected.is_some_and(|(id, version, permissions)| manifest.id != id || manifest.version != version || manifest.permissions != permissions) { return Err("widget_package_changed".into()); }

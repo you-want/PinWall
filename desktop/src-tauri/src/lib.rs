@@ -21,6 +21,7 @@ mod desktop_tools;
 mod input_tools;
 mod video_tools;
 mod maintenance;
+mod marketplace;
 mod window_layer;
 
 use tauri::Manager;
@@ -40,6 +41,7 @@ pub fn run() {
         .manage(input_tools::InputService::default())
         .manage(video_tools::VideoService::default())
         .manage(maintenance::MaintenanceService::default())
+        .manage(marketplace::MarketService::default())
         .manage(shelf::ShelfService::default())
         .manage(image_tools::ImageService::default())
         .manage(clipboard_history::HistoryService::default())
@@ -77,6 +79,7 @@ pub fn run() {
         .plugin(tauri_plugin_zustand::init())
         .invoke_handler(tauri::generate_handler![
             commands::greet,
+            marketplace::marketplace_request,
             commands::get_app_version,
             commands::quit_app,
             persistence::settings_read,
@@ -140,6 +143,9 @@ pub fn run() {
             }
         })
         .on_page_load(|webview, payload| {
+            if matches!(webview.label(), "main"|"settings") && matches!(payload.event(), tauri::webview::PageLoadEvent::Started) {
+                if webview.state::<marketplace::MarketService>().clear().is_err() { eprintln!("[Marketplace] Reload cleanup failed"); }
+            }
             if webview.label() == "main" && matches!(payload.event(), tauri::webview::PageLoadEvent::Started) {
                 if webview.state::<shelf::ShelfService>().deactivate().is_err() {
                     eprintln!("[Shelf] Session cleanup failed");
@@ -162,7 +168,11 @@ pub fn run() {
                 }
             }
         })
-        .on_window_event(|window, event| match event {
+        .on_window_event(|window, event| {
+            if matches!(window.label(), "main"|"settings") && matches!(event, tauri::WindowEvent::Destroyed|tauri::WindowEvent::CloseRequested{..}) {
+                if window.state::<marketplace::MarketService>().clear().is_err() { eprintln!("[Marketplace] Window cleanup failed"); }
+            }
+            match event {
             tauri::WindowEvent::Destroyed if window.label() == "main" => {
                 if window.state::<shelf::ShelfService>().deactivate().is_err() {
                     eprintln!("[Shelf] Session cleanup failed");
@@ -193,11 +203,12 @@ pub fn run() {
                 let _ = window.hide();
             }
             _ => {}
-        })
+        }})
         .build(tauri::generate_context!());
     match application {
         Ok(app) => app.run(|app, event| {
             if matches!(event, tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit) {
+                if app.state::<marketplace::MarketService>().clear().is_err() { eprintln!("[Marketplace] Exit cleanup failed"); }
                 if app.state::<maintenance::MaintenanceService>().clear().is_err() { eprintln!("[Maintenance] Exit cleanup failed"); }
                 if app.state::<video_tools::VideoService>().clear().is_err() { eprintln!("[VideoTools] Exit cleanup failed"); }
                 if app.state::<input_tools::InputService>().clear().is_err() { eprintln!("[InputTools] Exit cleanup failed"); }

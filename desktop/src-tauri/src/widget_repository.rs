@@ -284,6 +284,16 @@ pub fn read(path: &Path) -> Result<HashMap<String, Value>, String> {
     let _file_lock=DataLock::acquire(path)?;
     load_data(path).map(|file| file.data)
 }
+/// Keeps the data file locked while a consumer commits an operation authorized by that snapshot.
+pub(crate) fn with_snapshot<T>(path:&Path,read:impl FnOnce(&HashMap<String,Value>)->Result<T,String>)->Result<T,String>{
+    let _lock=STORAGE.lock().map_err(|_|"widget_storage_busy")?;
+    let _file_lock=DataLock::acquire(path)?;
+    let file=load_data(path)?;
+    // The per-file lock remains held. Do not hold the global store mutex while installing a package:
+    // uninstall may wait for another tool operation which itself needs an unrelated data file.
+    drop(_lock);
+    read(&file.data)
+}
 pub fn mutate(path: &Path, mutation: Mutation) -> Result<(), String> {
     transaction(path, |data| {
         match mutation {
@@ -304,7 +314,7 @@ pub fn replace(path: &Path, replacement: HashMap<String, Value>) -> Result<(), S
         Ok(())
     })
 }
-fn transaction(
+pub(crate) fn transaction(
     path: &Path,
     change: impl FnOnce(&mut HashMap<String, Value>) -> Result<(), String>,
 ) -> Result<(), String> {

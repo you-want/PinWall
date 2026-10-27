@@ -10,14 +10,15 @@
     "tauri": "tauri",
     "tauri:build:app": "tauri build --bundles app",
     "test": "vitest",
-    "test:run": "vitest run",
+    "test:run": "vitest run && node --test scripts/marketplace/*.test.mjs",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:all": "vitest run && playwright test",
     "test:manual": "node scripts/manual-test-tracker.cjs && open test-results/manual-test-report.html",
-    "test:manual:linux": "node scripts/manual-test-tracker.cjs && xdg-open test-results/manual-test-report.html"
+    "test:manual:linux": "node scripts/manual-test-tracker.cjs && xdg-open test-results/manual-test-report.html",
+    "test:marketplace": "node --test scripts/marketplace/*.test.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",

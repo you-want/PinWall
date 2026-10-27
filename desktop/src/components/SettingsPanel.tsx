@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useI18n } from "../i18n";
@@ -27,6 +27,8 @@ import { useAppUpdater } from "../hooks/useAppUpdater";
 import { version } from "../../package.json";
 import { NoteBackup } from "./NoteBackup";
 import { revokeWidgetTools } from "../services/widgetTools";
+
+const MarketplacePanel = lazy(() => import("./MarketplacePanel").then(module => ({default:module.MarketplacePanel})));
 
 const PROVIDER_PRESETS = [
   {
@@ -759,6 +761,7 @@ function TextField({
 }
 
 function WidgetExtensionsSection() {
+  const [marketOpen,setMarketOpen]=useState(false);
   const { widgets, toggleWidget } = useWidgetStore();
   const { lang, t } = useI18n();
   const [installingId, setInstallingId] = useState<string | null>(null);
@@ -915,6 +918,8 @@ function WidgetExtensionsSection() {
             + {lang === "zh" ? "选择目录" : "Choose Folder"}
           </button>
         </div>
+        <div className="ap-widget-local-install"><button className="ap-btn px-3 py-2 text-xs" onClick={()=>setMarketOpen(true)}>{t.market_title}</button></div>
+        {marketOpen&&<Suspense fallback={<div role="status">{t.market_working}</div>}><MarketplacePanel onClose={()=>setMarketOpen(false)}/></Suspense>}
         {status && <div className="ap-widget-status">{status}</div>}
       </div>
     </div>

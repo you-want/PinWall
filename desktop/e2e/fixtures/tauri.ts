@@ -279,6 +279,21 @@ export const test = base.extend({
             else throw new Error('Unsupported test mutation');
             localStorage.setItem(key,JSON.stringify(data));return null;
           }
+          case 'marketplace_request': {
+            const action=args.action as {method:string;config?:{enabled:boolean;catalogUrl:string;rootKey:string};id?:string;version?:string;token?:string};
+            const logKey=`${prefix}market:log`;localStorage.setItem(logKey,JSON.stringify([...JSON.parse(localStorage.getItem(logKey)??'[]'),action.method]));
+            const config=JSON.parse(localStorage.getItem(`${prefix}market:config`)??'{"enabled":false,"catalogUrl":"","rootKey":""}');
+            if(action.method==='config')return {config};
+            if(action.method==='configure'){localStorage.setItem(`${prefix}market:config`,JSON.stringify(action.config));return {config:action.config};}
+            if(action.method==='cancel'){localStorage.removeItem(`${prefix}market:preview`);return {cancelled:true};}
+            const failure=localStorage.getItem(`${prefix}market:fail`);if(failure)throw failure;
+            if(!config.enabled)throw 'market_disabled';
+            const manifest={id:'org.example.reviewed',version:'1.0.0',name:'Reviewed fixture',description:'Signed offline fixture',author:'Fixture',type:'community',category:'utility',permissions:['storage','network'],entry:'index.html',icon:'icon.svg',defaultEnabled:false,defaultSize:{width:240,height:160}};
+            if(action.method==='refresh')return {entries:[{id:manifest.id,version:manifest.version,name:manifest.name,description:manifest.description,publisher:'reviewed-publisher',permissions:manifest.permissions,packageUrl:'https://example.com/packages/fixture.pwx',sha256:'a'.repeat(64)}],revision:1,expiresAt:Math.floor(Date.now()/1000)+3600};
+            if(action.method==='prepare'){localStorage.setItem(`${prefix}market:preview`,'a-b-c');return {token:'a-b-c',manifest};}
+            if(action.method==='install'){if(localStorage.getItem(`${prefix}market:preview`)!==action.token)throw 'market_changed';localStorage.removeItem(`${prefix}market:preview`);const all=JSON.parse(localStorage.getItem(`${prefix}widgets:installed`)??'[]') as typeof manifest[];localStorage.setItem(`${prefix}widgets:installed`,JSON.stringify([...all.filter(m=>m.id!==manifest.id),manifest]));return {manifest:{...manifest,installedPath:'/mock/widgets/'+manifest.id}};}
+            throw new Error('Unsupported test marketplace action');
+          }
           case 'widget_maintenance_request': {
             const action=args.action as {method:string;token?:string;plan?:string;caches?:boolean;preferences?:boolean;force?:boolean;name?:string};
             const failure=localStorage.getItem(`${prefix}maintenance:fail`);if(failure)throw failure;

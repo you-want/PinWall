@@ -216,6 +216,29 @@ async fn send(
     let data: Value = serde_json::from_slice(&bytes).map_err(|_| "widget_network_not_json")?;
     Ok(Response { status, data })
 }
+/// Marketplace downloads use the same DNS validation and pinned connection as bridge requests.
+pub(crate) fn market_url(input: &str) -> Result<reqwest::Url, String> {
+    let parsed=url(input)?;
+    if parsed.scheme()!="https" { return Err("market_https".into()); }
+    Ok(parsed)
+}
+pub(crate) async fn market_download(input:&str,limit:usize)->Result<Vec<u8>,String>{
+    let parsed=market_url(input)?;
+    let addresses=resolve(&parsed).await?;
+    let host=parsed.host_str().ok_or("widget_network_invalid")?;
+    let client=reqwest::Client::builder().no_proxy().redirect(reqwest::redirect::Policy::none())
+        .timeout(Duration::from_secs(20)).connect_timeout(Duration::from_secs(4)).pool_max_idle_per_host(0)
+        .resolve_to_addrs(host,&addresses).build().map_err(|_|"widget_network_unavailable")?;
+    let mut response=client.get(parsed).header("accept-encoding","identity").send().await.map_err(|_|"widget_network_unavailable")?;
+    if response.status().is_redirection(){return Err("widget_network_redirect".into());}
+    if !response.status().is_success(){return Err("market_download".into());}
+    if response.content_length().is_some_and(|n|n>limit as u64){return Err("market_limit".into());}
+    let mut bytes=Vec::new();
+    while let Some(chunk)=response.chunk().await.map_err(|_|"widget_network_unavailable")? {
+        if chunk.len()>limit.saturating_sub(bytes.len()){return Err("market_limit".into());}bytes.extend_from_slice(&chunk);
+    }
+    Ok(bytes)
+}
 #[tauri::command]
 pub async fn widget_network_request(
     window: tauri::WebviewWindow,
