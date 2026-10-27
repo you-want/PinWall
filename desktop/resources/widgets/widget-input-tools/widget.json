@@ -1,0 +1,24 @@
+{
+  "id": "com.pinwall.input-tools",
+  "name": "输入增强 / Input Tools",
+  "description": "按需滚轮方向、方向键映射和文本触发词展开。 / Opt-in scroll directions, arrow shortcuts and text expansion.",
+  "version": "1.0.0",
+  "author": "PinWall Team",
+  "entry": "index.html",
+  "icon": "icon.svg",
+  "type": "official",
+  "category": "productivity",
+  "permissions": [
+    "input",
+    "i18n"
+  ],
+  "defaultEnabled": false,
+  "defaultSize": {
+    "width": 260,
+    "height": 240
+  },
+  "minSize": {
+    "width": 210,
+    "height": 210
+  }
+}

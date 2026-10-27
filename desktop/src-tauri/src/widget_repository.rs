@@ -98,6 +98,21 @@ fn copy_tree(
     }
     Ok(())
 }
+/// Called under PACKAGES. Never follow a staging symlink or remove a live process's work.
+pub fn cleanup_staging(root:&Path)->Result<(),String>{
+    directory(root)?;
+    for entry in fs::read_dir(root).map_err(|_|"widget_io")?{
+        let entry=entry.map_err(|_|"widget_io")?;let name=entry.file_name();let name=name.to_string_lossy();
+        let Some(rest)=name.strip_prefix(".stage-")else{continue};let Some((pid,sequence))=rest.split_once('-')else{continue};
+        let Ok(pid)=pid.parse::<u32>()else{continue};if pid==0||sequence.is_empty()||!sequence.bytes().all(|v|v.is_ascii_digit()){continue;}
+        if pid==std::process::id(){continue;}
+        #[cfg(target_os="macos")]{let Ok(pid)=i32::try_from(pid)else{continue};if unsafe{libc::kill(pid,0)}==0||std::io::Error::last_os_error().raw_os_error()!=Some(libc::ESRCH){continue;}}
+        #[cfg(not(target_os="macos"))]{continue;}
+        #[cfg(target_os="macos")]{let metadata=fs::symlink_metadata(entry.path()).map_err(|_|"widget_io")?;
+            if metadata.file_type().is_symlink(){fs::remove_file(entry.path()).map_err(|_|"widget_io")?;}else if metadata.is_dir(){remove_owned(&entry.path())?;}
+        }
+    }Ok(())
+}
 pub fn recover(root: &Path, id: &str) -> Result<(), String> {
     let current = root.join(id);
     let previous = root.join(format!(".previous-{id}"));
@@ -124,6 +139,7 @@ pub fn install(
     if source == current || source.starts_with(&current) || root.starts_with(&source) {
         return Err("widget_unsafe_path".into());
     }
+    cleanup_staging(&root)?;
     recover(&root, id)?;
     let stage = root.join(format!(
         ".stage-{}-{}",
@@ -353,6 +369,16 @@ mod tests {
             assert!(install(&packages, &source, "com.test.tool", |_| Ok(())).is_err());
         }
         fs::remove_dir_all(root).unwrap();
+    }
+    #[cfg(target_os="macos")]
+    #[test]
+    fn stale_staging_cleanup_preserves_live_jobs_and_never_follows_links(){
+        let root=root();let live=root.join(format!(".stage-{}-1",std::process::id()));fs::create_dir(&live).unwrap();
+        // PID above Darwin's PID_MAX cannot be live; kill(0) is never used.
+        let stale=root.join(".stage-2147483647-1");fs::create_dir(&stale).unwrap();fs::write(stale.join("partial"),b"partial").unwrap();
+        let outside=root.join("original");fs::create_dir(&outside).unwrap();fs::write(outside.join("keep"),b"keep").unwrap();std::os::unix::fs::symlink(&outside,root.join(".stage-2147483647-2")).unwrap();
+        let unrelated=root.join(".stage-user-data");fs::create_dir(&unrelated).unwrap();
+        cleanup_staging(&root).unwrap();assert!(live.is_dir());assert!(!stale.exists());assert_eq!(fs::read(outside.join("keep")).unwrap(),b"keep");assert!(unrelated.exists());fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn legacy_migration_and_concurrent_mutations_keep_unrelated_values() {

@@ -91,10 +91,10 @@ static NSArray *PWDevices(void) {
             BOOL hasVolume=PWVolumeRead(device,scope,&volume);
             BOOL hasMute=PWGet(device,kAudioDevicePropertyMute,scope,0,sizeof(muted),&muted);
             [result addObject:@{@"id":number,@"name":PWString(PWAudioString(device,kAudioObjectPropertyName),256),@"direction":direction,
-                @"isDefault":@(device==([direction isEqual:@"input"]?defaultInput:defaultOutput)),
-                @"volume":hasVolume?@(volume):NSNull.null,@"muted":hasMute?@(muted!=0):NSNull.null,
-                @"canVolume":@(hasVolume&&PWVolumeWritable(device,scope,PWVolumeElements(device,scope))),
-                @"canMute":@(hasMute&&PWSettable(device,kAudioDevicePropertyMute,scope))}];
+                @"isDefault":@((BOOL)(device==([direction isEqual:@"input"]?defaultInput:defaultOutput))),
+                @"volume":hasVolume?@(volume):NSNull.null,@"muted":hasMute?@((BOOL)(muted!=0)):NSNull.null,
+                @"canVolume":@((BOOL)(hasVolume&&PWVolumeWritable(device,scope,PWVolumeElements(device,scope)))),
+                @"canMute":@((BOOL)(hasMute&&PWSettable(device,kAudioDevicePropertyMute,scope)))}];
             if (result.count>=128) return result;
         }
     }
@@ -215,7 +215,7 @@ static NSDictionary *PWWindowList(void) {
             for(NSString *key in previous)if([previous[key][@"pid"] intValue]==app.processIdentifier&&CFEqual((__bridge CFTypeRef)previous[key][@"element"],element)){token=key;break;}
             if(!token)token=NSUUID.UUID.UUIDString;
             PWWindows[token]=@{@"element":item,@"pid":@(app.processIdentifier),@"windowId":number};
-            [result addObject:@{@"token":token,@"app":PWString(app.localizedName,128),@"title":title,@"minimized":@([PWAXCopy(element,kAXMinimizedAttribute) boolValue]),@"canPreview":@(number.unsignedIntValue!=0)}];
+            [result addObject:@{@"token":token,@"app":PWString(app.localizedName,128),@"title":title,@"minimized":@([PWAXCopy(element,kAXMinimizedAttribute) boolValue]),@"canPreview":@((BOOL)(number.unsignedIntValue!=0))}];
         }
     }
     for(NSString *key in PWUndo.allKeys)if(!PWWindows[key])[PWUndo removeObjectForKey:key];
@@ -230,8 +230,12 @@ static CGRect PWLayoutRect(CGRect rect,NSString *layout,BOOL *valid){
     else if(![layout isEqual:@"maximize"]){*valid=NO;return rect;}
     return rect;
 }
+extern NSDictionary *pinwall_dock_request(NSDictionary *request);
+extern void pinwall_dock_clear(void);
 static NSDictionary *PWWindowAction(NSDictionary *request) {
     NSString *method=request[@"method"];
+    if([method hasPrefix:@"dock"])return pinwall_dock_request(request);
+    if([method isEqual:@"release"]){PWWindows=nil;PWUndo=nil;return @{@"ok":@YES};}
     if([method isEqual:@"permission"]){AXIsProcessTrustedWithOptions((__bridge CFDictionaryRef)@{(__bridge NSString *)kAXTrustedCheckOptionPrompt:@YES});return @{@"ok":@YES};}
     if([method isEqual:@"list"])return PWWindowList();
     if(!AXIsProcessTrusted())return PWError(@"desktop_accessibility_denied");
@@ -324,10 +328,14 @@ static NSDictionary *PWNotify(NSDictionary *request) {
     }
     return PWError(@"desktop_unsupported");
 }
+extern NSDictionary *pinwall_video_request(NSDictionary *request);
+extern NSDictionary *pinwall_input_request(NSDictionary *request);
+extern void pinwall_input_clear(void);
 extern NSDictionary *pinwall_routes_request(NSDictionary *request);
 extern BOOL pinwall_routes_clear(void);
 extern unsigned long long pinwall_routes_generation(void);
 // The returned allocation belongs to Rust; native exceptions never unwind across FFI.
+unsigned long long pinwall_windows_generation(void){return atomic_load(&PWEpoch);}
 char *pinwall_desktop_request(const char *json) {
     @autoreleasepool { @try {
         NSData *input=[[NSString stringWithUTF8String:json] dataUsingEncoding:NSUTF8StringEncoding];
@@ -337,13 +345,18 @@ char *pinwall_desktop_request(const char *json) {
         else if ([request[@"domain"] isEqual:@"media"]) result=PWMedia(request);
         else if ([request[@"domain"] isEqual:@"notify"]) result=PWNotify(request);
         else if ([request[@"domain"] isEqual:@"routes"]) result=pinwall_routes_request(request);
+        else if ([request[@"domain"] isEqual:@"video"]) result=pinwall_video_request(request);
+        else if ([request[@"domain"] isEqual:@"input"]) result=pinwall_input_request(request);
         else if ([request[@"domain"] isEqual:@"windows"]) {
-            if([request[@"method"] isEqual:@"preview"])result=PWWindowPreview(request);
-            else { __block NSDictionary *value=nil;unsigned long epoch=atomic_load(&PWEpoch);dispatch_sync(dispatch_get_main_queue(),^{value=epoch==atomic_load(&PWEpoch)?PWWindowAction(request):PWError(@"tool_cancelled");});result=value; }
+            if([request[@"epoch"] unsignedLongLongValue]!=atomic_load(&PWEpoch))result=PWError(@"tool_cancelled");
+            else if([request[@"method"] isEqual:@"preview"])result=PWWindowPreview(request);
+            else { __block NSDictionary *value=nil;unsigned long epoch=[request[@"epoch"] unsignedLongLongValue];dispatch_sync(dispatch_get_main_queue(),^{value=epoch==atomic_load(&PWEpoch)?PWWindowAction(request):PWError(@"tool_cancelled");});result=value; }
         } else if ([request[@"domain"] isEqual:@"clear"]) {
-            BOOL cleared=YES;if(![request[@"target"] isEqual:@"windows"])cleared=pinwall_routes_clear();
+            BOOL all=[request[@"target"] isEqual:@"all"],cleared=YES;
+            if(all||[request[@"target"] isEqual:@"input"])pinwall_input_clear();
+            if(all||[request[@"target"] isEqual:@"audio"])cleared=pinwall_routes_clear();
             atomic_fetch_add(&PWEpoch,1);
-            if(![request[@"target"] isEqual:@"audio"]){if(NSThread.isMainThread){PWWindows=nil;PWUndo=nil;}else dispatch_async(dispatch_get_main_queue(),^{PWWindows=nil;PWUndo=nil;});}result=cleared?@{@"ok":@YES}:PWError(@"desktop_route_cleanup");
+            if(all||[request[@"target"] isEqual:@"windows"]){pinwall_dock_clear();if(NSThread.isMainThread){PWWindows=nil;PWUndo=nil;}else dispatch_async(dispatch_get_main_queue(),^{PWWindows=nil;PWUndo=nil;});}result=cleared?@{@"ok":@YES}:PWError(@"desktop_route_cleanup");
         } else result=PWError(@"desktop_invalid_action");
         NSData *output=[NSJSONSerialization dataWithJSONObject:result options:0 error:NULL];
         if (!output || output.length>2*1024*1024) return strdup("{\"error\":\"desktop_unavailable\"}");

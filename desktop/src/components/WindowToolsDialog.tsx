@@ -1,23 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import { NativeToolDialog, useToolController } from "./NativeToolDialog";
 import { useI18n } from "../i18n";
-import { windowList, windowAction, windowPreview, layouts, type Layout, type WindowAction, type WindowSnapshot } from "../services/widgetDesktop";
-import { clearNativeTool, toolError } from "../services/widgetTools";
+import { dockAction, type DockStatus, windowList, windowAction, windowPreview, layouts, type Layout, type WindowAction, type WindowSnapshot } from "../services/widgetDesktop";
+import { toolError } from "../services/widgetTools";
 export function WindowToolsDialog({onClose}:{onClose:()=>void}) {
   const {t}=useI18n(),controller=useToolController(),running=useRef(false),cleanupTimer=useRef<number|null>(null);
   const [snapshot,setSnapshot]=useState<WindowSnapshot|null>(null),[selected,setSelected]=useState(""),[search,setSearch]=useState("");
   const [screen,setScreen]=useState(0),[layout,setLayout]=useState<Layout>("left"),[preview,setPreview]=useState<string|null>(null),[undo,setUndo]=useState<Set<string>>(new Set());
+  const [dock,setDock]=useState<DockStatus|null>(null);
   const [busy,setBusy]=useState(true),[error,setError]=useState(""),[message,setMessage]=useState("");
   const apply=(value:WindowSnapshot)=>{setSnapshot(value);setSelected(current=>value.windows.some(w=>w.token===current)?current:value.windows[0]?.token??"");setScreen(current=>value.screens.some(s=>s.id===current)?current:value.screens[0]?.id??0);setPreview(null);};
   useEffect(()=>{const signal=controller.current?.signal;if(!signal)return;setBusy(true);void windowList(signal).then(value=>{if(!signal.aborted)apply(value);}).catch(failure=>{if(!signal.aborted)setError(toolError(failure,t));}).finally(()=>{if(!signal.aborted)setBusy(false);});},[controller,t]);
-  useEffect(()=>{if(cleanupTimer.current!==null)window.clearTimeout(cleanupTimer.current);return()=>{cleanupTimer.current=window.setTimeout(()=>{void clearNativeTool("com.pinwall.window-tools").catch(()=>console.warn("[WindowTools] Session cleanup failed"));},0);};},[]);
+  useEffect(()=>{if(cleanupTimer.current!==null)window.clearTimeout(cleanupTimer.current);return()=>{cleanupTimer.current=window.setTimeout(()=>{void windowAction({method:"release"},new AbortController().signal).catch(()=>console.warn("[WindowTools] Session cleanup failed"));},0);};},[]);
   const run=async(task:(signal:AbortSignal)=>Promise<void>)=>{const signal=controller.current?.signal;if(!signal||signal.aborted||running.current)return;running.current=true;setBusy(true);setError("");setMessage("");try{await task(signal);}catch(failure){if(!signal.aborted)setError(toolError(failure,t));}finally{running.current=false;if(!signal.aborted)setBusy(false);}};
   const action=(value:WindowAction)=>void run(async signal=>{if(value.method==="preview"){const result=await windowPreview(value.token,signal);if(!signal.aborted)setPreview(result.preview);return;}if(value.method==="layout")setUndo(current=>new Set(current).add(value.token));const result=await windowAction(value,signal);if(signal.aborted)return;
     if(value.method==="layout"){setUndo(current=>new Set(current).add(value.token));setMessage(result.clamped?t.windows_clamped:t.windows_applied);}if(value.method==="restore"){setUndo(current=>{const next=new Set(current);next.delete(value.token);return next;});setMessage(t.windows_restored);}
     if(value.method==="permission")setMessage(t.windows_permission_hint);
   });
+  useEffect(()=>{const signal=controller.current?.signal;if(signal)void dockAction("dockStatus",signal).then(setDock).catch(()=>{});},[controller]);
+  useEffect(()=>{if(!dock?.active)return;const timer=window.setInterval(()=>{const signal=controller.current?.signal;if(signal&&!document.hidden)void dockAction("dockStatus",signal).then(value=>{if(!signal.aborted)setDock(value);}).catch(()=>{});},2000);return()=>window.clearInterval(timer);},[dock?.active,controller]);
   const current=snapshot?.windows.find(w=>w.token===selected);
   return <NativeToolDialog title={t.windows_title} description={t.windows_description} onClose={onClose}>
+    <section className="my-3 rounded border p-3"><p className="text-sm">{t.dock_description}</p><button className="btn-v2 btn-v2-secondary mt-2" disabled={busy} onClick={()=>void run(async signal=>{const result=await dockAction(dock?.active?"dockStop":"dockStart",signal);if(!signal.aborted)setDock(result);})}>{dock?.active?t.dock_stop:t.dock_start}</button>{dock?.lastError&&<p className="mt-2 text-sm text-red-700" role="alert">{toolError(new Error(dock.lastError),t)}</p>}</section>
     <div className="my-3 flex flex-wrap gap-2"><button className="btn-v2 btn-v2-secondary" disabled={busy} onClick={()=>void run(async signal=>{const result=await windowList(signal);if(!signal.aborted)apply(result);})}>{t.desktop_refresh}</button>{snapshot&&!snapshot.permitted&&<button className="btn-v2 btn-v2-primary" disabled={busy} onClick={()=>action({method:"permission"})}>{t.windows_grant}</button>}</div>
     {snapshot&&!snapshot.permitted?<p role="status" className="text-sm">{t.windows_permission_hint}</p>:<>
       <label className="block text-sm">{t.windows_search}<input className="form-input" value={search} onChange={e=>setSearch(e.target.value)}/></label>

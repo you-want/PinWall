@@ -4,6 +4,8 @@ import { revokeWidgetPower } from "./widgetPower";
 import type { Translations } from "../i18n";
 
 export const NATIVE_TOOLS = {
+  video: { id: "com.pinwall.video-tools", permission: "video" },
+  input: { id: "com.pinwall.input-tools", permission: "input" },
   audio: { id: "com.pinwall.music", permission: "audio" },
   windows: { id: "com.pinwall.window-tools", permission: "windows" },
   utilities: { id: "com.pinwall.local-tools", permission: "utilities" },
@@ -25,7 +27,7 @@ export type HistoryAction = { method: "status" | "start" | "pause" | "clear" } |
 const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 const integer = (v: unknown, min = 0, max = Number.MAX_SAFE_INTEGER): v is number => typeof v === "number" && Number.isSafeInteger(v) && v >= min && v <= max;
 const dimensions = (v: Record<string, unknown>) => integer(v.width, 1, 8192) && integer(v.height, 1, 8192) && v.width * v.height <= 16_000_000;
-const knownErrors = new Set(["desktop_route_failed", "desktop_route_denied", "desktop_route_format", "desktop_route_expired", "desktop_route_stalled", "desktop_route_cleanup", "desktop_route_duplicate", "desktop_route_limit","desktop_unsupported", "desktop_invalid_action", "desktop_unavailable", "desktop_device_missing", "desktop_device_readonly", "desktop_player_missing", "desktop_automation_denied", "desktop_media_failed", "desktop_accessibility_denied", "desktop_window_expired", "desktop_window_failed", "desktop_no_undo", "desktop_screen_denied", "desktop_timeout","utility_invalid_snippet", "utility_snippet_limit", "utility_unsupported", "widget_storage_corrupt", "widget_storage_future", "widget_storage_limit","shelf_corrupt", "shelf_future_version", "shelf_file_unavailable", "shelf_busy", "screen_permission_denied", "screen_capture_failed", "screen_timeout", "screen_expired", "screen_unsupported", "tool_unsafe_path", "tool_io_failed", "tool_too_large", "clipboard_busy","tool_cancelled", "tool_permission_denied", "tool_reinstall_required", "image_too_large", "image_invalid", "image_busy", "image_source_protected", "image_unsafe_path", "image_expired", "image_save_failed", "image_extension_mismatch", "ocr_no_text", "ocr_text_too_large", "ocr_unsupported", "history_unsupported", "history_busy"]);
+const knownErrors = new Set(["desktop_dock_busy", "desktop_dock_permission", "video_busy", "video_limit", "video_invalid", "video_format", "video_invalid_range", "video_original", "video_expired", "video_export_failed", "video_record_failed", "video_timeout", "video_unavailable","input_invalid_profile", "input_permission_denied", "input_tap_disabled", "input_no_features", "input_unavailable","desktop_route_failed", "desktop_route_denied", "desktop_route_format", "desktop_route_expired", "desktop_route_stalled", "desktop_route_cleanup", "desktop_route_duplicate", "desktop_route_limit","desktop_unsupported", "desktop_invalid_action", "desktop_unavailable", "desktop_device_missing", "desktop_device_readonly", "desktop_player_missing", "desktop_automation_denied", "desktop_media_failed", "desktop_accessibility_denied", "desktop_window_expired", "desktop_window_failed", "desktop_no_undo", "desktop_screen_denied", "desktop_timeout","utility_invalid_snippet", "utility_snippet_limit", "utility_unsupported", "widget_storage_corrupt", "widget_storage_future", "widget_storage_limit","shelf_corrupt", "shelf_future_version", "shelf_file_unavailable", "shelf_busy", "screen_permission_denied", "screen_capture_failed", "screen_timeout", "screen_expired", "screen_unsupported", "tool_unsafe_path", "tool_io_failed", "tool_too_large", "clipboard_busy","tool_cancelled", "tool_permission_denied", "tool_reinstall_required", "image_too_large", "image_invalid", "image_busy", "image_source_protected", "image_unsafe_path", "image_expired", "image_save_failed", "image_extension_mismatch", "ocr_no_text", "ocr_text_too_large", "ocr_unsupported", "history_unsupported", "history_busy"]);
 
 export async function toolCall<T>(command: string, args: Record<string, unknown>, signal: AbortSignal, valid: (v: unknown) => v is T): Promise<T> {
   if (signal.aborted) throw new Error("tool_cancelled");
@@ -68,6 +70,21 @@ export async function revokeWidgetTools(widgetId: string): Promise<void> {
 }
 export function toolError(error: unknown, t: Translations): string {
   const code = error instanceof Error ? error.message : "";
+  if (code === "video_busy") return t.tools_busy;
+  if (code === "video_limit") return t.video_limit;
+  if (code === "video_original") return t.video_original;
+  if (code === "video_expired") return t.video_expired;
+  if (code === "video_invalid_range") return t.video_range_error;
+  if (code === "video_format") return t.video_format_error;
+  if (code === "video_timeout") return t.video_timeout;
+  if (code.startsWith("video_")) return t.video_failed;
+  if (code === "desktop_dock_permission") return t.dock_permission;
+  if (code === "desktop_dock_busy") return t.dock_busy;
+  if (code === "input_invalid_profile") return t.input_invalid;
+  if (code === "input_permission_denied") return t.input_permission_hint;
+  if (code === "input_tap_disabled") return t.input_tap_disabled;
+  if (code === "input_no_features") return t.input_no_features;
+  if (code === "input_unavailable") return t.input_failed;
   if (code === "desktop_route_denied") return t.audio_route_denied;
   if (code === "desktop_route_format") return t.audio_route_format;
   if (code === "desktop_route_expired") return t.audio_route_expired;

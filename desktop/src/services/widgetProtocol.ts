@@ -45,7 +45,7 @@ export function validWidgetArguments(request: WidgetBridgeRequest): boolean {
     case "power.start": return args.length === 1 && typeof first === "number" && Number.isInteger(first) && first >= 1 && first <= 480;
     case "power.status": case "power.stop":
     case "clipboard.openImport":
-    case "shelf.open": case "screen.open": case "utilities.open": case "audio.open": case "windows.open":
+    case "shelf.open": case "screen.open": case "utilities.open": case "audio.open": case "windows.open": case "input.open": case "video.open":
     case "ocr.open": case "images.open": case "clipboardHistory.open": case "clipboardHistory.status":
     case "storage.clear": case "theme.get": case "i18n.getLocale": case "settings.getAll":
     case "app.getVersion": case "app.getLocale":

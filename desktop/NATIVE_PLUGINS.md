@@ -1,12 +1,12 @@
 # 可选原生插件契约
 
-本轮属于 P2 实验能力，复用已有 Widget Hub、安装器和桌面卡片。当前包含防休眠、系统监控、剪贴板转便签、图片识字、图片工具、剪贴板历史、文件暂存架、屏幕工具、本地工具、音频与媒体和窗口工具，均默认关闭；防休眠需用户主动开始，不自动恢复运行。截图仅按需启动固定系统截图程序，不新增常驻独立服务进程，不扩大 Tauri capability，不改动便签/设置持久化 schema；暂存架使用独立版本化索引。
+本轮属于 P2 实验能力，复用已有 Widget Hub、安装器和桌面卡片。当前包含防休眠、系统监控、剪贴板转便签、图片识字、图片工具、剪贴板历史、文件暂存架、屏幕工具、本地工具、音频与媒体、窗口工具、输入增强和视频工具，均默认关闭；防休眠需用户主动开始，不自动恢复运行。截图仅按需启动固定系统截图程序，不新增常驻独立服务进程，不扩大 Tauri capability，不改动便签/设置持久化 schema；暂存架使用独立版本化索引。
 
 ## 安装与资源
 
-源码位于 `desktop/resources/widgets/` 的 `widget-keep-awake/`、`widget-system-monitor/`、`widget-clipboard-note/`、`widget-ocr-note/`、`widget-image-tools/`、`widget-clipboard-history/`、`widget-file-shelf/`、`widget-screen-tools/`、`widget-local-tools/`、`widget-music/`、`widget-window-tools/`，随应用打包至 `native-widgets/`；其余官方组件沿用现有资源目录。系统监控保留 ID `com.pinwall.system-monitor`，升级至 2.0；旧版不会自动替换，需从组件中心重新安装。安装后仍存入 AppData 下的 widgets 目录。
+源码位于 `desktop/resources/widgets/` 的 `widget-keep-awake/`、`widget-system-monitor/`、`widget-clipboard-note/`、`widget-ocr-note/`、`widget-image-tools/`、`widget-clipboard-history/`、`widget-file-shelf/`、`widget-screen-tools/`、`widget-local-tools/`、`widget-music/`、`widget-window-tools/`、`widget-input-tools/`、`widget-video-tools/`，随应用打包至 `native-widgets/`；其余官方组件沿用现有资源目录。系统监控保留 ID `com.pinwall.system-monitor`，升级至 2.0；旧版不会自动替换，需从组件中心重新安装。安装后仍存入 AppData 下的 widgets 目录。
 
-Manifest 支持可选字段 `defaultEnabled`；原生操作使用独立 `power`、`clipboard` 权限，监控使用已有 `system` 权限。新安装组件按 `defaultEnabled ?? true` 初始化，兼容既有组件；同步已有安装时保留用户的启用选择。十一项工具固定为 `false`，安装授权不会启动原生能力。覆盖安装会重新关闭；普通启动同步保留现有启用状态和尺寸。
+Manifest 支持可选字段 `defaultEnabled`；原生操作使用独立 `power`、`clipboard` 权限，监控使用已有 `system` 权限。新安装组件按 `defaultEnabled ?? true` 初始化，兼容既有组件；同步已有安装时保留用户的启用选择。十三项工具固定为 `false`，安装授权不会启动原生能力。覆盖安装会重新关闭；普通启动同步保留现有启用状态和尺寸。
 
 `type: official` 不能授予原生权限。Rust 在打开电源会话、读取剪贴板、操作图片、历史、暂存架或屏幕前校验各自固定 ID、安装目录及三个入口文件的精确字节，拒绝符号链接、路径逃逸和修改后的组件。更新应用后旧组件内容若不匹配，需要重新安装；UI 提供说明。这是内置可信源机制，不是第三方签名、市场审核或自动更新系统。
 
@@ -49,7 +49,7 @@ macOS 使用 IOKit `PreventUserIdleSystemSleep` 和系统 `TimeoutActionRelease`
 
 所有调用者共享 `MetricsService` 的互斥采样器及 3 秒缓存，无常驻原生 timer、线程、子进程或遥测。可见插件一次请求完成后再等待 3 秒，无重叠；隐藏、页面销毁和停用停止轮询。CPU 使用 Mach tick 差值，首次或间隔超过 30 秒需重新预热，处理 u32 回绕与计数器重置。内存读取真实总量和系统页大小，口径为 active + wired + physical compressor pages，不声称等同活动监视器或可用内存。电池区分无内部电池、读取失败、充电、接电未充电和电池供电。
 
-旧 `getCPUUsage`、`getMemoryInfo`、`getBattery` 均投影自同一快照；旧内存 `free` 字段仅为总量减上述占用的兼容余量。移除原先 shell 输出解析和固定 16KiB 页大小。媒体 API 仍为已有占位实现，不属于本轮交付。采样可供声明 `system` 的组件读取，不是防休眠/剪贴板式的固定 ID 可信服务。
+旧 `getCPUUsage`、`getMemoryInfo`、`getBattery` 均投影自同一快照；旧内存 `free` 字段仅为总量减上述占用的兼容余量。移除原先 shell 输出解析和固定 16KiB 页大小。旧媒体 API 已返回迁移提示，真实控制使用独立音频宿主工具。采样可供声明 `system` 的组件读取，不是防休眠/剪贴板式的固定 ID 可信服务。
 
 ## 剪贴板转便签
 
@@ -149,3 +149,25 @@ network bridge 统一走 main 原生 `widget_network_request`，验证已安装 
 窗口：Accessibility 主动授权入口；最多 64 个普通应用、128 个窗口、3 秒枚举预算、单 AX 消息 150 ms 超时，排除 PinWall。宿主 token 绑定原始 AX 元素；过期拒绝。使用显示器 visibleFrame 转 AX 坐标，支持负坐标、左右/上下/四角、居中与填充；应用尺寸限制会提示，变更失败尝试恢复。保留本次原布局，可明确恢复；刷新复用同一 AX 元素 token，关闭释放。切换仅激活所选应用并 raise 窗口。macOS 14+ 使用 ScreenCaptureKit 按需缩略图，480×最多320像素，PNG≤700 KiB；每次异步等待≤6秒。标题/像素仅宿主，完成后迟到结果丢弃，不持久化；这不是系统 Dock 的悬停预览。
 
 桥接：`settings.get/getAll` 读取当前组件设置，更新值不重建 frame 会话；插件只可 emit `widget:<自身ID>:` 命名空间，不能伪造 ready/核心事件。`notify.send` 验证安装包 notify 权限、标题≤512 B/正文≤8192 B，原生每插件 5 秒限流，首次可能请求系统通知授权；返回 submitted 仅表示 macOS 接受，最终展示受通知设置/专注模式影响，拒绝/超时有错误。通知独立于核心提醒 store，不覆盖便签提醒。旧 `system.getMediaInfo/mediaControl` 返回 `media_use_audio_tool`，不再伪造曲目/成功；需重新安装新的音乐组件。
+
+## 输入增强
+
+`com.pinwall.input-tools` / `input` 为固定可信源，默认关闭。`widget_input_request` 仅 main，动作枚举为 load/save/status/permission/start/stop，不接收脚本或事件注入参数。规则保存在 AppData/native-tools/input-tools.json，版本化、原子写、损坏备份、未来版本拒写；停用保留、卸载删除。100 个应用排除项、50 个唯一规则，触发词为分号加 1–23 个 ASCII 字母数字/下划线/连字符，替换最多 256 UTF-16 单元。
+
+主动开始才注册 CGEventTap 和应用激活观察；无自动启动。滚轮可仅作用于离散鼠标，Option+H/J/K/L 配对修改 keydown/up。文本展开只保留分号开始的 24 字节候选、2 秒超时，不读取 AXValue、不持久化/返回/记录输入。安全输入、密码框、非 ASCII 输入法、PinWall 和排除应用跳过展开；默认排除终端/密码管理器。空格触发展开，Cmd+Option+Z 在 5 秒内同进程/焦点且无其他输入时撤销；合成输入兼容性需实机验收。事件 tap 被系统停用会释放并提示，不自动重启。
+
+关闭面板/隐藏墙保留显式启动的服务，Stop、撤销、停用、卸载、墙重载和退出清理。主机 epoch 拒绝撤销后排队启动。状态轮询仅活动面板可见时每 2 秒，关闭释放前端轮询；未捕获任何真实输入进行自动化测试。
+
+## Dock 悬停预览
+
+窗口宿主新增 dockStart/dockStop/dockStatus。macOS 14+、用户主动开启且已有辅助功能/屏幕权限时，每 250ms 检查指针是否位于系统 Dock 窗口；仅此时读取 AXDockItem 的本地 bundle URL，精确匹配正在运行的普通应用，不打开 URL。悬停 350ms 后用 ScreenCaptureKit 截取最多四个可见窗口的 400×240 缩略图；无文件和插件图像接口。系统内容枚举最多一个未完成请求、图像最多四个未完成请求，跨旧会话保持预算；epoch 拒绝迟到 UI。原生非激活面板按当前显示器 visibleFrame 定位，点击前复核 PID/窗口 ID 与 AX bounds 后 raise。
+
+关闭宿主面板只释放窗口列表/撤销引用，已开启的 Dock 服务继续；隐藏墙、睡眠、权限失效、停用、卸载、重载或退出停止计时器并销毁面板。未开启时无轮询。自动化只测负坐标几何/控件流程，不启动真实 Dock 监听或捕获。
+
+## 视频与录屏
+
+`com.pinwall.video-tools` / `video` 默认关闭，仅主宿主枚举 DTO。插件只能打开面板，不能提交路径/编码命令。原生选择 MP4/MOV/M4V 后复制到 AppData 私有工作目录（512 MiB、30 分钟、1600 万像素、120fps 上限），AVURLAsset 禁止所有外部媒体引用；受保护或多个视频轨拒绝。输入快照与 token 最多十分钟有效。裁剪 0.1–600 秒、480/720/1080p 上限、保留或移除音轨、MP4/MOV 导出；AVFoundation 去除导出元数据，十分钟截止、取消及单操作预算。先编码私有临时输出，再可取消原子写到用户明确选择的位置，拒绝覆盖原视频与 AppData，失败保留输入和原目标。
+
+录屏只在 Start 后调用固定系统 screencapture，录制主显示器、无麦克风/系统音频、1–300 秒、512 MiB；不接受自定义参数。Stop 以 SIGINT 请求完成并等待最多十秒，Cancel/关闭/停用/重载/隐藏墙/退出终止回收，generation 拒绝排队启动。录制完成后选择保存原始 MOV 或再裁剪导出，关闭丢弃未保存结果。临时目录下次使用清理崩溃遗留。AVFoundation 取消后若系统回调未结束，保留繁忙门槛防止无限积压编码任务。
+
+Objective-C 原生比较结果显式转 BOOL，保证 JSON 输出真正布尔值；真实合成视频和只读设备 smoke 检查该边界。仓库安装/列举清理已退出进程的 .stage-PID-sequence，保留当前/存活进程工作，不跟随链接；独立安全审计仍待执行。

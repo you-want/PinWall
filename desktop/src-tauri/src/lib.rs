@@ -18,6 +18,8 @@ mod widget_repository;
 mod widget_network;
 mod utilities;
 mod desktop_tools;
+mod input_tools;
+mod video_tools;
 mod window_layer;
 
 use tauri::Manager;
@@ -34,6 +36,8 @@ pub fn run() {
         .manage(screen_tools::ScreenService::default())
         .manage(widget_network::NetworkService::default())
         .manage(desktop_tools::DesktopService::default())
+        .manage(input_tools::InputService::default())
+        .manage(video_tools::VideoService::default())
         .manage(shelf::ShelfService::default())
         .manage(image_tools::ImageService::default())
         .manage(clipboard_history::HistoryService::default())
@@ -101,6 +105,8 @@ pub fn run() {
             widgets::get_widget_rollback,
             widgets::rollback_widget,
             widgets::get_system_info,
+            input_tools::widget_input_request,
+            video_tools::widget_video_request,
             desktop_tools::widget_audio_request,
             desktop_tools::widget_audio_route_request,
             desktop_tools::widget_media_request,
@@ -135,6 +141,9 @@ pub fn run() {
                 if webview.state::<shelf::ShelfService>().deactivate().is_err() {
                     eprintln!("[Shelf] Session cleanup failed");
                 }
+                if webview.state::<video_tools::VideoService>().clear().is_err() { eprintln!("[VideoTools] Reload cleanup failed"); }
+                if webview.state::<input_tools::InputService>().clear().is_err() { eprintln!("[InputTools] Page reload cleanup failed"); }
+                if webview.state::<desktop_tools::DesktopService>().clear().is_err() { eprintln!("[DesktopTools] Page reload cleanup failed"); }
                 if webview.state::<screen_tools::ScreenService>().clear().is_err() {
                     eprintln!("[ScreenTools] Capture cleanup failed");
                 }
@@ -160,6 +169,8 @@ pub fn run() {
                 if window.state::<clipboard_history::HistoryService>().stop(true).is_err() {
                     eprintln!("[ClipboardHistory] Failed to clear session on window destruction");
                 }
+                if window.state::<video_tools::VideoService>().clear().is_err() { eprintln!("[VideoTools] Window cleanup failed"); }
+                if window.state::<input_tools::InputService>().clear().is_err() { eprintln!("[InputTools] Window cleanup failed"); }
                 if window.state::<desktop_tools::DesktopService>().clear().is_err() { eprintln!("[DesktopTools] Window cleanup failed"); }
                 if window.state::<image_tools::ImageService>().clear().is_err() {
                     eprintln!("[ImageTools] Failed to clear selection on window destruction");
@@ -172,6 +183,8 @@ pub fn run() {
                 // 所有窗口关闭时仅隐藏，不退出 APP
                 // 退出只能通过托盘菜单「退出」
                 api.prevent_close();
+                if window.label()=="main" && window.state::<video_tools::VideoService>().clear().is_err() { eprintln!("[VideoTools] Hide cleanup failed"); }
+                if window.label()=="main" && window.state::<desktop_tools::DesktopService>().clear_visible().is_err() { eprintln!("[DesktopTools] Hidden window cleanup failed"); }
                 let _ = window.hide();
             }
             _ => {}
@@ -180,6 +193,8 @@ pub fn run() {
     match application {
         Ok(app) => app.run(|app, event| {
             if matches!(event, tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit) {
+                if app.state::<video_tools::VideoService>().clear().is_err() { eprintln!("[VideoTools] Exit cleanup failed"); }
+                if app.state::<input_tools::InputService>().clear().is_err() { eprintln!("[InputTools] Exit cleanup failed"); }
                 if app.state::<desktop_tools::DesktopService>().clear().is_err() { eprintln!("[DesktopTools] Exit cleanup failed"); }
                 if app.state::<screen_tools::ScreenService>().shutdown().is_err() { eprintln!("[ScreenTools] Exit cleanup failed"); }
                 if app.state::<shelf::ShelfService>().deactivate().is_err() { eprintln!("[Shelf] Exit cleanup failed"); }

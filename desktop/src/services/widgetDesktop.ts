@@ -23,7 +23,7 @@ export interface WindowScreen {id:number;name:string;x:number;y:number;width:num
 export interface WindowSnapshot {permitted:boolean;windows:AppWindow[];screens:WindowScreen[]}
 export const layouts=["left","right","top","bottom","quarterTopLeft","quarterTopRight","quarterBottomLeft","quarterBottomRight","maximize","center"] as const;
 export type Layout=typeof layouts[number];
-export type WindowAction={method:"permission"}|{method:"focus"|"preview"|"restore";token:string}|{method:"layout";token:string;screen:number;layout:Layout};
+export type WindowAction={method:"permission"|"release"}|{method:"focus"|"preview"|"restore";token:string}|{method:"layout";token:string;screen:number;layout:Layout};
 export function validWindows(v:unknown):v is WindowSnapshot{
   return object(v)&&typeof v.permitted==="boolean"&&Array.isArray(v.windows)&&v.windows.length<=128&&v.windows.every(w=>object(w)&&text(w.token,36)&&/^[a-f\d-]{36}$/i.test(w.token)&&text(w.app,128)&&text(w.title,512)&&typeof w.minimized==="boolean"&&typeof w.canPreview==="boolean")&&Array.isArray(v.screens)&&v.screens.length<=32&&v.screens.every(s=>object(s)&&uint(s.id)&&text(s.name,128)&&finite(s.x)&&finite(s.y)&&finite(s.width)&&s.width>0&&finite(s.height)&&s.height>0);
 }
@@ -39,3 +39,6 @@ export function validRoutes(v:unknown):v is RouteSnapshot{
   return object(v)&&typeof v.supported==="boolean"&&(v.lastError===null||text(v.lastError,64))&&Array.isArray(v.processes)&&v.processes.length<=128&&v.processes.every(p=>object(p)&&uint(p.id)&&uint(p.pid)&&text(p.name,128))&&Array.isArray(v.routes)&&v.routes.length<=4&&v.routes.every(r=>object(r)&&text(r.token,36)&&/^[a-f\d-]{36}$/i.test(r.token)&&text(r.name,128)&&uint(r.process)&&uint(r.device)&&finite(r.gain)&&r.gain>=0&&r.gain<=1&&count(r.callbacks)&&count(r.dropped)&&count(r.missing));
 }
 export const routeRequest=(action:RouteAction,signal:AbortSignal)=>toolCall("widget_audio_route_request",{action},signal,validRoutes);
+
+export interface DockStatus {active:boolean;lastError:string|null}
+export const dockAction=(method:"dockStart"|"dockStop"|"dockStatus",signal:AbortSignal)=>toolCall("widget_window_request",{action:{method}},signal,(v):v is DockStatus=>object(v)&&typeof v.active==="boolean"&&(v.lastError===null||text(v.lastError,64)));

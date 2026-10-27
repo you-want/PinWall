@@ -1,0 +1,24 @@
+{
+  "id": "com.pinwall.video-tools",
+  "name": "视频与录屏 / Video Tools",
+  "description": "本地视频裁剪压缩与无声屏幕录制。 / Local video trimming, compression and silent screen recording.",
+  "version": "1.0.0",
+  "author": "PinWall Team",
+  "entry": "index.html",
+  "icon": "icon.svg",
+  "type": "official",
+  "category": "productivity",
+  "permissions": [
+    "video",
+    "i18n"
+  ],
+  "defaultEnabled": false,
+  "defaultSize": {
+    "width": 260,
+    "height": 240
+  },
+  "minSize": {
+    "width": 210,
+    "height": 210
+  }
+}

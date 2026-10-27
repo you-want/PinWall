@@ -39,7 +39,7 @@ pub enum MediaControl { Play, Pause, Toggle, Next, Previous }
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(tag="method", rename_all="camelCase", deny_unknown_fields)]
 pub enum WindowAction {
-    List {}, Permission {},
+    List {}, Permission {}, Release {}, DockStart {}, DockStop {}, DockStatus {},
     Focus { token: String }, Preview { token: String }, Restore { token: String },
     Layout { token: String, screen: u32, layout: Layout },
 }
@@ -47,7 +47,7 @@ pub enum WindowAction {
 #[serde(rename_all="camelCase")]
 pub enum Layout { Left, Right, Top, Bottom, QuarterTopLeft, QuarterTopRight, QuarterBottomLeft, QuarterBottomRight, Maximize, Center }
 fn validate_window(action: &WindowAction) -> Result<(),String> {
-    let token=match action { WindowAction::List{}|WindowAction::Permission{}=>return Ok(()), WindowAction::Focus{token}|WindowAction::Preview{token}|WindowAction::Restore{token}|WindowAction::Layout{token,..}=>token };
+    let token=match action { WindowAction::List{}|WindowAction::Permission{}|WindowAction::Release{}|WindowAction::DockStart{}|WindowAction::DockStop{}|WindowAction::DockStatus{}=>return Ok(()), WindowAction::Focus{token}|WindowAction::Preview{token}|WindowAction::Restore{token}|WindowAction::Layout{token,..}=>token };
     if token.len()!=36 || !token.bytes().all(|c|c.is_ascii_hexdigit()||c==b'-') {return Err("desktop_invalid_action".into());}
     Ok(())
 }
@@ -75,7 +75,7 @@ fn validate_audio(action: &AudioAction) -> Result<(), String> {
     Ok(())
 }
 #[cfg(target_os="macos")]
-fn native(value: &Value) -> Result<Value, String> {
+pub(crate) fn native(value: &Value) -> Result<Value, String> {
     use std::ffi::{CStr, CString};
     unsafe extern "C" {
         fn pinwall_desktop_request(json: *const std::ffi::c_char) -> *mut std::ffi::c_char;
@@ -96,12 +96,14 @@ fn native(value: &Value) -> Result<Value, String> {
     Ok(value)
 }
 #[cfg(not(target_os="macos"))]
-fn native(_: &Value) -> Result<Value,String> { Err("desktop_unsupported".into()) }
+pub(crate) fn native(_: &Value) -> Result<Value,String> { Err("desktop_unsupported".into()) }
 impl DesktopService {
     async fn request(&self, mut action: Value, domain: &'static str) -> Result<Value,String> {
         let generation=self.generation.load(Ordering::SeqCst); let state=self.clone();
         action["domain"]=json!(domain);
         if domain=="routes" {action["epoch"]=json!(route_generation());}
+        #[cfg(target_os="macos")]
+        if domain=="windows" {unsafe extern "C" {fn pinwall_windows_generation()->u64;}action["epoch"]=json!(unsafe{pinwall_windows_generation()});}
         tauri::async_runtime::spawn_blocking(move || {
             let _guard=state.lock.lock().map_err(|_| "desktop_unavailable")?;
             if generation!=state.generation.load(Ordering::SeqCst) { return Err("tool_cancelled".into()); }
@@ -109,6 +111,7 @@ impl DesktopService {
         }).await.map_err(|_| "desktop_unavailable".to_string())?
     }
     pub fn clear(&self) -> Result<(),String> { self.clear_target("all") }
+    pub fn clear_visible(&self)->Result<(),String>{self.clear_target("audio")?;self.clear_target("windows")}
     pub fn clear_widget(&self,widget_id:&str)->Result<(),String>{self.clear_target(if widget_id==AUDIO_ID {"audio"} else {"windows"})}
     fn clear_target(&self,_target:&str) -> Result<(),String> {
         self.generation.fetch_add(1,Ordering::SeqCst);
@@ -188,6 +191,8 @@ mod tests {
     fn layouts_use_visible_display_bounds_with_negative_origins(){
         unsafe extern "C" {fn pinwall_window_geometry_test()->i32;}
         assert_eq!(unsafe{pinwall_window_geometry_test()},1);
+        unsafe extern "C" {fn pinwall_dock_geometry_test()->i32;}
+        assert_eq!(unsafe{pinwall_dock_geometry_test()},1);
     }
     #[cfg(target_os="macos")]
     #[test]
@@ -215,5 +220,6 @@ mod tests {
         let result=native(&json!({"domain":"audio","method":"list"})).unwrap();
         assert!(result["devices"].is_array());
         assert!(result["devices"].as_array().unwrap().len()<=128);
+        for device in result["devices"].as_array().unwrap(){for key in ["isDefault","canVolume","canMute"]{assert!(device[key].is_boolean(),"{key} must be a JSON boolean");}assert!(device["muted"].is_null()||device["muted"].is_boolean());}
     }
 }

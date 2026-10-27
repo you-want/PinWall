@@ -279,6 +279,37 @@ export const test = base.extend({
             else throw new Error('Unsupported test mutation');
             localStorage.setItem(key,JSON.stringify(data));return null;
           }
+          case 'widget_video_request': {
+            const action=args.action as {method:string;seconds?:number;token?:string;start?:number;end?:number};
+            const failure=localStorage.getItem(`${prefix}video:fail`);if(failure)throw failure;
+            const video={token:'100-200',duration:30,width:1280,height:720,hasAudio:true,bytes:1024*1024};
+            if(action.method==='status')return {kind:'status',recording:localStorage.getItem(`${prefix}video:recording`)==='true',busy:false,progress:0.5};
+            if(action.method==='select'){localStorage.setItem(`${prefix}video:selected`,'true');return {kind:'selected',video};}
+            if(action.method==='record'){
+              if(localStorage.getItem(`${prefix}video:allowed`)!=='true')throw 'desktop_screen_denied';
+              localStorage.setItem(`${prefix}video:recording`,'true');localStorage.removeItem(`${prefix}video:cancelled`);
+              await new Promise<void>(resolve=>{const timer=setInterval(()=>{if(localStorage.getItem(`${prefix}video:recording`)!=='true'){clearInterval(timer);resolve();}},20);});
+              if(localStorage.getItem(`${prefix}video:cancelled`)==='true')throw 'tool_cancelled';
+              localStorage.setItem(`${prefix}video:selected`,'true');return {kind:'selected',video:{...video,hasAudio:false}};
+            }
+            if(action.method==='stopRecording'){localStorage.setItem(`${prefix}video:recording`,'false');return {kind:'stopping'};}
+            if(action.method==='cancel'){localStorage.setItem(`${prefix}video:cancelled`,'true');localStorage.setItem(`${prefix}video:recording`,'false');localStorage.removeItem(`${prefix}video:selected`);return {kind:'cancelled'};}
+            if(action.method==='export'||action.method==='saveRecording'){if(action.token!==video.token||localStorage.getItem(`${prefix}video:selected`)!=='true')throw 'video_expired';localStorage.setItem(`${prefix}video:lastAction`,JSON.stringify(action));return {kind:'exported',bytes:5000};}
+            throw new Error('Unsupported test video action');
+          }
+          case 'widget_input_request': {
+            const action=args.action as {method:string;profile?:unknown};
+            const failure=localStorage.getItem(`${prefix}input:fail`);if(failure)throw failure;
+            const defaultProfile={reverseVertical:false,reverseHorizontal:false,discreteOnly:true,arrowNavigation:false,textExpansion:false,excludedApps:['com.apple.Terminal'],snippets:[]};
+            if(action.method==='load')return {profile:JSON.parse(localStorage.getItem(`${prefix}input:profile`)??JSON.stringify(defaultProfile))};
+            if(action.method==='save'){localStorage.setItem(`${prefix}input:profile`,JSON.stringify(action.profile));return {profile:action.profile};}
+            const allowed=localStorage.getItem(`${prefix}input:allowed`)==='true';
+            if(action.method==='start'){if(!allowed)throw 'input_permission_denied';localStorage.setItem(`${prefix}input:active`,'true');}
+            else if(action.method==='stop')localStorage.setItem(`${prefix}input:active`,'false');
+            else if(action.method==='permission')localStorage.setItem(`${prefix}input:permissionRequested`,'true');
+            else if(action.method!=='status')throw new Error('Unsupported test input action');
+            return {active:localStorage.getItem(`${prefix}input:active`)==='true',accessibility:allowed,inputMonitoring:allowed,suspended:true,expanded:0,lastError:null};
+          }
           case 'widget_audio_route_request': {
             const action=args.action as {method:string;process?:number;pid?:number;device?:number;gain?:number;token?:string};
             const failure=localStorage.getItem(`${prefix}routes:fail`);if(failure)throw failure;
@@ -314,6 +345,8 @@ export const test = base.extend({
           case 'widget_window_request': {
             const action=args.action as {method:string;token?:string;screen?:number;layout?:string};
             const token='00000000-0000-4000-8000-000000000001';
+            if(action.method==='release')return {ok:true};
+            if(['dockStart','dockStop','dockStatus'].includes(action.method)){if(action.method==='dockStart'){if(localStorage.getItem(`${prefix}windows:denied`)==='true')throw 'desktop_accessibility_denied';localStorage.setItem(`${prefix}dock:active`,'true');}if(action.method==='dockStop')localStorage.setItem(`${prefix}dock:active`,'false');return {active:localStorage.getItem(`${prefix}dock:active`)==='true',lastError:null};}
             if(action.method==='list')return {permitted:localStorage.getItem(`${prefix}windows:denied`)!=='true',windows:[{token,app:'Fixture Editor',title:'Synthetic document',minimized:false,canPreview:true}],screens:[{id:1,name:'Fixture display',x:-1440,y:0,width:1440,height:850}]};
             if(action.method==='permission'){localStorage.setItem(`${prefix}windows:permissionRequested`,'true');return {ok:true};}
             const failure=localStorage.getItem(`${prefix}windows:fail`);if(failure)throw failure;
@@ -429,7 +462,10 @@ export const test = base.extend({
           }
           case 'get_widget_history_status': { const state = historyState(); return { recording: state.recording, count: state.entries.length, revision: localStorage.getItem(`${prefix}history:revision`) ?? '0' }; }
           case 'revoke_widget_tool': {
-            if (args.widgetId === 'com.pinwall.music') localStorage.setItem(`${prefix}routes:active`,'[]');
+            if(args.widgetId==='com.pinwall.video-tools'){localStorage.setItem(`${prefix}video:cancelled`,'true');localStorage.setItem(`${prefix}video:recording`,'false');localStorage.removeItem(`${prefix}video:selected`);return null;}
+            if(args.widgetId==='com.pinwall.window-tools'){localStorage.setItem(`${prefix}dock:active`,'false');return null;}
+            if (args.widgetId === 'com.pinwall.input-tools') localStorage.setItem(`${prefix}input:active`,'false');
+            else if (args.widgetId === 'com.pinwall.music') localStorage.setItem(`${prefix}routes:active`,'[]');
             else if (args.widgetId === 'com.pinwall.clipboard-history') saveHistory(emptyHistory());
             else if (args.widgetId === 'com.pinwall.image-tools') localStorage.removeItem(`${prefix}images:token`);
             else if (args.widgetId === 'com.pinwall.file-shelf') { shelfActive = false; shelfEpoch++; }
@@ -487,7 +523,9 @@ export const test = base.extend({
             powerToken = null; powerStatus = { supported: true, active: false, endsAt: null };
             return null;
           case 'uninstall_widget':
-            if (!['com.pinwall.keep-awake', 'com.pinwall.system-monitor', 'com.pinwall.clipboard-note', 'com.pinwall.ocr-note', 'com.pinwall.image-tools', 'com.pinwall.clipboard-history', 'com.pinwall.file-shelf', 'com.pinwall.screen-tools', 'com.pinwall.local-tools'].includes(String(args.id))) throw new Error('Unsupported test widget uninstall');
+            if(args.id==='com.pinwall.video-tools'){localStorage.setItem(`${prefix}video:cancelled`,'true');localStorage.setItem(`${prefix}video:recording`,'false');localStorage.removeItem(`${prefix}video:selected`);}
+            if (args.id === 'com.pinwall.input-tools') { localStorage.setItem(`${prefix}input:active`,'false'); localStorage.removeItem(`${prefix}input:profile`); }
+            if (!['com.pinwall.keep-awake', 'com.pinwall.system-monitor', 'com.pinwall.clipboard-note', 'com.pinwall.ocr-note', 'com.pinwall.image-tools', 'com.pinwall.clipboard-history', 'com.pinwall.file-shelf', 'com.pinwall.screen-tools', 'com.pinwall.local-tools', 'com.pinwall.music', 'com.pinwall.window-tools', 'com.pinwall.input-tools', 'com.pinwall.video-tools'].includes(String(args.id))) throw new Error('Unsupported test widget uninstall');
             localStorage.setItem(`${prefix}widgets:installed`, '[]');
             if (args.id === 'com.pinwall.local-tools') localStorage.removeItem(`${prefix}utilities:snippets`);
             if (args.id === 'com.pinwall.file-shelf') { shelfActive = false; shelfEpoch++; saveShelf([]); }

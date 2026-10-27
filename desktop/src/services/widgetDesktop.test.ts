@@ -1,5 +1,5 @@
 import { describe,it,expect,vi,beforeEach } from "vitest";
-import { audioRequest,validDevices,validWindows,mediaControl,windowPreview } from "./widgetDesktop";
+import { dockAction,audioRequest,validDevices,validWindows,mediaControl,windowPreview } from "./widgetDesktop";
 import { invoke } from "@tauri-apps/api/core";
 vi.mock("@tauri-apps/api/core",()=>({invoke:vi.fn()}));
 const signal=()=>new AbortController().signal;
@@ -21,4 +21,10 @@ describe("desktop tool boundaries",()=>{
     expect(validWindows(value)).toBe(true);expect(validWindows({...value,windows:[{...value.windows[0],token:"../x"}]})).toBe(false);
     vi.mocked(invoke).mockResolvedValueOnce({preview:"https://example.com/private.png"});await expect(windowPreview(value.windows[0].token,signal())).rejects.toThrow("tool_invalid_response");
   });
+  it("keeps Dock permission failures and validates its native status",async()=>{
+    vi.mocked(invoke).mockRejectedValueOnce("desktop_screen_denied");await expect(dockAction("dockStart",signal())).rejects.toThrow("desktop_screen_denied");
+    vi.mocked(invoke).mockResolvedValueOnce({active:true,lastError:null});expect(await dockAction("dockStatus",signal())).toEqual({active:true,lastError:null});
+    vi.mocked(invoke).mockResolvedValueOnce({active:"yes",lastError:null});await expect(dockAction("dockStatus",signal())).rejects.toThrow("tool_invalid_response");
+  });
+
 });

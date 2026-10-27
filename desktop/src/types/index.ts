@@ -229,6 +229,8 @@ export type WidgetPermission =
   | "utilities"
   | "audio"
   | "windows"
+  | "input"
+  | "video"
   | "network"
   | "i18n";
 

@@ -33,5 +33,8 @@ test('window tools recover authorization and allow explicit layout, preview and 
   await page.evaluate(()=>localStorage.removeItem('pinwall-e2e:windows:fail'));await dialog.getByRole('button',{name:'Preview selected window'}).click();await expect(dialog.getByRole('img')).toBeVisible();
   await dialog.getByRole('button',{name:'Restore original layout'}).click();await expect(dialog.getByRole('status')).toHaveText('Original layout restored.');await expect(dialog.getByRole('button',{name:'Restore original layout'})).toBeDisabled();
   await dialog.getByRole('button',{name:'Switch to window'}).click();expect(JSON.parse((await page.evaluate(()=>localStorage.getItem('pinwall-e2e:windows:lastAction')))!)).toMatchObject({method:'focus'});
+  await dialog.getByRole('button',{name:'Start Dock hover previews'}).click();await expect(dialog.getByRole('button',{name:'Stop Dock hover previews'})).toBeVisible();
+  await dialog.getByRole('button',{name:'Close',exact:true}).click();expect(await page.evaluate(()=>localStorage.getItem('pinwall-e2e:dock:active'))).toBe('true');
+  await widget.getByRole('button',{name:'Open window tools'}).click();await dialog.getByRole('button',{name:'Stop Dock hover previews'}).click();expect(await page.evaluate(()=>localStorage.getItem('pinwall-e2e:dock:active'))).toBe('false');
   await page.screenshot({path:'/tmp/pinwall-windows-narrow.png',fullPage:true});
 });
